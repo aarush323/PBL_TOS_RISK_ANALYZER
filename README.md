@@ -10,7 +10,9 @@ AI-powered Terms of Service analysis tool that extracts, classifies, and explain
 - **5 risk categories** — Privacy, Legal, User Rights, Security, Financial
 - **Batched + parallel processing** — 5 clauses/batch, 3 concurrent workers
 - **Async analysis** — Returns extraction instantly, LLM runs in background
+- **Document Chatbot** — Interactive Q&A on extracted documents via Cerebras/Ollama
 - **Confidence scoring** — High/Medium/Low per clause with plain-English explanations
+- **Premium UI** — Modern, dark-themed tabbed interface with real-time feedback
 
 ## Tech Stack
 
@@ -53,9 +55,10 @@ uvicorn main:app --reload
 | `GET` | `/health` | Health check |
 | `POST` | `/extract` | Extract text from URL/text |
 | `POST` | `/extract/pdf` | Extract text from PDF |
-| `POST` | `/analyze` | Synchronous full analysis |
 | `POST` | `/analyze/async` | Async analysis (returns job_id) |
 | `GET` | `/analyze/status/{job_id}` | Poll async result |
+| `POST` | `/chat/store` | Store document for chat session |
+| `POST` | `/chat` | Interactive chat endpoint |
 
 ## Project Structure
 
@@ -75,9 +78,12 @@ PBL/
 │   │   ├── nlp_features.py      # spaCy feature extraction
 │   │   ├── classifier.py        # LLM classification (batch + single)
 │   │   └── analyzer.py          # Pipeline orchestrator
+│   ├── chat/
+│   │   ├── chatbot.py           # Document Q&A logic
+│   │   └── __init__.py
 │   └── tests/
 │       ├── test_extraction.py
 │       └── test_analysis.py
 └── frontend/
-    └── index.html               # Two-step UI: Extract → Analyze
+    └── index.html               # Tabbed UI: Analyze & Chat
 ```
