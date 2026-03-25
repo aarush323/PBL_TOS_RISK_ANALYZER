@@ -14,7 +14,7 @@ import uuid
 import os
 import shutil
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -80,6 +80,10 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
 
+class VerificationResponse(BaseModel):
+    message: str
+    verification_required: bool
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -109,14 +113,30 @@ def get_cerebras_stats():
 # Auth routes
 # ---------------------------------------------------------------------------
 
-@app.post("/auth/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/auth/register", response_model=VerificationResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing = await crud.get_user_by_email(db, body.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
     user = await crud.create_user(db, body.email, hash_password(body.password))
-    token = create_access_token(user.id, user.email)
-    return {"access_token": token, "token_type": "bearer"}
+    
+    # Simulate email sending
+    verify_link = f"http://localhost:8000/auth/verify/{user.verification_token}"
+    logger.info(f"\n\n{'='*60}\nVERIFICATION LINK FOR {user.email}:\n{verify_link}\n{'='*60}\n")
+
+    return {
+        "message": "Registration successful. Please click the link in your console to verify.",
+        "verification_required": True
+    }
+
+
+@app.get("/auth/verify/{token}")
+async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+    user = await crud.verify_user(db, token)
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+    return {"message": "Email verified successfully. You can now log in."}
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -131,6 +151,14 @@ async def login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account not verified. Please check your console for the link.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token = create_access_token(user.id, user.email)
     return {"access_token": token, "token_type": "bearer"}
 
@@ -182,28 +210,27 @@ def extract_pdf(file: UploadFile = File(...)):
 # Async analysis (persisted to PostgreSQL)
 # ---------------------------------------------------------------------------
 
-def _run_analysis_background(job_id: str, extraction: dict):
-    """Run analyze_document in a background thread then persist result."""
-    async def _persist(job_id, extraction):
-        from db.connection import AsyncSessionLocal
-        from analysis.cancellation import clear_job
-        async with AsyncSessionLocal() as db:
-            try:
-                result = await asyncio.to_thread(analyze_document, extraction, job_id)
-                await crud.update_analysis_complete(db, job_id, result)
-                logger.info(f"Job {job_id} complete, saved to DB.")
-            except Exception as e:
-                logger.error(f"Job {job_id} failed: {e}")
-                await crud.update_analysis_failed(db, job_id, str(e))
-            finally:
-                clear_job(job_id)
-
-    asyncio.run(_persist(job_id, extraction))
+async def _run_analysis_background(job_id: str, extraction: dict):
+    """Run analyze_document in a background task then persist result."""
+    from db.connection import AsyncSessionLocal
+    from analysis.cancellation import clear_job
+    
+    async with AsyncSessionLocal() as db:
+        try:
+            result = await asyncio.to_thread(analyze_document, extraction, job_id)
+            await crud.update_analysis_complete(db, job_id, result)
+            logger.info(f"Job {job_id} complete, saved to DB.")
+        except Exception as e:
+            logger.error(f"Job {job_id} failed: {e}")
+            await crud.update_analysis_failed(db, job_id, str(e))
+        finally:
+            clear_job(job_id)
 
 
 @app.post("/analyze/async")
 async def analyze_async(
     body: AnalyzeInput,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ):
@@ -224,12 +251,7 @@ async def analyze_async(
         user_id=user_id,
     )
 
-    thread = threading.Thread(
-        target=_run_analysis_background,
-        args=(job_id, extraction),
-        daemon=True,
-    )
-    thread.start()
+    background_tasks.add_task(_run_analysis_background, job_id, extraction)
 
     return {"job_id": job_id, "status": "processing", "extraction": extraction}
 

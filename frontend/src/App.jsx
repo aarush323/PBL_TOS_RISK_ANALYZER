@@ -5,6 +5,12 @@ import { marked } from 'marked';
 const API = 'http://localhost:8000';
 
 export default function App() {
+  const [token, setToken] = useState(localStorage.getItem('tos_token'));
+  const [user, setUser] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [verifyMessage, setVerifyMessage] = useState('');
+  
   const [activeView, setActiveView] = useState('dashboard');
   const [inputMode, setInputMode] = useState('url');
   
@@ -27,6 +33,90 @@ export default function App() {
 
   const [toasts, setToasts] = useState([]);
 
+  useEffect(() => {
+    if (token) {
+      fetchUser();
+    }
+  }, [token]);
+
+  const fetchUser = async () => {
+    try {
+      const res = await fetch(`${API}/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
+      } else if (res.status === 401) {
+        logout();
+      }
+    } catch (err) {
+      console.error('Fetch user failed', err);
+    }
+  };
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    const email = e.target.email.value;
+    const password = e.target.password.value;
+    const confirmPassword = e.target.confirmPassword?.value;
+
+    if (authMode === 'signup' && password !== confirmPassword) {
+      return addToast('Passwords do not match', true);
+    }
+
+    setIsAuthLoading(true);
+    setVerifyMessage('');
+
+    try {
+      if (authMode === 'login') {
+        const formData = new URLSearchParams();
+        formData.append('username', email);
+        formData.append('password', password);
+
+        const res = await fetch(`${API}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          localStorage.setItem('tos_token', data.access_token);
+          setToken(data.access_token);
+          addToast('Logged in successfully');
+        } else {
+          addToast(data.detail || 'Login failed', true);
+        }
+      } else {
+        const res = await fetch(`${API}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setVerifyMessage(data.message);
+          addToast('Registration successful! Verify to continue.');
+          setAuthMode('login');
+        } else {
+          addToast(data.detail || 'Registration failed', true);
+        }
+      }
+    } catch (err) {
+      addToast('Authentication service unavailable', true);
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('tos_token');
+    setToken(null);
+    setUser(null);
+    setActiveView('dashboard');
+    addToast('Logged out');
+  };
+
   const addToast = (message, isError = false) => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, isError }]);
@@ -37,7 +127,9 @@ export default function App() {
 
   const pollAnalysisResults = async (jobId) => {
     try {
-      const res = await fetch(`${API}/analyze/status/${jobId}`);
+      const res = await fetch(`${API}/analyze/status/${jobId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       
       if (data.status === 'complete') {
@@ -66,7 +158,10 @@ export default function App() {
   const stopAnalysis = async () => {
     if (!analysisJobId) return;
     try {
-      await fetch(`${API}/analyze/stop/${analysisJobId}`, { method: 'POST' });
+      await fetch(`${API}/analyze/stop/${analysisJobId}`, { 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setIsProcessing(false);
       addToast('Analysis stopped by user.', true);
     } catch(err) {
@@ -99,6 +194,7 @@ export default function App() {
         
         const extractRes = await fetch(`${API}/extract/pdf`, {
           method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
           body: formData
         });
         
@@ -111,7 +207,10 @@ export default function App() {
 
       const res = await fetch(`${API}/analyze/async`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ input_type: analyzeType, content: analyzeContent })
       });
       
@@ -138,7 +237,10 @@ export default function App() {
     try {
       await fetch(`${API}/chat/store`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ session_id: newSessionId, document_text: text })
       });
     } catch(e) {
@@ -158,7 +260,10 @@ export default function App() {
     try {
       const res = await fetch(`${API}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ session_id: sessionId, message: msg, history: [] })
       });
       const data = await res.json();
@@ -192,6 +297,73 @@ export default function App() {
     return { __html: htmlString };
   };
 
+  if (!token) {
+    return (
+      <div className="auth-overlay">
+        <div className="auth-card">
+          <div className="auth-header">
+            <div className="brand" style={{justifyContent: 'center', marginBottom: '20px'}}>
+              <div className="brand-icon"><Scale size={18} /></div>
+              <div className="brand-text">
+                <span className="brand-title">Jurist AI</span>
+              </div>
+            </div>
+            <h2>{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+            <p>{authMode === 'login' ? 'Enter your credentials to access Jurist AI' : 'Join the elite legal AI platform'}</p>
+          </div>
+
+          {verifyMessage && (
+            <div style={{
+              background: 'var(--success-bg)', 
+              color: 'var(--success)', 
+              padding: '12px', 
+              borderRadius: 'var(--radius-sm)', 
+              fontSize: '13px', 
+              marginBottom: '20px',
+              border: '1px solid var(--success)',
+              textAlign: 'center'
+            }}>
+              {verifyMessage}
+            </div>
+          )}
+
+          <form className="auth-form" onSubmit={handleAuth}>
+            <div className="auth-field">
+              <label>Email Address</label>
+              <input type="email" name="email" className="auth-input" placeholder="name@company.com" required />
+            </div>
+            <div className="auth-field">
+              <label>Password</label>
+              <input type="password" name="password" className="auth-input" placeholder="••••••••" required />
+            </div>
+            {authMode === 'signup' && (
+              <div className="auth-field">
+                <label>Confirm Password</label>
+                <input type="password" name="confirmPassword" className="auth-input" placeholder="••••••••" required />
+              </div>
+            )}
+            <button className="auth-btn" type="submit" disabled={isAuthLoading}>
+              {isAuthLoading ? 'Authenticating...' : (authMode === 'login' ? 'Sign In' : 'Register')}
+            </button>
+          </form>
+          <div className="auth-toggle">
+            {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+            <span onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}>
+              {authMode === 'login' ? 'Create one' : 'Sign in'}
+            </span>
+          </div>
+        </div>
+        <div className="toast-container">
+          {toasts.map(t => (
+            <div key={t.id} className={`toast show ${t.isError ? 'error' : ''}`}>
+              <span style={{fontSize: '18px'}}>{t.isError ? '⚠️' : '✓'}</span> {t.message}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* SIDEBAR */}
@@ -210,27 +382,27 @@ export default function App() {
         
         <nav className="nav-menu">
           <a className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveView('dashboard')}>
-            <Activity size={18} /> Dashboard
+            <Activity size={18} /> <span>Dashboard</span>
           </a>
           <a className={`nav-item ${activeView === 'results' ? 'active' : ''}`} onClick={() => setActiveView('results')}>
-            <BrainCircuit size={18} /> Risk Analysis
+            <BrainCircuit size={18} /> <span>Risk Analysis</span>
           </a>
           <a className="nav-item">
-            <FileCheck size={18} /> Compliance
+            <FileCheck size={18} /> <span>Compliance</span>
           </a>
           <a className="nav-item">
-            <History size={18} /> History
+            <History size={18} /> <span>History</span>
           </a>
         </nav>
         
         <div className="sidebar-footer">
           <a className="nav-item"><SettingsIcon size={18}/> Settings</a>
-          <a className="nav-item"><HelpCircle size={18}/> Help Center</a>
+          <a className="nav-item" onClick={logout}><HelpCircle size={18}/> Sign Out</a>
           
           <div className="user-profile">
-            <div className="user-avatar">A</div>
+            <div className="user-avatar">{user?.email?.[0].toUpperCase() || 'U'}</div>
             <div className="user-info">
-              <span className="user-name">Alex Graham</span>
+              <span className="user-name">{user?.email || 'Authenticated User'}</span>
               <span className="user-plan">Enterprise Plan</span>
             </div>
           </div>
@@ -248,7 +420,7 @@ export default function App() {
           <div className="topbar-actions">
             <input type="text" className="search-box" placeholder="Q Search analyses..." />
             <Bell size={18} style={{cursor: 'pointer'}} />
-            <span style={{fontSize: '14px', cursor: 'pointer', color: 'var(--primary)'}}>Account Settings</span>
+            <span style={{fontSize: '14px', cursor: 'pointer', color: 'var(--primary)'}} onClick={logout}>Sign Out</span>
           </div>
         </header>
 
@@ -257,7 +429,7 @@ export default function App() {
           {activeView === 'dashboard' && (
             <div className="view-section active">
               <div className="hero">
-                <h1>Welcome, Alex.</h1>
+                <h1>Welcome, {user?.email?.split('@')[0] || 'User'}.</h1>
                 <p>Ready to deconstruct legal complexity? Initiate a new risk assessment by pasting your legal document, uploading a file, or providing a URL. Our AI provides deep structural analysis in seconds.</p>
               </div>
               
@@ -304,18 +476,20 @@ export default function App() {
                         <button className="upload-btn" type="button">{uploadedFile ? 'Change File' : 'Select Files from Device'}</button>
                       </div>
                     )}
-                    <div style={{display: 'flex', gap: '12px', width: '100%'}}>
-                      <button className="action-btn" onClick={startAnalysis} disabled={isProcessing} style={{flex: 1}}>
+                    
+                    <div style={{display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap'}}>
+                      <button className="action-btn" onClick={startAnalysis} disabled={isProcessing} style={{flex: 1, minWidth: '200px'}}>
                         {isProcessing ? <div className="loader" style={{display: 'block'}} /> : <Zap size={18} />}
                         {isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}
                       </button>
                       {isProcessing && (
-                        <button className="action-btn" onClick={stopAnalysis} style={{background: 'var(--error)', borderColor: 'var(--error)'}}>
+                        <button className="action-btn" onClick={stopAnalysis} style={{background: 'var(--error)', borderColor: 'var(--error)', minWidth: '100px'}}>
                           STOP
                         </button>
                       )}
                     </div>
-                    <div style={{marginTop: '24px', display: 'flex', gap: '12px', alignItems: 'center'}}>
+                    
+                    <div style={{marginTop: '24px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap'}}>
                       <span style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase'}}>Supported:</span>
                       <span style={{background: 'var(--surface-2)', fontSize: '11px', padding: '4px 8px', borderRadius: '4px'}}>🌐 HTML 5</span>
                       <span style={{background: 'var(--surface-2)', fontSize: '11px', padding: '4px 8px', borderRadius: '4px'}}>📄 Dynamic PDF</span>
@@ -339,10 +513,6 @@ export default function App() {
                     </div>
                     <div style={{fontSize: '10px', color: 'var(--primary)', textAlign: 'right', marginTop: '4px'}}>99.8% ACCURACY</div>
                   </div>
-                  <div className="status-card">
-                    <div className="status-dot"></div>
-                    <span className="status-text">AI Cluster v4.2-Llama is active and ready.</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -351,7 +521,7 @@ export default function App() {
           {/* RESULTS VIEW */}
           {activeView === 'results' && (
             <div className="view-section active">
-              <div className="hero" style={{marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <div className="hero" style={{marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px'}}>
                 <div>
                   <h1 style={{fontSize: '24px'}}>Analysis Results</h1>
                   <p style={{fontSize: '14px', color: 'var(--primary)'}}>{analysisJobId ? `Source ID: ${analysisJobId.split('-')[0]}` : 'No document loaded'}</p>
@@ -364,7 +534,7 @@ export default function App() {
                     <div className="score-info">
                       <h2>Aggregate Risk Score</h2>
                       <p>Overall risk profile based on identified clauses within the provided document.</p>
-                      <div style={{display: 'flex', gap: '8px', marginTop: '12px'}}>
+                      <div style={{display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
                         <span style={{background: 'var(--error-bg)', color: 'var(--error)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>! HIGH IMPACT</span>
                         <span style={{background: 'rgba(0,240,255,0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>✦ AI VERIFIED</span>
                       </div>
@@ -426,7 +596,7 @@ export default function App() {
                   <div className="chat-messages" ref={chatBoxRef}>
                     {chatMessages.map((msg, i) => (
                       <div className={`msg ${msg.role}`} key={i}>
-                        <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14}/> : 'A'}</div>
+                        <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14}/> : (user?.email?.[0].toUpperCase() || 'U')}</div>
                         <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
                       </div>
                     ))}

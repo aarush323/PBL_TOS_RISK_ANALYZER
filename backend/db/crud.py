@@ -16,14 +16,28 @@ from .models import Analysis, ChatSession, ChatMessage, JobStatus, User
 # ---------------------------------------------------------------------------
 
 async def create_user(db: AsyncSession, email: str, hashed_password: str) -> User:
+    import secrets
     user = User(
         id=str(uuid.uuid4()),
         email=email,
         hashed_password=hashed_password,
+        is_verified=False,
+        verification_token=secrets.token_urlsafe(32)
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    return user
+
+
+async def verify_user(db: AsyncSession, token: str) -> User | None:
+    result = await db.execute(select(User).where(User.verification_token == token))
+    user = result.scalars().first()
+    if user:
+        user.is_verified = True
+        user.verification_token = None
+        await db.commit()
+        await db.refresh(user)
     return user
 
 
