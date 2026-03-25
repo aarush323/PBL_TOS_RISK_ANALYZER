@@ -1,4 +1,5 @@
 import React from 'react';
+// eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function LoadingOverlay({ show, title = 'Processing', detail = 'Analyzing your document…' }) {

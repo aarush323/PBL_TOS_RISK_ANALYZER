@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+ 
 import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap } from 'lucide-react';
 import { marked } from 'marked';
+// eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
 import LoadingOverlay from './components/LoadingOverlay.jsx';
 import SkeletonList from './components/SkeletonList.jsx';
@@ -115,7 +117,7 @@ export default function App() {
     if (token) {
       fetchUser();
     }
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     localStorage.setItem('jurist_settings', JSON.stringify(settings));
@@ -125,7 +127,7 @@ export default function App() {
     if (token) {
       loadHistory();
     }
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchUser = async () => {
     try {
@@ -138,8 +140,8 @@ export default function App() {
       } else if (res.status === 401) {
         logout();
       }
-    } catch (err) {
-      console.error('Fetch user failed', err);
+    } catch (error) {
+      console.error('Fetch user failed', error);
     }
   };
 
@@ -193,7 +195,8 @@ export default function App() {
           addToast(data.detail || 'Registration failed', true);
         }
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Auth error:', error);
       addToast('Authentication service unavailable', true);
     } finally {
       setIsAuthLoading(false);
@@ -229,7 +232,8 @@ export default function App() {
       } else {
         addToast(data.detail || 'Failed to load history', true);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Load history error:', error);
       addToast('History service unavailable', true);
     } finally {
       setIsHistoryLoading(false);
@@ -288,7 +292,7 @@ export default function App() {
       setSelectedHistoryId(data.job_id);
       setActiveView('results');
       addToast('Loaded analysis from history.');
-    } catch (err) {
+    } catch {
       addToast('Could not open selected history item', true);
     }
   };
