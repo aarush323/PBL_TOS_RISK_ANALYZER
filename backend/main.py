@@ -14,18 +14,22 @@ import uuid
 import os
 import shutil
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
+from jose import JWTError
 
 from extraction.input_handler import handle_input
 from analysis.analyzer import analyze_document
 from chat.chatbot import chat_with_document
 
 from db.connection import engine, get_db
-from db.models import Base
+from db.models import Base, User
 from db import crud
+from auth.security import hash_password, verify_password, create_access_token
+from auth.dependencies import get_current_user, get_optional_user
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +56,11 @@ async def startup():
 
 
 # ---------------------------------------------------------------------------
-# Pydantic models
+# Pydantic schemas
 # ---------------------------------------------------------------------------
 
 class TextInput(BaseModel):
-    input_type: str   # "url" or "text"
+    input_type: str
     content: str
 
 class AnalyzeInput(BaseModel):
@@ -64,13 +68,26 @@ class AnalyzeInput(BaseModel):
     content: str
 
 class ChatMessage(BaseModel):
-    role: str       # "user" or "assistant"
+    role: str
     content: str
 
 class ChatRequest(BaseModel):
     session_id: str
     message: str
     history: list[ChatMessage] = []
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    created_at: str
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +97,45 @@ class ChatRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Auth routes
+# ---------------------------------------------------------------------------
+
+@app.post("/auth/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    existing = await crud.get_user_by_email(db, body.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = await crud.create_user(db, body.email, hash_password(body.password))
+    token = create_access_token(user.id, user.email)
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.post("/auth/login", response_model=TokenResponse)
+async def login(
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await crud.get_user_by_email(db, form.username)  # username = email
+    if not user or not verify_password(form.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = create_access_token(user.id, user.email)
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.get("/auth/me", response_model=UserResponse)
+async def me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "created_at": current_user.created_at.isoformat(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +157,6 @@ def extract_text(body: TextInput):
 def extract_pdf(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
-
     temp_path = f"/tmp/{file.filename}"
     try:
         with open(temp_path, "wb") as f:
@@ -138,7 +193,11 @@ def _run_analysis_background(job_id: str, extraction: dict):
 
 
 @app.post("/analyze/async")
-async def analyze_async(body: AnalyzeInput, db: AsyncSession = Depends(get_db)):
+async def analyze_async(
+    body: AnalyzeInput,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
     try:
         extraction = handle_input(body.input_type, body.content)
     except ValueError as e:
@@ -147,20 +206,15 @@ async def analyze_async(body: AnalyzeInput, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
     job_id = str(uuid.uuid4())
+    user_id = current_user.id if current_user else None
 
-    # Persist job row immediately
     await crud.create_analysis_job(
         db, job_id,
         source=body.content[:500],
         source_type=body.input_type,
+        user_id=user_id,
     )
 
-    # Also store document for chat (persisted below in /chat/store)
-    async with db.begin_nested():
-        from db.connection import AsyncSessionLocal
-        pass  # chat session created separately via /chat/store
-
-    # Background thread to run analysis + save result
     thread = threading.Thread(
         target=_run_analysis_background,
         args=(job_id, extraction),
@@ -168,11 +222,7 @@ async def analyze_async(body: AnalyzeInput, db: AsyncSession = Depends(get_db)):
     )
     thread.start()
 
-    return {
-        "job_id": job_id,
-        "status": "processing",
-        "extraction": extraction,
-    }
+    return {"job_id": job_id, "status": "processing", "extraction": extraction}
 
 
 @app.get("/analyze/status/{job_id}")
@@ -188,9 +238,13 @@ async def analyze_status(job_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/analyses")
-async def list_analyses(limit: int = 50, db: AsyncSession = Depends(get_db)):
-    """List the most recent analyses (newest first)."""
-    jobs = await crud.list_analyses(db, limit=limit)
+async def list_analyses(
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),   # auth required
+):
+    """List analyses for the currently logged-in user."""
+    jobs = await crud.list_analyses(db, limit=limit, user_id=current_user.id)
     return [
         {
             "job_id": j.job_id,
@@ -209,7 +263,11 @@ async def list_analyses(limit: int = 50, db: AsyncSession = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @app.post("/chat/store")
-async def store_document(body: dict, db: AsyncSession = Depends(get_db)):
+async def store_document(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
     session_id = body.get("session_id")
     document_text = body.get("document_text", "")
     if not session_id:
@@ -217,13 +275,13 @@ async def store_document(body: dict, db: AsyncSession = Depends(get_db)):
     if not document_text.strip():
         raise HTTPException(status_code=400, detail="document_text is required")
 
-    # Upsert: if session already exists (e.g. from previous load) just overwrite
+    user_id = current_user.id if current_user else None
     existing = await crud.get_chat_session(db, session_id)
     if existing:
         existing.document_text = document_text
         await db.commit()
     else:
-        await crud.create_chat_session(db, session_id, document_text)
+        await crud.create_chat_session(db, session_id, document_text, user_id=user_id)
 
     return {"status": "stored", "session_id": session_id, "char_count": len(document_text)}
 
@@ -237,7 +295,6 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
             detail="No document found for this session. Extract a document first.",
         )
 
-    # Build conversation from DB history + incoming request
     db_history = await crud.get_chat_history(db, body.session_id)
     conversation = [{"role": m.role, "content": m.content} for m in db_history]
     conversation.append({"role": "user", "content": body.message})
@@ -247,7 +304,6 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
 
-    # Persist both turns
     await crud.add_chat_message(db, body.session_id, "user", body.message)
     await crud.add_chat_message(db, body.session_id, "assistant", reply)
 
@@ -256,10 +312,11 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
 
 @app.get("/chat/{session_id}/history")
 async def chat_history(session_id: str, db: AsyncSession = Depends(get_db)):
-    """Return full chat history for a session."""
     session = await crud.get_chat_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     msgs = await crud.get_chat_history(db, session_id)
-    return [{"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()}
-            for m in msgs]
+    return [
+        {"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()}
+        for m in msgs
+    ]

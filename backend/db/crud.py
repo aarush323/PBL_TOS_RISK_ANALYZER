@@ -8,7 +8,32 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Analysis, ChatSession, ChatMessage, JobStatus
+from .models import Analysis, ChatSession, ChatMessage, JobStatus, User
+
+
+# ---------------------------------------------------------------------------
+# Users
+# ---------------------------------------------------------------------------
+
+async def create_user(db: AsyncSession, email: str, hashed_password: str) -> User:
+    user = User(
+        id=str(uuid.uuid4()),
+        email=email,
+        hashed_password=hashed_password,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
+    return await db.get(User, user_id)
+
+
+async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalars().first()
 
 
 # ---------------------------------------------------------------------------
@@ -16,12 +41,14 @@ from .models import Analysis, ChatSession, ChatMessage, JobStatus
 # ---------------------------------------------------------------------------
 
 async def create_analysis_job(db: AsyncSession, job_id: str, source: str,
-                               source_type: str | None = None) -> Analysis:
+                               source_type: str | None = None,
+                               user_id: str | None = None) -> Analysis:
     job = Analysis(
         job_id=job_id,
         source=source,
         source_type=source_type,
         status=JobStatus.processing,
+        user_id=user_id,
     )
     db.add(job)
     await db.commit()
@@ -51,10 +78,12 @@ async def get_analysis_job(db: AsyncSession, job_id: str) -> Analysis | None:
     return await db.get(Analysis, job_id)
 
 
-async def list_analyses(db: AsyncSession, limit: int = 50) -> list[Analysis]:
-    result = await db.execute(
-        select(Analysis).order_by(Analysis.created_at.desc()).limit(limit)
-    )
+async def list_analyses(db: AsyncSession, limit: int = 50,
+                        user_id: str | None = None) -> list[Analysis]:
+    q = select(Analysis).order_by(Analysis.created_at.desc()).limit(limit)
+    if user_id:
+        q = q.where(Analysis.user_id == user_id)
+    result = await db.execute(q)
     return result.scalars().all()
 
 
@@ -63,8 +92,13 @@ async def list_analyses(db: AsyncSession, limit: int = 50) -> list[Analysis]:
 # ---------------------------------------------------------------------------
 
 async def create_chat_session(db: AsyncSession, session_id: str,
-                               document_text: str) -> ChatSession:
-    session = ChatSession(session_id=session_id, document_text=document_text)
+                               document_text: str,
+                               user_id: str | None = None) -> ChatSession:
+    session = ChatSession(
+        session_id=session_id,
+        document_text=document_text,
+        user_id=user_id,
+    )
     db.add(session)
     await db.commit()
     await db.refresh(session)

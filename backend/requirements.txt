@@ -11,3 +11,7 @@ python-dotenv
 # PostgreSQL async
 asyncpg
 sqlalchemy[asyncio]
+# Auth
+passlib[bcrypt]
+python-jose[cryptography]
+email-validator
