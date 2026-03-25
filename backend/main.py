@@ -99,6 +99,12 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/stats/cerebras")
+def get_cerebras_stats():
+    from analysis.classifier import cerebras_request_count
+    return {"cerebras_total_requests": cerebras_request_count}
+
+
 # ---------------------------------------------------------------------------
 # Auth routes
 # ---------------------------------------------------------------------------
@@ -180,14 +186,17 @@ def _run_analysis_background(job_id: str, extraction: dict):
     """Run analyze_document in a background thread then persist result."""
     async def _persist(job_id, extraction):
         from db.connection import AsyncSessionLocal
+        from analysis.cancellation import clear_job
         async with AsyncSessionLocal() as db:
             try:
-                result = await asyncio.to_thread(analyze_document, extraction)
+                result = await asyncio.to_thread(analyze_document, extraction, job_id)
                 await crud.update_analysis_complete(db, job_id, result)
                 logger.info(f"Job {job_id} complete, saved to DB.")
             except Exception as e:
                 logger.error(f"Job {job_id} failed: {e}")
                 await crud.update_analysis_failed(db, job_id, str(e))
+            finally:
+                clear_job(job_id)
 
     asyncio.run(_persist(job_id, extraction))
 
@@ -235,6 +244,16 @@ async def analyze_status(job_id: str, db: AsyncSession = Depends(get_db)):
     if job.status.value == "failed":
         return {"status": "failed", "error": job.error}
     return {"status": "processing"}
+
+
+@app.post("/analyze/stop/{job_id}")
+async def stop_analysis(job_id: str, db: AsyncSession = Depends(get_db)):
+    from analysis.cancellation import cancel_job
+    cancel_job(job_id)
+    job = await crud.get_analysis_job(db, job_id)
+    if job and job.status.value == "processing":
+        await crud.update_analysis_failed(db, job_id, "Cancelled by user")
+    return {"status": "cancelled", "job_id": job_id}
 
 
 @app.get("/analyses")

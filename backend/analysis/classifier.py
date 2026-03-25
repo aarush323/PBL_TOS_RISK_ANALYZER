@@ -18,6 +18,9 @@ CEREBRAS_MODEL = "llama3.1-8b"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "phi3.5"
 
+# Global counter for API tracking
+cerebras_request_count = 0
+
 RISK_DEFINITIONS = """
 - Privacy Risk: data collection, sharing, selling, tracking user data, cookies, profiling
 - Legal Risk: mandatory arbitration, class action waiver, liability waiver, jurisdiction clauses, indemnification
@@ -322,6 +325,11 @@ def _cerebras_post_with_backoff(payload: dict, timeout: float) -> httpx.Response
                 continue
                 
             response.raise_for_status()
+            
+            # Increment global counter on successful request
+            global cerebras_request_count
+            cerebras_request_count += 1
+            
             return response
             
         except httpx.TimeoutException as e:

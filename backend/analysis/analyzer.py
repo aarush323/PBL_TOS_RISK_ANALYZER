@@ -1,6 +1,7 @@
 from .segmenter import segment_clauses
 from .nlp_features import extract_features, is_likely_risky
 from .classifier import classify_clause, classify_batch
+from .cancellation import is_cancelled
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -28,9 +29,13 @@ def compute_overall_risk(risky_clauses: list[dict], total: int) -> str:
 
 def _classify_batch_worker(batch_index: int, total_batches: int,
                            clauses: list[dict],
-                           features_list: list[dict]) -> list[dict]:
+                           features_list: list[dict],
+                           job_id: str = None) -> list[dict]:
     """Worker function for ThreadPoolExecutor. Classifies one batch."""
     global _current_batch_size
+    if job_id and is_cancelled(job_id):
+        raise Exception("Job cancelled by user")
+    
     logger.info(f"Classifying batch {batch_index + 1}/{total_batches} "
                 f"({len(clauses)} clauses)...")
     try:
@@ -47,7 +52,7 @@ def _classify_batch_worker(batch_index: int, total_batches: int,
         return fallback_results
 
 
-def analyze_document(extraction_result: dict) -> dict:
+def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
     source = extraction_result.get("source", "unknown")
     paragraphs = extraction_result["paragraphs"]
 
@@ -105,11 +110,17 @@ def analyze_document(extraction_result: dict) -> dict:
                 executor.submit(
                     _classify_batch_worker,
                     idx, total_batches,
-                    batches_clauses[idx], batches_features[idx]
+                    batches_clauses[idx], batches_features[idx],
+                    job_id
                 ): idx
                 for idx in range(total_batches)
             }
             for future in as_completed(future_to_idx):
+                if job_id and is_cancelled(job_id):
+                    logger.warning(f"Job {job_id} cancellation detected in orchestrator loop.")
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    raise Exception("Job cancelled by user")
+                    
                 idx = future_to_idx[future]
                 try:
                     batch_results_map[idx] = future.result()

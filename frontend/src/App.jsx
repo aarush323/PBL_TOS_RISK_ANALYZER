@@ -63,6 +63,18 @@ export default function App() {
     }
   };
 
+  const stopAnalysis = async () => {
+    if (!analysisJobId) return;
+    try {
+      await fetch(`${API}/analyze/stop/${analysisJobId}`, { method: 'POST' });
+      setIsProcessing(false);
+      addToast('Analysis stopped by user.', true);
+    } catch(err) {
+      console.error(err);
+      addToast('Failed to stop analysis', true);
+    }
+  };
+
   const startAnalysis = async () => {
     let content = '';
     if (inputMode === 'url') {
@@ -292,12 +304,17 @@ export default function App() {
                         <button className="upload-btn" type="button">{uploadedFile ? 'Change File' : 'Select Files from Device'}</button>
                       </div>
                     )}
-                    
-                    <button className="action-btn" onClick={startAnalysis} disabled={isProcessing}>
-                      {isProcessing ? <div className="loader" style={{display: 'block'}} /> : <Zap size={18} />}
-                      {isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}
-                    </button>
-                    
+                    <div style={{display: 'flex', gap: '12px', width: '100%'}}>
+                      <button className="action-btn" onClick={startAnalysis} disabled={isProcessing} style={{flex: 1}}>
+                        {isProcessing ? <div className="loader" style={{display: 'block'}} /> : <Zap size={18} />}
+                        {isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}
+                      </button>
+                      {isProcessing && (
+                        <button className="action-btn" onClick={stopAnalysis} style={{background: 'var(--error)', borderColor: 'var(--error)'}}>
+                          STOP
+                        </button>
+                      )}
+                    </div>
                     <div style={{marginTop: '24px', display: 'flex', gap: '12px', alignItems: 'center'}}>
                       <span style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase'}}>Supported:</span>
                       <span style={{background: 'var(--surface-2)', fontSize: '11px', padding: '4px 8px', borderRadius: '4px'}}>🌐 HTML 5</span>
