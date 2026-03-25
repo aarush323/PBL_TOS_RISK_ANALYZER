@@ -30,6 +30,7 @@ from db.models import Base, User
 from db import crud
 from auth.security import hash_password, verify_password, create_access_token
 from auth.dependencies import get_current_user, get_optional_user
+from auth.email import send_verification_email
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,11 @@ app = FastAPI(title="ToS Analyzer API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -114,19 +119,22 @@ def get_cerebras_stats():
 # ---------------------------------------------------------------------------
 
 @app.post("/auth/register", response_model=VerificationResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(body: RegisterRequest, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     existing = await crud.get_user_by_email(db, body.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
     user = await crud.create_user(db, body.email, hash_password(body.password))
     
-    # Simulate email sending
+    # Send actual email via background task
+    background_tasks.add_task(send_verification_email, user.email, user.verification_token)
+    
+    # Still log it as a fallback
     verify_link = f"http://localhost:8000/auth/verify/{user.verification_token}"
-    logger.info(f"\n\n{'='*60}\nVERIFICATION LINK FOR {user.email}:\n{verify_link}\n{'='*60}\n")
+    logger.info(f"Verification Link (Backup): {verify_link}")
 
     return {
-        "message": "Registration successful. Please click the link in your console to verify.",
+        "message": f"Welcome to Jurist AI! A verification email has been sent to {user.email}. Please check your inbox (and spam folder) to activate your account.",
         "verification_required": True
     }
 
