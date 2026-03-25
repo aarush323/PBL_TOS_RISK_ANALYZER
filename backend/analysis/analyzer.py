@@ -6,7 +6,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 5
+MIN_BATCH = 3
+MAX_BATCH = 10
+_current_batch_size = MAX_BATCH
 MAX_WORKERS = 3
 
 RISK_SCORE_MAP = {"High": 3, "Medium": 2, "Low": 1}
@@ -28,9 +30,21 @@ def _classify_batch_worker(batch_index: int, total_batches: int,
                            clauses: list[dict],
                            features_list: list[dict]) -> list[dict]:
     """Worker function for ThreadPoolExecutor. Classifies one batch."""
+    global _current_batch_size
     logger.info(f"Classifying batch {batch_index + 1}/{total_batches} "
                 f"({len(clauses)} clauses)...")
-    return classify_batch(clauses, features_list)
+    try:
+        result = classify_batch(clauses, features_list)
+        _current_batch_size = min(_current_batch_size + 1, MAX_BATCH)
+        return result
+    except Exception as e:
+        logger.error(f"Batch {batch_index + 1}/{total_batches} failed: {e}. Falling back to per-clause.")
+        _current_batch_size = max(_current_batch_size // 2, MIN_BATCH)
+        
+        fallback_results = []
+        for c, f in zip(clauses, features_list):
+            fallback_results.append(classify_clause(c, f))
+        return fallback_results
 
 
 def analyze_document(extraction_result: dict) -> dict:
@@ -74,15 +88,15 @@ def analyze_document(extraction_result: dict) -> dict:
     if llm_clauses:
         # Split into batches
         batches_clauses = [
-            llm_clauses[i:i + BATCH_SIZE]
-            for i in range(0, len(llm_clauses), BATCH_SIZE)
+            llm_clauses[i:i + _current_batch_size]
+            for i in range(0, len(llm_clauses), _current_batch_size)
         ]
         batches_features = [
-            llm_features[i:i + BATCH_SIZE]
-            for i in range(0, len(llm_features), BATCH_SIZE)
+            llm_features[i:i + _current_batch_size]
+            for i in range(0, len(llm_features), _current_batch_size)
         ]
         total_batches = len(batches_clauses)
-        logger.info(f"Created {total_batches} batches (batch_size={BATCH_SIZE})")
+        logger.info(f"Created {total_batches} batches (batch_size={_current_batch_size})")
 
         # Process batches in parallel
         batch_results_map = {}
@@ -100,8 +114,8 @@ def analyze_document(extraction_result: dict) -> dict:
                 try:
                     batch_results_map[idx] = future.result()
                 except Exception as e:
-                    logger.error(f"Batch {idx + 1}/{total_batches} failed: {e}")
-                    # Fallback: classify individually
+                    logger.error(f"Batch {idx + 1}/{total_batches} thread failed: {e}")
+                    # Fallback should already be handled in worker, but catch safety net
                     fallback = []
                     for c, f in zip(batches_clauses[idx], batches_features[idx]):
                         fallback.append(classify_clause(c, f))

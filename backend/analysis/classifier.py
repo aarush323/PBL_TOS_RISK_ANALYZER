@@ -3,6 +3,7 @@ import json
 import re
 import logging
 import os
+import time
 from dotenv import load_dotenv
 
 # Find the path to the backend/.env folder relative to this file
@@ -15,7 +16,7 @@ CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
 CEREBRAS_MODEL = "llama3.1-8b"
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen3.5:9b"  # User requested change
+OLLAMA_MODEL = "phi3.5"
 
 RISK_DEFINITIONS = """
 - Privacy Risk: data collection, sharing, selling, tracking user data, cookies, profiling
@@ -287,6 +288,51 @@ def parse_batch_response(raw: str, expected_count: int) -> list[dict]:
     return validated
 
 
+def _cerebras_post_with_backoff(payload: dict, timeout: float) -> httpx.Response:
+    cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
+    headers = {
+        "Authorization": f"Bearer {cerebras_api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    max_retries = 4
+    delay = 1.0
+    
+    for attempt in range(max_retries + 1):
+        try:
+            response = httpx.post(
+                CEREBRAS_API_URL,
+                headers=headers,
+                json=payload,
+                timeout=timeout
+            )
+            if response.status_code == 429:
+                if attempt == max_retries:
+                    response.raise_for_status()
+                
+                retry_after = response.headers.get("Retry-After")
+                if retry_after and retry_after.isdigit():
+                    wait_time = float(retry_after)
+                else:
+                    wait_time = delay
+                    delay = min(delay * 2, 30.0)
+                
+                logger.warning(f"Cerebras 429 Too Many Requests. Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+                continue
+                
+            response.raise_for_status()
+            return response
+            
+        except httpx.TimeoutException as e:
+            if attempt == max_retries:
+                raise
+            wait_time = delay
+            delay = min(delay * 2, 30.0)
+            logger.warning(f"Cerebras Timeout. Retrying in {wait_time}s...")
+            time.sleep(wait_time)
+
+
 def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]:
     """Classify a batch of clauses. Falls back to per-clause if batch fails."""
     prompt = build_batch_prompt(clauses, features_list)
@@ -297,22 +343,14 @@ def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]
     if cerebras_api_key:
         try:
             logger.info(f"Batch classifying {count} clauses via Cerebras...")
-            response = httpx.post(
-                CEREBRAS_API_URL,
-                headers={
-                    "Authorization": f"Bearer {cerebras_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": CEREBRAS_MODEL,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "response_format": {"type": "json_object"},
-                    "temperature": 0.1,
-                    "max_completion_tokens": 250 * count
-                },
-                timeout=180.0
-            )
-            response.raise_for_status()
+            payload = {
+                "model": CEREBRAS_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1,
+                "max_completion_tokens": 250 * count
+            }
+            response = _cerebras_post_with_backoff(payload, timeout=180.0)
             raw_text = response.json()["choices"][0]["message"]["content"]
             logger.debug(f"Cerebras BATCH RAW: {raw_text[:800]}")
             results = parse_batch_response(raw_text, count)
@@ -333,7 +371,7 @@ def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]
                 "format": "json",
                 "options": {
                     "temperature": 0.1,
-                    "num_predict": 250 * count
+                    "num_predict": min(150 * count, 800)
                 }
             },
             timeout=180.0
