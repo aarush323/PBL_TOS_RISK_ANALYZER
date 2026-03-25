@@ -22,7 +22,7 @@ AI-powered Terms of Service analysis tool that extracts, classifies, and explain
 | NLP | spaCy (en_core_web_sm) |
 | LLM | Cerebras API + Ollama (fallback) |
 | Extraction | BeautifulSoup4, lxml, pdfplumber |
-| Frontend | Vanilla HTML/CSS/JS |
+| Frontend | React.js (Vite) |
 
 ## Setup
 
@@ -31,21 +31,24 @@ AI-powered Terms of Service analysis tool that extracts, classifies, and explain
 git clone <repo-url>
 cd PBL
 
-# 2. Create virtual environment
+# 2. Setup Backend
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 3. Install dependencies
 pip install -r backend/requirements.txt
 python -m spacy download en_core_web_sm
 
-# 4. Configure API key
+# 3. Configure API key
 cp backend/.env.example backend/.env
 # Edit backend/.env and add your Cerebras API key
 
-# 5. Run
+# 4. Run Backend
 cd backend
 uvicorn main:app --reload
+
+# 5. Run Frontend (React)
+cd ../frontend
+npm install
+npm run dev
 ```
 
 ## API Endpoints
