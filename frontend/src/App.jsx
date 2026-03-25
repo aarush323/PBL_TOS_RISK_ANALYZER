@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap } from 'lucide-react';
 import { marked } from 'marked';
+import { AnimatePresence, motion } from 'framer-motion';
+import LoadingOverlay from './components/LoadingOverlay.jsx';
+import SkeletonList from './components/SkeletonList.jsx';
+import TypingDots from './components/TypingDots.jsx';
 
 const API = 'http://localhost:8000';
 
@@ -495,6 +499,12 @@ export default function App() {
     return { __html: htmlString };
   };
 
+  const viewMotion = {
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: 'easeOut' } },
+    exit: { opacity: 0, y: 8, transition: { duration: 0.16, ease: 'easeIn' } },
+  };
+
   if (!token) {
     return (
       <div className="auth-overlay">
@@ -557,6 +567,11 @@ export default function App() {
 
   return (
     <div className="app-container">
+      <LoadingOverlay
+        show={isProcessing}
+        title="Processing"
+        detail="Extracting and analyzing clauses. You can press STOP anytime."
+      />
       {/* SIDEBAR */}
       <aside className="sidebar" style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
         <div className="brand">
@@ -581,7 +596,7 @@ export default function App() {
 
           <div className="history-list">
             {isHistoryLoading ? (
-              <div style={{padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)'}}>Loading...</div>
+              <SkeletonList rows={5} />
             ) : historyItems.length === 0 ? (
               <div style={{padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)'}}>No history yet</div>
             ) : (
@@ -628,264 +643,281 @@ export default function App() {
         </header>
 
         <main className="content-area">
-          {/* DASHBOARD VIEW */}
-          {activeView === 'dashboard' && (
-            <div className="view-section active">
-              <div className="hero">
-                <h1>Welcome, {user?.email?.split('@')[0] || 'User'}.</h1>
-                <p>Ready to deconstruct legal complexity? Initiate a new risk assessment by pasting your legal document, uploading a file, or providing a URL. Our AI provides deep structural analysis in seconds.</p>
-              </div>
-              
-              <div className="input-container">
-                <div className="input-main">
-                  <div className="tabs">
-                    <button className={`tab-btn ${inputMode === 'upload' ? 'active' : ''}`} onClick={() => setInputMode('upload')}>Upload File</button>
-                    <button className={`tab-btn ${inputMode === 'url' ? 'active' : ''}`} onClick={() => setInputMode('url')}>Provide Link</button>
-                    <button className={`tab-btn ${inputMode === 'text' ? 'active' : ''}`} onClick={() => setInputMode('text')}>Paste Text</button>
-                  </div>
-                  
-                  <div className="input-card">
-                    <div className="input-card-header">
-                      <span className="input-label">
-                        {inputMode === 'url' && 'TARGET RESOURCE URL'}
-                        {inputMode === 'text' && 'DOCUMENT INPUT BUFFER'}
-                        {inputMode === 'upload' && 'LOCAL FILE INGESTION'}
-                      </span>
-                      <span style={{fontSize: '11px', color: 'var(--text-muted)', background: 'var(--surface-2)', padding: '4px 8px', borderRadius: '4px'}}>FORMAT: AUTO</span>
+          <AnimatePresence mode="wait">
+            {activeView === 'dashboard' && (
+              <motion.section
+                key="view-dashboard"
+                className="view-section active"
+                initial={viewMotion.initial}
+                animate={viewMotion.animate}
+                exit={viewMotion.exit}
+              >
+                <div className="hero">
+                  <h1>Welcome, {user?.email?.split('@')[0] || 'User'}.</h1>
+                  <p>Ready to deconstruct legal complexity? Initiate a new risk assessment by pasting your legal document, uploading a file, or providing a URL. Our AI provides deep structural analysis in seconds.</p>
+                </div>
+                
+                <div className="input-container">
+                  <div className="input-main">
+                    <div className="tabs">
+                      <button className={`tab-btn ${inputMode === 'upload' ? 'active' : ''}`} onClick={() => setInputMode('upload')}>Upload File</button>
+                      <button className={`tab-btn ${inputMode === 'url' ? 'active' : ''}`} onClick={() => setInputMode('url')}>Provide Link</button>
+                      <button className={`tab-btn ${inputMode === 'text' ? 'active' : ''}`} onClick={() => setInputMode('text')}>Paste Text</button>
                     </div>
                     
-                    {inputMode === 'url' && (
-                      <div>
-                        <div className="url-input-wrapper">
-                          <Link className="link-icon" size={16} />
-                          <input type="url" className="url-input" placeholder="https://legal.enterprise.com/terms-of-service" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
-                        </div>
-                        <div style={{display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', fontSize: '13px', color: 'var(--primary)'}}>
-                          <input type="checkbox" defaultChecked style={{accentColor: 'var(--primary)'}} /> Secure SSL Encrypted Crawl ✓
-                        </div>
+                    <div className="input-card">
+                      <div className="input-card-header">
+                        <span className="input-label">
+                          {inputMode === 'url' && 'TARGET RESOURCE URL'}
+                          {inputMode === 'text' && 'DOCUMENT INPUT BUFFER'}
+                          {inputMode === 'upload' && 'LOCAL FILE INGESTION'}
+                        </span>
+                        <span className="inline-chip">FORMAT: AUTO</span>
                       </div>
-                    )}
-                    
-                    {inputMode === 'text' && (
-                      <textarea className="text-input" placeholder="Paste your Terms of Service or Privacy Policy text here..." value={textInput} onChange={e => setTextInput(e.target.value)} />
-                    )}
+                      
+                      {inputMode === 'url' && (
+                        <div>
+                          <div className="url-input-wrapper">
+                            <Link className="link-icon" size={16} />
+                            <input type="url" className="url-input" placeholder="https://legal.enterprise.com/terms-of-service" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
+                          </div>
+                          <div style={{display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', fontSize: '13px', color: 'var(--primary)'}}>
+                            <input type="checkbox" defaultChecked style={{accentColor: 'var(--primary)'}} /> Secure SSL Encrypted Crawl ✓
+                          </div>
+                        </div>
+                      )}
+                      
+                      {inputMode === 'text' && (
+                        <textarea className="text-input" placeholder="Paste your Terms of Service or Privacy Policy text here..." value={textInput} onChange={e => setTextInput(e.target.value)} />
+                      )}
 
-                    {inputMode === 'upload' && (
-                      <div className="upload-zone" onClick={() => fileInputRef.current?.click()}>
-                        <input type="file" ref={fileInputRef} accept=".pdf" onChange={e => setUploadedFile(e.target.files[0])} style={{display: 'none'}} />
-                        <FileText className="upload-icon" />
-                        <div className="upload-title">{uploadedFile ? uploadedFile.name : 'Drag & drop legal documents here'}</div>
-                        <div className="upload-desc">Support for PDF files. Up to 50MB per analysis.</div>
-                        <button className="upload-btn" type="button">{uploadedFile ? 'Change File' : 'Select Files from Device'}</button>
-                      </div>
-                    )}
-                    
-                    <div style={{display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap'}}>
-                      <button className="action-btn" onClick={startAnalysis} disabled={isProcessing} style={{flex: 1, minWidth: '200px'}}>
-                        {isProcessing ? <div className="loader" style={{display: 'block'}} /> : <Zap size={18} />}
-                        {isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}
-                      </button>
-                      {isProcessing && (
-                        <button className="action-btn" onClick={stopAnalysis} style={{background: 'var(--error)', borderColor: 'var(--error)', minWidth: '100px'}}>
-                          STOP
+                      {inputMode === 'upload' && (
+                        <div className="upload-zone" onClick={() => fileInputRef.current?.click()}>
+                          <input type="file" ref={fileInputRef} accept=".pdf" onChange={e => setUploadedFile(e.target.files[0])} style={{display: 'none'}} />
+                          <FileText className="upload-icon" />
+                          <div className="upload-title">{uploadedFile ? uploadedFile.name : 'Drag & drop legal documents here'}</div>
+                          <div className="upload-desc">Support for PDF files. Up to 50MB per analysis.</div>
+                          <button className="upload-btn" type="button">{uploadedFile ? 'Change File' : 'Select Files from Device'}</button>
+                        </div>
+                      )}
+                      
+                      <div style={{display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap'}}>
+                        <button className="action-btn" onClick={startAnalysis} disabled={isProcessing} style={{flex: 1, minWidth: '200px'}}>
+                          {isProcessing ? <div className="loader" style={{display: 'block'}} /> : <Zap size={18} />}
+                          {isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}
                         </button>
+                        {isProcessing && (
+                          <button className="action-btn" onClick={stopAnalysis} style={{background: 'var(--error)', borderColor: 'var(--error)', minWidth: '100px'}}>
+                            STOP
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="supported-list">
+                        <span className="supported-title">Supported:</span>
+                        <span className="inline-chip">🌐 HTML 5</span>
+                        <span className="inline-chip">📄 Dynamic PDF</span>
+                        <span className="inline-chip">{'<>'} JSON Webhooks</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="input-side">
+                    <div className="info-card">
+                      <div className="info-icon"><Activity size={18}/></div>
+                      <h3 className="info-title">How To Get Better Results</h3>
+                      <p className="info-desc">Use complete policy text when possible. Short excerpts may miss context and produce weaker risk explanations.</p>
+                      <div style={{marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6}}>
+                        • Prefer full ToS or Privacy Policy documents<br/>
+                        • Use PDF upload for long legal agreements<br/>
+                        • Open each flagged clause in chat for examples
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.section>
+            )}
+
+            {activeView === 'results' && (
+              <motion.section
+                key="view-results"
+                className="view-section active"
+                initial={viewMotion.initial}
+                animate={viewMotion.animate}
+                exit={viewMotion.exit}
+              >
+                <div className="hero hero-compact hero-row">
+                  <div>
+                    <h1 className="section-title">Analysis Results</h1>
+                    <p className="source-id">{analysisJobId ? `Source ID: ${analysisJobId.split('-')[0]}` : 'No document loaded'}</p>
+                  </div>
+                </div>
+                
+                <div className="results-layout">
+                  <div className="results-main" style={{ width: isDesktop() ? `${resultsSplit}%` : '100%' }}>
+                    <div className="score-card">
+                      <div className="score-info">
+                        <h2>Aggregate Risk Score</h2>
+                        <p>Overall risk profile based on identified clauses within the provided document.</p>
+                        <div style={{display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
+                          <span style={{background: 'rgba(0,240,255,0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>Risk Summary</span>
+                          <span style={{background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>
+                            Flagged Clauses: {analysisResult?.risky_clause_count ?? 0}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="score-circle">
+                        <svg>
+                          <circle className="bg" cx="50" cy="50" r="40"></circle>
+                          <circle className="progress" cx="50" cy="50" r="40" style={{
+                            strokeDashoffset: 251 - (251 * calculateScore() / 100),
+                            stroke: calculateScore() < 50 ? 'var(--error)' : (calculateScore() < 75 ? 'var(--warning)' : 'var(--success)')
+                          }}></circle>
+                        </svg>
+                        <span className="score-value">{calculateScore()}</span>
+                        <span className="score-label">SCORE</span>
+                      </div>
+                    </div>
+                    
+                    <h3 style={{fontSize: '16px', marginBottom: '16px', color: 'var(--text-heading)'}}>Identified Risk Vectors</h3>
+                    <div className="risk-cards">
+                      {(!analysisResult || !analysisResult.clauses || analysisResult.clauses.length === 0) ? (
+                        <div style={{padding: '40px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)'}}>
+                          No analysis data yet. Run an analysis from the dashboard.
+                        </div>
+                      ) : (
+                        analysisResult.clauses.filter(c => c.is_risky).slice(0, 10).map((c, idx) => {
+                          const cat = c.risk_categories && c.risk_categories.length > 0 ? c.risk_categories[0] : 'General';
+                          const conf = c.confidence || 'Medium';
+                          const cssClass = conf === 'High' ? 'high' : (conf === 'Medium' ? 'medium' : 'low');
+                          
+                          return (
+                            <div className={`risk-card ${cssClass}`} key={idx} style={{ padding: settings.compactRiskCards ? '14px' : '20px' }}>
+                              <div className="risk-header">
+                                <div className="risk-title-wrapper">
+                                  <div className="risk-icon"><Scale size={16}/></div>
+                                  <div>
+                                    <div className="risk-title">{cat}</div>
+                                    <div className="risk-section">Clause #{idx + 1}</div>
+                                  </div>
+                                </div>
+                                <span className="risk-badge">{conf} RISK</span>
+                              </div>
+                              <div className="risk-desc">{c.explanation || c.text}</div>
+                            <div className="risk-action-row">
+                                <button
+                                  type="button"
+                                  className="chat-sugg-btn"
+                                  onClick={() => explainRiskInChat(c, idx)}
+                                >
+                                  Explain In Chat
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="resizer vertical inner" onMouseDown={startResultsResize} />
+                  <div className="results-side" style={{ width: isDesktop() ? `${100 - resultsSplit}%` : '100%' }}>
+                    <div className="chat-header">
+                      <div className="chat-logo"><BrainCircuit size={18}/></div>
+                      <div className="chat-title">
+                        <h3>Digital Jurist Assistant</h3>
+                        <p>Document Q&A</p>
+                      </div>
+                    </div>
+                    
+                    <div className="chat-messages" ref={chatBoxRef}>
+                      {chatMessages.map((msg, i) => (
+                        <div className={`msg ${msg.role}`} key={i}>
+                          <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14}/> : (user?.email?.[0].toUpperCase() || 'U')}</div>
+                          <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
+                        </div>
+                      ))}
+                      {isChatTyping && (
+                         <div className="msg bot">
+                          <div className="msg-avatar"><BrainCircuit size={14}/></div>
+                          <div className="msg-bubble"><TypingDots /></div>
+                        </div>
                       )}
                     </div>
                     
-                    <div style={{marginTop: '24px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap'}}>
-                      <span style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase'}}>Supported:</span>
-                      <span style={{background: 'var(--surface-2)', fontSize: '11px', padding: '4px 8px', borderRadius: '4px'}}>🌐 HTML 5</span>
-                      <span style={{background: 'var(--surface-2)', fontSize: '11px', padding: '4px 8px', borderRadius: '4px'}}>📄 Dynamic PDF</span>
-                      <span style={{background: 'var(--surface-2)', fontSize: '11px', padding: '4px 8px', borderRadius: '4px'}}>{'<>'} JSON Webhooks</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="input-side">
-                  <div className="info-card">
-                    <div className="info-icon"><Activity size={18}/></div>
-                    <h3 className="info-title">How To Get Better Results</h3>
-                    <p className="info-desc">Use complete policy text when possible. Short excerpts may miss context and produce weaker risk explanations.</p>
-                    <div style={{marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6}}>
-                      • Prefer full ToS or Privacy Policy documents<br/>
-                      • Use PDF upload for long legal agreements<br/>
-                      • Open each flagged clause in chat for examples
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* RESULTS VIEW */}
-          {activeView === 'results' && (
-            <div className="view-section active">
-              <div className="hero" style={{marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px'}}>
-                <div>
-                  <h1 style={{fontSize: '24px'}}>Analysis Results</h1>
-                  <p style={{fontSize: '14px', color: 'var(--primary)'}}>{analysisJobId ? `Source ID: ${analysisJobId.split('-')[0]}` : 'No document loaded'}</p>
-                </div>
-              </div>
-              
-              <div className="results-layout">
-                <div className="results-main" style={{ width: isDesktop() ? `${resultsSplit}%` : '100%' }}>
-                  <div className="score-card">
-                    <div className="score-info">
-                      <h2>Aggregate Risk Score</h2>
-                      <p>Overall risk profile based on identified clauses within the provided document.</p>
-                      <div style={{display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
-                        <span style={{background: 'rgba(0,240,255,0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>Risk Summary</span>
-                        <span style={{background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>
-                          Flagged Clauses: {analysisResult?.risky_clause_count ?? 0}
-                        </span>
+                    <div className="resizer horizontal" onMouseDown={startChatResize} />
+                    <div className="chat-input" style={{
+                      opacity: sessionId ? 1 : 0.5,
+                      pointerEvents: sessionId ? 'all' : 'none',
+                      height: isDesktop() ? `${chatPanelHeight}px` : 'auto'
+                    }}>
+                      <div className="chat-suggestions">
+                        {['Summarize risks', 'Is there an opt-out?', 'Data collection terms?'].map(sugg => (
+                          <div key={sugg} className="chat-sugg-btn" onClick={() => setChatInput(sugg)}>{sugg}</div>
+                        ))}
+                      </div>
+                      <div className="chat-form">
+                        <input 
+                          type="text" 
+                          className="chat-input-field" 
+                          placeholder="Ask about specific clauses or risks..." 
+                          value={chatInput}
+                          onChange={e => setChatInput(e.target.value)}
+                          onKeyPress={e => e.key === 'Enter' && sendChat()}
+                        />
+                        <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()}>
+                          <ChevronRight size={18} />
+                        </button>
                       </div>
                     </div>
-                    <div className="score-circle">
-                      <svg>
-                        <circle className="bg" cx="50" cy="50" r="40"></circle>
-                        <circle className="progress" cx="50" cy="50" r="40" style={{
-                          strokeDashoffset: 251 - (251 * calculateScore() / 100),
-                          stroke: calculateScore() < 50 ? 'var(--error)' : (calculateScore() < 75 ? 'var(--warning)' : 'var(--success)')
-                        }}></circle>
-                      </svg>
-                      <span className="score-value">{calculateScore()}</span>
-                      <span className="score-label">SCORE</span>
-                    </div>
-                  </div>
-                  
-                  <h3 style={{fontSize: '16px', marginBottom: '16px', color: 'var(--text-heading)'}}>Identified Risk Vectors</h3>
-                  <div className="risk-cards">
-                    {(!analysisResult || !analysisResult.clauses || analysisResult.clauses.length === 0) ? (
-                      <div style={{padding: '40px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)'}}>
-                        No analysis data yet. Run an analysis from the dashboard.
-                      </div>
-                    ) : (
-                      analysisResult.clauses.filter(c => c.is_risky).slice(0, 10).map((c, idx) => {
-                        const cat = c.risk_categories && c.risk_categories.length > 0 ? c.risk_categories[0] : 'General';
-                        const conf = c.confidence || 'Medium';
-                        const cssClass = conf === 'High' ? 'high' : (conf === 'Medium' ? 'medium' : 'low');
-                        
-                        return (
-                          <div className={`risk-card ${cssClass}`} key={idx} style={{ padding: settings.compactRiskCards ? '14px' : '20px' }}>
-                            <div className="risk-header">
-                              <div className="risk-title-wrapper">
-                                <div className="risk-icon"><Scale size={16}/></div>
-                                <div>
-                                  <div className="risk-title">{cat}</div>
-                                  <div className="risk-section">Clause #{idx + 1}</div>
-                                </div>
-                              </div>
-                              <span className="risk-badge">{conf} RISK</span>
-                            </div>
-                            <div className="risk-desc">{c.explanation || c.text}</div>
-                            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-                              <button
-                                type="button"
-                                className="chat-sugg-btn"
-                                onClick={() => explainRiskInChat(c, idx)}
-                                style={{ cursor: 'pointer' }}
-                              >
-                                Explain In Chat
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })
-                    )}
                   </div>
                 </div>
-                
-                <div className="resizer vertical inner" onMouseDown={startResultsResize} />
-                <div className="results-side" style={{ width: isDesktop() ? `${100 - resultsSplit}%` : '100%' }}>
-                  <div className="chat-header">
-                    <div className="chat-logo"><BrainCircuit size={18}/></div>
-                    <div className="chat-title">
-                      <h3>Digital Jurist Assistant</h3>
-                      <p>Document Q&A</p>
-                    </div>
-                  </div>
-                  
-                  <div className="chat-messages" ref={chatBoxRef}>
-                    {chatMessages.map((msg, i) => (
-                      <div className={`msg ${msg.role}`} key={i}>
-                        <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14}/> : (user?.email?.[0].toUpperCase() || 'U')}</div>
-                        <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
-                      </div>
-                    ))}
-                    {isChatTyping && (
-                       <div className="msg bot">
-                        <div className="msg-avatar"><BrainCircuit size={14}/></div>
-                        <div className="msg-bubble">...</div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="resizer horizontal" onMouseDown={startChatResize} />
-                  <div className="chat-input" style={{
-                    opacity: sessionId ? 1 : 0.5,
-                    pointerEvents: sessionId ? 'all' : 'none',
-                    height: isDesktop() ? `${chatPanelHeight}px` : 'auto'
-                  }}>
-                    <div className="chat-suggestions">
-                      {['Summarize risks', 'Is there an opt-out?', 'Data collection terms?'].map(sugg => (
-                        <div key={sugg} className="chat-sugg-btn" onClick={() => setChatInput(sugg)}>{sugg}</div>
-                      ))}
-                    </div>
-                    <div className="chat-form">
-                      <input 
-                        type="text" 
-                        className="chat-input-field" 
-                        placeholder="Ask about specific clauses or risks..." 
-                        value={chatInput}
-                        onChange={e => setChatInput(e.target.value)}
-                        onKeyPress={e => e.key === 'Enter' && sendChat()}
-                      />
-                      <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()}>
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+              </motion.section>
+            )}
 
-          {activeView === 'settings' && (
-            <div className="view-section active">
-              <div className="hero" style={{marginBottom: '24px'}}>
-                <h1 style={{fontSize: '24px'}}>Settings</h1>
-                <p>Customize behavior for analysis and results views.</p>
-              </div>
-
-              <div className="input-card" style={{maxWidth: '720px'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-                  <div>
-                    <div className="risk-title">Auto-open Results After Analysis</div>
-                    <div className="risk-section">Switch to Risk Analysis view automatically when processing completes.</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.autoOpenResults}
-                    onChange={(e) => setSettings(prev => ({ ...prev, autoOpenResults: e.target.checked }))}
-                    style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
-                  />
+            {activeView === 'settings' && (
+              <motion.section
+                key="view-settings"
+                className="view-section active"
+                initial={viewMotion.initial}
+                animate={viewMotion.animate}
+                exit={viewMotion.exit}
+              >
+                <div className="hero hero-compact">
+                  <h1 className="section-title">Settings</h1>
+                  <p>Customize behavior for analysis and results views.</p>
                 </div>
 
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <div>
-                    <div className="risk-title">Compact Risk Cards</div>
-                    <div className="risk-section">Reduce spacing in risk cards for denser reading.</div>
+                <div className="input-card" style={{maxWidth: '720px'}}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                    <div>
+                      <div className="risk-title">Auto-open Results After Analysis</div>
+                      <div className="risk-section">Switch to Risk Analysis view automatically when processing completes.</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.autoOpenResults}
+                      onChange={(e) => setSettings(prev => ({ ...prev, autoOpenResults: e.target.checked }))}
+                      style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
+                    />
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.compactRiskCards}
-                    onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
-                    style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
-                  />
+
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <div>
+                      <div className="risk-title">Compact Risk Cards</div>
+                      <div className="risk-section">Reduce spacing in risk cards for denser reading.</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.compactRiskCards}
+                      onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
+                      style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </motion.section>
+            )}
+          </AnimatePresence>
           
         </main>
       </div>
