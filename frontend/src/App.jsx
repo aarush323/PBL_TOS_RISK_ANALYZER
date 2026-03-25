@@ -232,6 +232,28 @@ export default function App() {
     }
   };
 
+  const loadChatHistory = async (targetSessionId) => {
+    try {
+      const res = await fetch(`${API}/chat/${targetSessionId}/history`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        return false;
+      }
+
+      const mapped = data.map((m) => ({
+        role: m.role === 'assistant' ? 'bot' : m.role,
+        content: m.content,
+      }));
+      setChatMessages(mapped);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const openHistoryAnalysis = async (jobId) => {
     try {
       const res = await fetch(`${API}/analyses/${jobId}`, {
@@ -244,6 +266,17 @@ export default function App() {
 
       if (!data.result) {
         return addToast('Selected analysis is not complete yet.', true);
+      }
+
+      const restored = await loadChatHistory(data.job_id);
+      if (!restored) {
+        const fallbackText = data.source || 'Loaded from saved analysis.';
+        await initChatSession(fallbackText, data.job_id);
+        setChatMessages([
+          { role: 'bot', content: 'Chat is now enabled for this analysis. Ask a follow-up question about any clause.' }
+        ]);
+      } else {
+        setSessionId(data.job_id);
       }
 
       setAnalysisJobId(data.job_id);
@@ -356,7 +389,7 @@ export default function App() {
       addToast('Analysis started. Processing risks...');
       
       if (data.extraction && data.extraction.cleaned_text) {
-        initChatSession(data.extraction.cleaned_text);
+        initChatSession(data.extraction.cleaned_text, data.job_id);
       }
       
       pollAnalysisResults(data.job_id);
@@ -366,8 +399,8 @@ export default function App() {
     }
   };
 
-  const initChatSession = async (text) => {
-    const newSessionId = crypto.randomUUID();
+  const initChatSession = async (text, targetSessionId = null) => {
+    const newSessionId = targetSessionId || crypto.randomUUID();
     setSessionId(newSessionId);
     try {
       await fetch(`${API}/chat/store`, {
