@@ -8,3 +8,6 @@ python-multipart
 spacy
 httpx
 python-dotenv
+# PostgreSQL async
+asyncpg
+sqlalchemy[asyncio]
