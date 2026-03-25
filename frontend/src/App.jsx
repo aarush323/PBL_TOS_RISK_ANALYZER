@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Link, Upload, Scale, Search, Bell, Settings as SettingsIcon, HelpCircle, FileCheck, History, Plus, BrainCircuit, Activity, ChevronRight, Zap } from 'lucide-react';
+import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap } from 'lucide-react';
 import { marked } from 'marked';
 
 const API = 'http://localhost:8000';
@@ -9,7 +9,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
-  const [verifyMessage, setVerifyMessage] = useState('');
   
   const [activeView, setActiveView] = useState('dashboard');
   const [inputMode, setInputMode] = useState('url');
@@ -32,10 +31,95 @@ export default function App() {
   const chatBoxRef = useRef(null);
 
   const [toasts, setToasts] = useState([]);
+  const [historyItems, setHistoryItems] = useState([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [selectedHistoryId, setSelectedHistoryId] = useState(null);
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('jurist_settings');
+      return saved ? JSON.parse(saved) : { autoOpenResults: true, compactRiskCards: false };
+    } catch {
+      return { autoOpenResults: true, compactRiskCards: false };
+    }
+  });
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [resultsSplit, setResultsSplit] = useState(64);
+  const [chatPanelHeight, setChatPanelHeight] = useState(140);
+
+  const isDesktop = () => window.innerWidth > 1024;
+
+  const startSidebarResize = (e) => {
+    if (!isDesktop()) return;
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+
+    const onMove = (moveEvent) => {
+      const next = startWidth + (moveEvent.clientX - startX);
+      setSidebarWidth(Math.max(220, Math.min(420, next)));
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const startResultsResize = (e) => {
+    if (!isDesktop()) return;
+    e.preventDefault();
+    const rect = e.currentTarget.parentElement.getBoundingClientRect();
+
+    const onMove = (moveEvent) => {
+      const percentage = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+      setResultsSplit(Math.max(40, Math.min(75, percentage)));
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const startChatResize = (e) => {
+    if (!isDesktop()) return;
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = chatPanelHeight;
+
+    const onMove = (moveEvent) => {
+      const next = startHeight - (moveEvent.clientY - startY);
+      setChatPanelHeight(Math.max(110, Math.min(260, next)));
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   useEffect(() => {
     if (token) {
       fetchUser();
+    }
+  }, [token]);
+
+  useEffect(() => {
+    localStorage.setItem('jurist_settings', JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    if (token) {
+      loadHistory();
     }
   }, [token]);
 
@@ -57,6 +141,7 @@ export default function App() {
 
   const handleAuth = async (e) => {
     e.preventDefault();
+    const username = e.target.username?.value?.trim();
     const email = e.target.email.value;
     const password = e.target.password.value;
     const confirmPassword = e.target.confirmPassword?.value;
@@ -65,8 +150,11 @@ export default function App() {
       return addToast('Passwords do not match', true);
     }
 
+    if (authMode === 'signup' && (!username || username.length < 3)) {
+      return addToast('Username must be at least 3 characters', true);
+    }
+
     setIsAuthLoading(true);
-    setVerifyMessage('');
 
     try {
       if (authMode === 'login') {
@@ -91,12 +179,11 @@ export default function App() {
         const res = await fetch(`${API}/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ username, email, password })
         });
         const data = await res.json();
         if (res.ok) {
-          setVerifyMessage(data.message);
-          addToast('Registration successful! Verify to continue.');
+          addToast('Registration successful!');
           setAuthMode('login');
         } else {
           addToast(data.detail || 'Registration failed', true);
@@ -114,6 +201,7 @@ export default function App() {
     setToken(null);
     setUser(null);
     setActiveView('dashboard');
+    setHistoryItems([]);
     addToast('Logged out');
   };
 
@@ -123,6 +211,49 @@ export default function App() {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 5000);
+  };
+
+  const loadHistory = async () => {
+    setIsHistoryLoading(true);
+    try {
+      const res = await fetch(`${API}/analyses?limit=50`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setHistoryItems(Array.isArray(data) ? data : []);
+      } else {
+        addToast(data.detail || 'Failed to load history', true);
+      }
+    } catch (err) {
+      addToast('History service unavailable', true);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  const openHistoryAnalysis = async (jobId) => {
+    try {
+      const res = await fetch(`${API}/analyses/${jobId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return addToast(data.detail || 'Failed to load analysis', true);
+      }
+
+      if (!data.result) {
+        return addToast('Selected analysis is not complete yet.', true);
+      }
+
+      setAnalysisJobId(data.job_id);
+      setAnalysisResult(data.result);
+      setSelectedHistoryId(data.job_id);
+      setActiveView('results');
+      addToast('Loaded analysis from history.');
+    } catch (err) {
+      addToast('Could not open selected history item', true);
+    }
   };
 
   const pollAnalysisResults = async (jobId) => {
@@ -136,7 +267,10 @@ export default function App() {
         setAnalysisResult(data.result);
         setIsProcessing(false);
         addToast('Analysis complete!');
-        setActiveView('results');
+        loadHistory();
+        if (settings.autoOpenResults) {
+          setActiveView('results');
+        }
         
         if (data.result.clauses && data.result.clauses.some(c => c.is_risky)) {
           const count = data.result.clauses.filter(c => c.is_risky).length;
@@ -218,6 +352,7 @@ export default function App() {
       const data = await res.json();
       
       setAnalysisJobId(data.job_id);
+      setSelectedHistoryId(data.job_id);
       addToast('Analysis started. Processing risks...');
       
       if (data.extraction && data.extraction.cleaned_text) {
@@ -277,6 +412,36 @@ export default function App() {
     }
   };
 
+  const explainRiskInChat = (clause, index) => {
+    const category = clause.risk_categories && clause.risk_categories.length > 0
+      ? clause.risk_categories[0]
+      : 'General';
+    const confidence = clause.confidence || 'Medium';
+    const summary = clause.explanation || clause.text || 'No clause text available.';
+    const sourceText = clause.text || '';
+
+    const categoryExamples = {
+      'Privacy Risk': 'Example: "We may share your personal data with third-party advertisers without additional consent."',
+      'Legal Risk': 'Example: "You waive your right to participate in any class action against us."',
+      'User Rights Risk': 'Example: "We may terminate your account at any time, without notice or appeal."',
+      'Security Risk': 'Example: "We are not responsible for unauthorized access, data breaches, or account compromise."',
+      'Financial Risk': 'Example: "All purchases are final and non-refundable, including accidental renewals."',
+      'General': 'Example: "The provider can change terms at any time and your continued use implies acceptance."'
+    };
+
+    const chatDetail = [
+      `### Clause #${index + 1}: ${category}`,
+      `**Confidence:** ${confidence}`,
+      `**What this means:** ${summary}`,
+      sourceText ? `**Source text:** "${sourceText.slice(0, 240)}${sourceText.length > 240 ? '...' : ''}"` : '',
+      `**Practical example:** ${categoryExamples[category] || categoryExamples.General}`,
+      '**Why this matters:** This can reduce your control, increase liability exposure, or create unexpected obligations.'
+    ].filter(Boolean).join('\n\n');
+
+    setChatMessages(prev => [...prev, { role: 'bot', content: chatDetail }]);
+    addToast(`Added detailed explanation for Clause #${index + 1} to chat.`);
+  };
+
   useEffect(() => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
@@ -312,22 +477,15 @@ export default function App() {
             <p>{authMode === 'login' ? 'Enter your credentials to access Jurist AI' : 'Join the elite legal AI platform'}</p>
           </div>
 
-          {verifyMessage && (
-            <div style={{
-              background: 'var(--success-bg)', 
-              color: 'var(--success)', 
-              padding: '12px', 
-              borderRadius: 'var(--radius-sm)', 
-              fontSize: '13px', 
-              marginBottom: '20px',
-              border: '1px solid var(--success)',
-              textAlign: 'center'
-            }}>
-              {verifyMessage}
-            </div>
-          )}
+
 
           <form className="auth-form" onSubmit={handleAuth}>
+            {authMode === 'signup' && (
+              <div className="auth-field">
+                <label>Username</label>
+                <input type="text" name="username" className="auth-input" placeholder="choose-a-username" required minLength={3} maxLength={30} />
+              </div>
+            )}
             <div className="auth-field">
               <label>Email Address</label>
               <input type="email" name="email" className="auth-input" placeholder="name@company.com" required />
@@ -367,58 +525,70 @@ export default function App() {
   return (
     <div className="app-container">
       {/* SIDEBAR */}
-      <aside className="sidebar">
+      <aside className="sidebar" style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
         <div className="brand">
           <div className="brand-icon"><Scale size={18} /></div>
           <div className="brand-text">
             <span className="brand-title">Jurist AI</span>
-            <span className="brand-subtitle">PREMIUM LEGAL AI</span>
+            <span className="brand-subtitle">TERMS RISK REVIEW</span>
           </div>
         </div>
         
-        <button className="nav-btn primary" onClick={() => setActiveView('dashboard')}>
+        <button className="nav-btn primary" onClick={() => { setActiveView('dashboard'); setSelectedHistoryId(null); }}>
           <Plus size={16} /> New Analysis
         </button>
-        
-        <nav className="nav-menu">
-          <a className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveView('dashboard')}>
-            <Activity size={18} /> <span>Dashboard</span>
-          </a>
-          <a className={`nav-item ${activeView === 'results' ? 'active' : ''}`} onClick={() => setActiveView('results')}>
-            <BrainCircuit size={18} /> <span>Risk Analysis</span>
-          </a>
-          <a className="nav-item">
-            <FileCheck size={18} /> <span>Compliance</span>
-          </a>
-          <a className="nav-item">
-            <History size={18} /> <span>History</span>
-          </a>
-        </nav>
+
+        <div className="sidebar-history">
+          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 8px 8px'}}>
+            <div className="sidebar-section-title">
+              <History size={14} /> Recent Analyses
+            </div>
+            <button className="chat-sugg-btn" type="button" onClick={loadHistory}>Refresh</button>
+          </div>
+
+          <div className="history-list">
+            {isHistoryLoading ? (
+              <div style={{padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)'}}>Loading...</div>
+            ) : historyItems.length === 0 ? (
+              <div style={{padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)'}}>No history yet</div>
+            ) : (
+              historyItems.slice(0, 8).map((item) => (
+                <button
+                  key={item.job_id}
+                  type="button"
+                  className={`history-item ${selectedHistoryId === item.job_id ? 'active' : ''}`}
+                  onClick={() => openHistoryAnalysis(item.job_id)}
+                >
+                  <span className="history-item-main">
+                    {item.source_type?.toUpperCase() || 'SRC'} | {(item.overall_risk || 'N/A')}
+                  </span>
+                  <span className="history-item-sub">#{item.job_id.slice(0, 4)}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
         
         <div className="sidebar-footer">
-          <a className="nav-item"><SettingsIcon size={18}/> Settings</a>
+          <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => setActiveView('settings')}><SettingsIcon size={18}/> Settings</a>
           <a className="nav-item" onClick={logout}><HelpCircle size={18}/> Sign Out</a>
           
           <div className="user-profile">
             <div className="user-avatar">{user?.email?.[0].toUpperCase() || 'U'}</div>
             <div className="user-info">
-              <span className="user-name">{user?.email || 'Authenticated User'}</span>
+              <span className="user-name">{user?.username || user?.email || 'Authenticated User'}</span>
               <span className="user-plan">Enterprise Plan</span>
             </div>
           </div>
         </div>
       </aside>
+      <div className="resizer vertical" onMouseDown={startSidebarResize} />
 
       {/* MAIN WRAPPER */}
       <div className="main-wrapper">
         <header className="topbar">
-          <div className="topbar-nav">
-            <span>Documents</span>
-            <span>API</span>
-            <span>Enterprise</span>
-          </div>
+          <div className="topbar-nav"></div>
           <div className="topbar-actions">
-            <input type="text" className="search-box" placeholder="Q Search analyses..." />
             <Bell size={18} style={{cursor: 'pointer'}} />
             <span style={{fontSize: '14px', cursor: 'pointer', color: 'var(--primary)'}} onClick={logout}>Sign Out</span>
           </div>
@@ -501,17 +671,13 @@ export default function App() {
                 <div className="input-side">
                   <div className="info-card">
                     <div className="info-icon"><Activity size={18}/></div>
-                    <h3 className="info-title">Automated Scraping</h3>
-                    <p className="info-desc">Our engine utilizes headless browser technology to bypass anti-bot measures, ensuring full retrieval of dynamic content.</p>
-                  </div>
-                  <div className="info-card">
-                    <div className="info-icon"><BrainCircuit size={18}/></div>
-                    <h3 className="info-title">Risk Benchmarking</h3>
-                    <p className="info-desc">Every source is cross-referenced against 50,000+ legal precedents and regulatory frameworks.</p>
-                    <div style={{marginTop: '12px', height: '4px', background: 'var(--surface-3)', borderRadius: '2px', overflow: 'hidden'}}>
-                      <div style={{width: '99.8%', height: '100%', background: 'var(--primary)'}}></div>
+                    <h3 className="info-title">How To Get Better Results</h3>
+                    <p className="info-desc">Use complete policy text when possible. Short excerpts may miss context and produce weaker risk explanations.</p>
+                    <div style={{marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6}}>
+                      • Prefer full ToS or Privacy Policy documents<br/>
+                      • Use PDF upload for long legal agreements<br/>
+                      • Open each flagged clause in chat for examples
                     </div>
-                    <div style={{fontSize: '10px', color: 'var(--primary)', textAlign: 'right', marginTop: '4px'}}>99.8% ACCURACY</div>
                   </div>
                 </div>
               </div>
@@ -529,14 +695,16 @@ export default function App() {
               </div>
               
               <div className="results-layout">
-                <div className="results-main">
+                <div className="results-main" style={{ width: isDesktop() ? `${resultsSplit}%` : '100%' }}>
                   <div className="score-card">
                     <div className="score-info">
                       <h2>Aggregate Risk Score</h2>
                       <p>Overall risk profile based on identified clauses within the provided document.</p>
                       <div style={{display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
-                        <span style={{background: 'var(--error-bg)', color: 'var(--error)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>! HIGH IMPACT</span>
-                        <span style={{background: 'rgba(0,240,255,0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>✦ AI VERIFIED</span>
+                        <span style={{background: 'rgba(0,240,255,0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>Risk Summary</span>
+                        <span style={{background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>
+                          Flagged Clauses: {analysisResult?.risky_clause_count ?? 0}
+                        </span>
                       </div>
                     </div>
                     <div className="score-circle">
@@ -565,7 +733,7 @@ export default function App() {
                         const cssClass = conf === 'High' ? 'high' : (conf === 'Medium' ? 'medium' : 'low');
                         
                         return (
-                          <div className={`risk-card ${cssClass}`} key={idx}>
+                          <div className={`risk-card ${cssClass}`} key={idx} style={{ padding: settings.compactRiskCards ? '14px' : '20px' }}>
                             <div className="risk-header">
                               <div className="risk-title-wrapper">
                                 <div className="risk-icon"><Scale size={16}/></div>
@@ -577,6 +745,16 @@ export default function App() {
                               <span className="risk-badge">{conf} RISK</span>
                             </div>
                             <div className="risk-desc">{c.explanation || c.text}</div>
+                            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                className="chat-sugg-btn"
+                                onClick={() => explainRiskInChat(c, idx)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                Explain In Chat
+                              </button>
+                            </div>
                           </div>
                         )
                       })
@@ -584,12 +762,13 @@ export default function App() {
                   </div>
                 </div>
                 
-                <div className="results-side">
+                <div className="resizer vertical inner" onMouseDown={startResultsResize} />
+                <div className="results-side" style={{ width: isDesktop() ? `${100 - resultsSplit}%` : '100%' }}>
                   <div className="chat-header">
                     <div className="chat-logo"><BrainCircuit size={18}/></div>
                     <div className="chat-title">
                       <h3>Digital Jurist Assistant</h3>
-                      <p>AI ANALYSIS LIVE</p>
+                      <p>Document Q&A</p>
                     </div>
                   </div>
                   
@@ -608,7 +787,12 @@ export default function App() {
                     )}
                   </div>
                   
-                  <div className="chat-input" style={{opacity: sessionId ? 1 : 0.5, pointerEvents: sessionId ? 'all' : 'none'}}>
+                  <div className="resizer horizontal" onMouseDown={startChatResize} />
+                  <div className="chat-input" style={{
+                    opacity: sessionId ? 1 : 0.5,
+                    pointerEvents: sessionId ? 'all' : 'none',
+                    height: isDesktop() ? `${chatPanelHeight}px` : 'auto'
+                  }}>
                     <div className="chat-suggestions">
                       {['Summarize risks', 'Is there an opt-out?', 'Data collection terms?'].map(sugg => (
                         <div key={sugg} className="chat-sugg-btn" onClick={() => setChatInput(sugg)}>{sugg}</div>
@@ -628,6 +812,43 @@ export default function App() {
                       </button>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeView === 'settings' && (
+            <div className="view-section active">
+              <div className="hero" style={{marginBottom: '24px'}}>
+                <h1 style={{fontSize: '24px'}}>Settings</h1>
+                <p>Customize behavior for analysis and results views.</p>
+              </div>
+
+              <div className="input-card" style={{maxWidth: '720px'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                  <div>
+                    <div className="risk-title">Auto-open Results After Analysis</div>
+                    <div className="risk-section">Switch to Risk Analysis view automatically when processing completes.</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.autoOpenResults}
+                    onChange={(e) => setSettings(prev => ({ ...prev, autoOpenResults: e.target.checked }))}
+                    style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
+                  />
+                </div>
+
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <div>
+                    <div className="risk-title">Compact Risk Cards</div>
+                    <div className="risk-section">Reduce spacing in risk cards for denser reading.</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.compactRiskCards}
+                    onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
+                    style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
+                  />
                 </div>
               </div>
             </div>

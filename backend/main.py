@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from jose import JWTError
 
 from extraction.input_handler import handle_input
@@ -30,7 +31,6 @@ from db.models import Base, User
 from db import crud
 from auth.security import hash_password, verify_password, create_access_token
 from auth.dependencies import get_current_user, get_optional_user
-from auth.email import send_verification_email
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +82,16 @@ class ChatRequest(BaseModel):
     history: list[ChatMessage] = []
 
 class RegisterRequest(BaseModel):
+    username: str
     email: EmailStr
     password: str
 
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
 class VerificationResponse(BaseModel):
     message: str
-    verification_required: bool
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -95,6 +99,7 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     id: str
+    username: str
     email: str
     created_at: str
 
@@ -119,32 +124,24 @@ def get_cerebras_stats():
 # ---------------------------------------------------------------------------
 
 @app.post("/auth/register", response_model=VerificationResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    username = body.username.strip()
+    if len(username) < 3 or len(username) > 30:
+        raise HTTPException(status_code=400, detail="Username must be 3-30 characters long")
+
     existing = await crud.get_user_by_email(db, body.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-    
-    user = await crud.create_user(db, body.email, hash_password(body.password))
-    
-    # Send actual email via background task
-    background_tasks.add_task(send_verification_email, user.email, user.verification_token)
-    
-    # Still log it as a fallback
-    verify_link = f"http://localhost:8000/auth/verify/{user.verification_token}"
-    logger.info(f"Verification Link (Backup): {verify_link}")
 
+    existing_username = await crud.get_user_by_username(db, username)
+    if existing_username:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    
+    user = await crud.create_user(db, username, body.email, hash_password(body.password))
+    
     return {
-        "message": f"Welcome to Jurist AI! A verification email has been sent to {user.email}. Please check your inbox (and spam folder) to activate your account.",
-        "verification_required": True
+        "message": f"Welcome to Jurist AI, {user.username}! Your account is active and ready to use.",
     }
-
-
-@app.get("/auth/verify/{token}")
-async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
-    user = await crud.verify_user(db, token)
-    if not user:
-        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
-    return {"message": "Email verified successfully. You can now log in."}
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -160,13 +157,6 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if not user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account not verified. Please check your console for the link.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
     token = create_access_token(user.id, user.email)
     return {"access_token": token, "token_type": "bearer"}
 
@@ -175,6 +165,7 @@ async def login(
 async def me(current_user: User = Depends(get_current_user)):
     return {
         "id": current_user.id,
+        "username": current_user.username or current_user.email.split("@")[0],
         "email": current_user.email,
         "created_at": current_user.created_at.isoformat(),
     }
@@ -305,6 +296,27 @@ async def list_analyses(
         }
         for j in jobs
     ]
+
+
+@app.get("/analyses/{job_id}")
+async def get_analysis(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get one analysis by id for the currently logged-in user."""
+    job = await crud.get_analysis_job(db, job_id)
+    if not job or job.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+
+    return {
+        "job_id": job.job_id,
+        "status": job.status.value,
+        "source": job.source,
+        "source_type": job.source_type,
+        "created_at": job.created_at.isoformat(),
+        "result": job.result,
+    }
 
 
 # ---------------------------------------------------------------------------

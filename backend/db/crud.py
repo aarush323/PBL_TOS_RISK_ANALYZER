@@ -15,29 +15,16 @@ from .models import Analysis, ChatSession, ChatMessage, JobStatus, User
 # Users
 # ---------------------------------------------------------------------------
 
-async def create_user(db: AsyncSession, email: str, hashed_password: str) -> User:
-    import secrets
+async def create_user(db: AsyncSession, username: str, email: str, hashed_password: str) -> User:
     user = User(
         id=str(uuid.uuid4()),
+        username=username,
         email=email,
         hashed_password=hashed_password,
-        is_verified=False,
-        verification_token=secrets.token_urlsafe(32)
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return user
-
-
-async def verify_user(db: AsyncSession, token: str) -> User | None:
-    result = await db.execute(select(User).where(User.verification_token == token))
-    user = result.scalars().first()
-    if user:
-        user.is_verified = True
-        user.verification_token = None
-        await db.commit()
-        await db.refresh(user)
     return user
 
 
@@ -47,6 +34,11 @@ async def get_user_by_id(db: AsyncSession, user_id: str) -> User | None:
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     result = await db.execute(select(User).where(User.email == email))
+    return result.scalars().first()
+
+
+async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
+    result = await db.execute(select(User).where(User.username == username))
     return result.scalars().first()
 
 
