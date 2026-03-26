@@ -12,12 +12,17 @@ import asyncio
 import uuid
 import os
 import shutil
+import time
+from collections import defaultdict, deque
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from extraction.input_handler import handle_input
 from analysis.analyzer import analyze_document
@@ -32,7 +37,69 @@ from auth.dependencies import get_current_user, get_optional_user
 
 logger = logging.getLogger(__name__)
 
+
+class InMemoryRateLimiter:
+    def __init__(self, max_requests: int, window_seconds: int):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self._requests: dict[str, deque[float]] = defaultdict(deque)
+        self._lock = asyncio.Lock()
+
+    async def check(self, key: str) -> tuple[bool, int, int]:
+        now = time.monotonic()
+        cutoff = now - self.window_seconds
+
+        async with self._lock:
+            bucket = self._requests[key]
+            while bucket and bucket[0] <= cutoff:
+                bucket.popleft()
+
+            if len(bucket) >= self.max_requests:
+                retry_after = max(1, int(self.window_seconds - (now - bucket[0])))
+                return False, 0, retry_after
+
+            bucket.append(now)
+            remaining = self.max_requests - len(bucket)
+            return True, remaining, self.window_seconds
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Skip rate limiting for health checks so probes never get throttled.
+        if request.url.path == "/health":
+            return await call_next(request)
+
+        client_ip = request.client.host if request.client else "unknown"
+        allowed, remaining, reset_seconds = await request.app.state.rate_limiter.check(client_ip)
+
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded. Please try again later."},
+                headers={
+                    "Retry-After": str(reset_seconds),
+                    "X-RateLimit-Limit": str(request.app.state.rate_limiter.max_requests),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(reset_seconds),
+                },
+            )
+
+        response = await call_next(request)
+        response.headers["X-RateLimit-Limit"] = str(request.app.state.rate_limiter.max_requests)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers["X-RateLimit-Reset"] = str(reset_seconds)
+        return response
+
+
 app = FastAPI(title="ToS Analyzer API")
+
+rate_limit_max_requests = int(os.getenv("API_RATE_LIMIT_MAX_REQUESTS", "120"))
+rate_limit_window_seconds = int(os.getenv("API_RATE_LIMIT_WINDOW_SECONDS", "60"))
+app.state.rate_limiter = InMemoryRateLimiter(
+    max_requests=rate_limit_max_requests,
+    window_seconds=rate_limit_window_seconds,
+)
+app.add_middleware(RateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

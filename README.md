@@ -44,6 +44,9 @@ cp backend/.env.example backend/.env
 # - DATABASE_URL
 # - SECRET_KEY
 # - CEREBRAS_API_KEY (optional if using Ollama only)
+# optional rate limiting:
+# - API_RATE_LIMIT_MAX_REQUESTS (default: 120)
+# - API_RATE_LIMIT_WINDOW_SECONDS (default: 60)
 
 # 3) Run backend
 cd backend
@@ -57,6 +60,15 @@ npm run dev
 
 Frontend default URL: `http://localhost:5173`  
 Backend default URL: `http://localhost:8000`
+
+## API Rate Limiting
+
+The backend applies IP-based rate limiting to all API routes except `/health`.
+
+- `API_RATE_LIMIT_MAX_REQUESTS`: maximum requests allowed per client IP in a window (default `120`)
+- `API_RATE_LIMIT_WINDOW_SECONDS`: window length in seconds (default `60`)
+
+When the limit is exceeded, the API returns `429 Too Many Requests` with `Retry-After` and `X-RateLimit-*` headers.
 
 ## Backend API Summary
 
