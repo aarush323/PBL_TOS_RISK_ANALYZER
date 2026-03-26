@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap } from 'lucide-react';
+import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap, Maximize2, Minimize2 } from 'lucide-react';
 import { marked } from 'marked';
 // eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
@@ -660,7 +660,19 @@ export default function App() {
                   </div>
                 )
               ) : sourceInfo.type === 'url' ? (
-                <iframe src={sourceInfo.value} width="100%" height="100%" style={{ flex: 1, border: 'none', background: '#fff' }} title="URL Preview" />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source URL</h3>
+                  <Link size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                  <p style={{ color: 'var(--text-body)', wordBreak: 'break-all', maxWidth: '80%' }}>
+                    <strong><a href={sourceInfo.value} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>{sourceInfo.value}</a></strong>
+                  </p>
+                  <p style={{ fontSize: '13px', marginTop: '12px', maxWidth: '400px', lineHeight: 1.5 }}>
+                    For security and performance reasons, live web pages are not loaded in an iframe preview. Click the link above to open it in a new tab.
+                  </p>
+                  <div style={{ marginTop: '24px', textAlign: 'center', width: '100%' }}>
+                    <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
+                  </div>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: 'calc(90vh - 48px)' }}>
                   <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source Content</h3>
@@ -947,12 +959,22 @@ export default function App() {
                   
                   <div className="resizer vertical inner" onMouseDown={startResultsResize} />
                   <div className="results-side" style={{ width: isDesktop() ? `${100 - resultsSplit}%` : '100%' }}>
-                    <div className="chat-header">
-                      <div className="chat-logo"><BrainCircuit size={18}/></div>
-                      <div className="chat-title">
-                        <h3>Digital Jurist Assistant</h3>
-                        <p>Document Q&A</p>
+                    <div className="chat-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="chat-logo"><BrainCircuit size={18}/></div>
+                        <div className="chat-title">
+                          <h3>Digital Jurist Assistant</h3>
+                          <p>Document Q&A</p>
+                        </div>
                       </div>
+                      <button 
+                        className="chat-sugg-btn" 
+                        onClick={() => setActiveView('chat')}
+                        title="Expand to Full Chat"
+                        style={{ padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Maximize2 size={16} />
+                      </button>
                     </div>
                     
                     <div className="chat-messages" ref={chatBoxRef}>
@@ -1052,12 +1074,23 @@ export default function App() {
                 animate={viewMotion.animate}
                 exit={viewMotion.exit}
               >
-                <div className="chat-header" style={{ borderBottom: '1px solid var(--border)', background: 'transparent' }}>
-                  <div className="chat-logo"><BrainCircuit size={18}/></div>
-                  <div className="chat-title">
-                    <h3>Digital Jurist Assistant</h3>
-                    <p>Document Q&A</p>
+                <div className="chat-header" style={{ borderBottom: '1px solid var(--border)', background: 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="chat-logo"><BrainCircuit size={18}/></div>
+                    <div className="chat-title">
+                      <h3>Digital Jurist Assistant</h3>
+                      <p>Document Q&A</p>
+                    </div>
                   </div>
+                  {analysisResult && (
+                    <button 
+                      className="chat-sugg-btn" 
+                      onClick={() => setActiveView('results')}
+                      style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '4px' }}
+                    >
+                      <Minimize2 size={14} /> Back to Report
+                    </button>
+                  )}
                 </div>
                 
                 <div className="chat-messages" ref={chatBoxRef}>
