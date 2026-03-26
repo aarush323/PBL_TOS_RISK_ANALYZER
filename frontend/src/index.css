@@ -284,7 +284,14 @@ body::before {
 .hero h1 { font-size: 30px; font-weight: 800; color: var(--text-heading); margin-bottom: 10px; letter-spacing: -0.4px; }
 .hero p { font-size: 15px; color: var(--text-muted); max-width: 600px; line-height: 1.5; }
 .section-title { font-size: 24px; }
-.source-id { font-size: 14px; color: var(--primary); }
+.source-badge { margin-top: 8px; display: flex; align-items: center; }
+.source-link { display: inline-flex; align-items: center; gap: 8px; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); padding: 6px 12px; border-radius: 20px; font-size: 13px; color: var(--primary); text-decoration: none; transition: all 0.2s; max-width: 400px; }
+.source-link:hover { background: rgba(34, 211, 238, 0.15); border-color: rgba(34, 211, 238, 0.3); transform: translateY(-1px); }
+.source-link.source-pdf { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2); color: var(--secondary); cursor: default; }
+.source-link.source-pdf:hover { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.2); transform: none; }
+.source-link.source-text { background: var(--surface-2); border-color: var(--border); color: var(--text-muted); cursor: default; }
+.source-link.source-text:hover { background: var(--surface-2); border-color: var(--border); transform: none; }
+.source-link-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Dashboard layout */
 .input-container { display: flex; gap: var(--space-6); }

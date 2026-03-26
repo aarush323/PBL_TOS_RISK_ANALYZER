@@ -26,6 +26,7 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisJobId, setAnalysisJobId] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [sourceInfo, setSourceInfo] = useState({ type: null, value: null });
   
   const [sessionId, setSessionId] = useState(null);
   const [chatMessages, setChatMessages] = useState([
@@ -286,11 +287,20 @@ export default function App() {
         setSessionId(data.job_id);
       }
 
+      // Restore source info from history
+      const sType = data.source_type || 'text';
+      if (sType === 'url') {
+        setSourceInfo({ type: 'url', value: data.source || '' });
+      } else if (sType === 'pdf') {
+        setSourceInfo({ type: 'pdf', value: data.source || 'Uploaded PDF' });
+      } else {
+        setSourceInfo({ type: 'text', value: data.source || '' });
+      }
+
       setAnalysisJobId(data.job_id);
       setAnalysisResult(data.result);
       setSelectedHistoryId(data.job_id);
       setActiveView('results');
-      addToast('Loaded analysis from history.');
     } catch {
       addToast('Could not open selected history item', true);
     }
@@ -306,7 +316,6 @@ export default function App() {
       if (data.status === 'complete') {
         setAnalysisResult(data.result);
         setIsProcessing(false);
-        addToast('Analysis complete!');
         loadHistory();
         if (settings.autoOpenResults) {
           setActiveView('results');
@@ -361,10 +370,12 @@ export default function App() {
     try {
       let analyzeType = inputMode;
       let analyzeContent = content;
+      let pdfFileName = null;
       
       if (inputMode === 'upload') {
         const formData = new FormData();
         formData.append('file', uploadedFile);
+        pdfFileName = uploadedFile.name;
         
         const extractRes = await fetch(`${API}/extract/pdf`, {
           method: 'POST',
@@ -379,13 +390,30 @@ export default function App() {
         analyzeContent = extractData.cleaned_text || extractData.raw_text;
       }
 
+      // Track the source for display in results
+      if (inputMode === 'url') {
+        setSourceInfo({ type: 'url', value: content });
+      } else if (inputMode === 'upload') {
+        setSourceInfo({ type: 'pdf', value: pdfFileName });
+      } else {
+        setSourceInfo({ type: 'text', value: content.slice(0, 120) });
+      }
+
+      const requestBody = {
+        input_type: analyzeType,
+        content: analyzeContent,
+      };
+      if (inputMode === 'upload') {
+        requestBody.source_label = pdfFileName;
+      }
+
       const res = await fetch(`${API}/analyze/async`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ input_type: analyzeType, content: analyzeContent })
+        body: JSON.stringify(requestBody)
       });
       
       if (!res.ok) throw new Error('Analysis initialization failed');
@@ -393,7 +421,6 @@ export default function App() {
       
       setAnalysisJobId(data.job_id);
       setSelectedHistoryId(data.job_id);
-      addToast('Analysis started. Processing risks...');
       
       if (data.extraction && data.extraction.cleaned_text) {
         initChatSession(data.extraction.cleaned_text, data.job_id);
@@ -479,7 +506,6 @@ export default function App() {
     ].filter(Boolean).join('\n\n');
 
     setChatMessages(prev => [...prev, { role: 'bot', content: chatDetail }]);
-    addToast(`Added detailed explanation for Clause #${index + 1} to chat.`);
   };
 
   useEffect(() => {
@@ -620,6 +646,7 @@ export default function App() {
         </div>
         
         <div className="sidebar-footer">
+          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => setActiveView('chat')}><BrainCircuit size={18}/> Chat</a>
           <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => setActiveView('settings')}><SettingsIcon size={18}/> Settings</a>
           <a className="nav-item" onClick={logout}><HelpCircle size={18}/> Sign Out</a>
           
@@ -750,7 +777,29 @@ export default function App() {
                 <div className="hero hero-compact hero-row">
                   <div>
                     <h1 className="section-title">Analysis Results</h1>
-                    <p className="source-id">{analysisJobId ? `Source ID: ${analysisJobId.split('-')[0]}` : 'No document loaded'}</p>
+                    <div className="source-badge">
+                      {sourceInfo.type === 'url' ? (
+                        <a href={sourceInfo.value} target="_blank" rel="noopener noreferrer" className="source-link">
+                          <Link size={14} />
+                          <span className="source-link-text">{sourceInfo.value}</span>
+                        </a>
+                      ) : sourceInfo.type === 'pdf' ? (
+                        <span className="source-link source-pdf">
+                          <FileText size={14} />
+                          <span className="source-link-text">{sourceInfo.value || 'Uploaded PDF'}</span>
+                        </span>
+                      ) : sourceInfo.type === 'text' ? (
+                        <span className="source-link source-text">
+                          <FileText size={14} />
+                          <span className="source-link-text">Pasted Text</span>
+                        </span>
+                      ) : (
+                        <span className="source-link source-text">
+                          <FileText size={14} />
+                          <span className="source-link-text">No document loaded</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -914,6 +963,70 @@ export default function App() {
                       onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
                       style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
                     />
+                  </div>
+                </div>
+              </motion.section>
+            )}
+
+            {activeView === 'chat' && (
+              <motion.section
+                key="view-chat"
+                className="view-section active"
+                style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
+                initial={viewMotion.initial}
+                animate={viewMotion.animate}
+                exit={viewMotion.exit}
+              >
+                <div className="chat-header" style={{ borderBottom: '1px solid var(--border)', background: 'transparent' }}>
+                  <div className="chat-logo"><BrainCircuit size={18}/></div>
+                  <div className="chat-title">
+                    <h3>Digital Jurist Assistant</h3>
+                    <p>Document Q&A</p>
+                  </div>
+                </div>
+                
+                <div className="chat-messages" ref={chatBoxRef}>
+                  {chatMessages.map((msg, i) => (
+                    <div className={`msg ${msg.role}`} key={i}>
+                      <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14}/> : (user?.email?.[0].toUpperCase() || 'U')}</div>
+                      <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
+                    </div>
+                  ))}
+                  {isChatTyping && (
+                     <div className="msg bot">
+                      <div className="msg-avatar"><BrainCircuit size={14}/></div>
+                      <div className="msg-bubble"><TypingDots /></div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="chat-input" style={{
+                  opacity: sessionId ? 1 : 0.5,
+                  pointerEvents: sessionId ? 'all' : 'none',
+                  borderTop: '1px solid var(--border)',
+                  borderBottom: 'none',
+                  paddingTop: '16px',
+                  background: 'transparent',
+                  height: 'auto',
+                  flexShrink: 0
+                }}>
+                  <div className="chat-suggestions">
+                    {['Summarize risks', 'Is there an opt-out?', 'Data collection terms?'].map(sugg => (
+                      <div key={sugg} className="chat-sugg-btn" onClick={() => setChatInput(sugg)}>{sugg}</div>
+                    ))}
+                  </div>
+                  <div className="chat-form">
+                    <input 
+                      type="text" 
+                      className="chat-input-field" 
+                      placeholder="Ask about specific clauses or risks..." 
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyPress={e => e.key === 'Enter' && sendChat()}
+                    />
+                    <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()}>
+                      <ChevronRight size={18} />
+                    </button>
                   </div>
                 </div>
               </motion.section>
