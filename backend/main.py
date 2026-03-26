@@ -95,6 +95,14 @@ app = FastAPI(title="ToS Analyzer API")
 
 rate_limit_max_requests = int(os.getenv("API_RATE_LIMIT_MAX_REQUESTS", "120"))
 rate_limit_window_seconds = int(os.getenv("API_RATE_LIMIT_WINDOW_SECONDS", "60"))
+cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000",
+    ).split(",")
+    if origin.strip()
+]
 app.state.rate_limiter = InMemoryRateLimiter(
     max_requests=rate_limit_max_requests,
     window_seconds=rate_limit_window_seconds,
@@ -103,11 +111,7 @@ app.add_middleware(RateLimitMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
