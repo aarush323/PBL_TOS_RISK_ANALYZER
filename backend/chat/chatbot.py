@@ -1,10 +1,6 @@
 import httpx
 import logging
 import os
-from dotenv import load_dotenv
-
-env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
-load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +10,6 @@ CEREBRAS_MODEL = "llama3.1-8b"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 OLLAMA_MODEL = "qwen3.5:9b"
 
-# Maximum document characters to include in context (to avoid token limits)
 MAX_CONTEXT_CHARS = 12000
 
 SYSTEM_PROMPT = """You are a helpful legal document assistant. You have been given the full text of a Terms of Service / Privacy Policy document. Your job is to answer user questions about this document accurately and clearly.
@@ -69,7 +64,6 @@ def chat_with_document(document_text: str, conversation: list[dict]) -> str:
     messages = build_messages(document_text, conversation)
     cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
 
-    # --- Try Cerebras ---
     if cerebras_api_key:
         try:
             logger.info("Chat request via Cerebras...")
@@ -94,7 +88,6 @@ def chat_with_document(document_text: str, conversation: list[dict]) -> str:
         except Exception as e:
             logger.warning(f"Cerebras chat error: {e}. Falling back to Ollama...")
 
-    # --- Fallback to Ollama ---
     try:
         logger.info("Chat request via Ollama...")
         response = httpx.post(

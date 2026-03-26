@@ -9,7 +9,6 @@ logging.basicConfig(
 )
 
 import asyncio
-import threading
 import uuid
 import os
 import shutil
@@ -19,14 +18,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from jose import JWTError
 
 from extraction.input_handler import handle_input
 from analysis.analyzer import analyze_document
+from analysis.cancellation import cancel_job, clear_job
 from chat.chatbot import chat_with_document
 
-from db.connection import engine, get_db
+from db.connection import engine, AsyncSessionLocal, get_db
 from db.models import Base, User
 from db import crud
 from auth.security import hash_password, verify_password, create_access_token
@@ -49,24 +47,11 @@ app.add_middleware(
 )
 
 
-# ---------------------------------------------------------------------------
-# DB startup – create tables if they don't exist
-# ---------------------------------------------------------------------------
-
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables ready.")
-
-
-# ---------------------------------------------------------------------------
-# Pydantic schemas
-# ---------------------------------------------------------------------------
-
-class TextInput(BaseModel):
-    input_type: str
-    content: str
 
 class AnalyzeInput(BaseModel):
     input_type: str
@@ -104,9 +89,6 @@ class UserResponse(BaseModel):
     created_at: str
 
 
-# ---------------------------------------------------------------------------
-# Health
-# ---------------------------------------------------------------------------
 
 @app.get("/health")
 def health():
@@ -119,9 +101,6 @@ def get_cerebras_stats():
     return {"cerebras_total_requests": cerebras_request_count}
 
 
-# ---------------------------------------------------------------------------
-# Auth routes
-# ---------------------------------------------------------------------------
 
 @app.post("/auth/register", response_model=VerificationResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
@@ -171,12 +150,9 @@ async def me(current_user: User = Depends(get_current_user)):
     }
 
 
-# ---------------------------------------------------------------------------
-# Extraction
-# ---------------------------------------------------------------------------
 
 @app.post("/extract")
-def extract_text(body: TextInput):
+def extract_text(body: AnalyzeInput):
     try:
         result = handle_input(body.input_type, body.content)
         return result
@@ -205,15 +181,8 @@ def extract_pdf(file: UploadFile = File(...)):
             os.remove(temp_path)
 
 
-# ---------------------------------------------------------------------------
-# Async analysis (persisted to PostgreSQL)
-# ---------------------------------------------------------------------------
 
 async def _run_analysis_background(job_id: str, extraction: dict):
-    """Run analyze_document in a background task then persist result."""
-    from db.connection import AsyncSessionLocal
-    from analysis.cancellation import clear_job
-    
     async with AsyncSessionLocal() as db:
         try:
             result = await asyncio.to_thread(analyze_document, extraction, job_id)
@@ -269,12 +238,12 @@ async def analyze_status(job_id: str, db: AsyncSession = Depends(get_db)):
 
 @app.post("/analyze/stop/{job_id}")
 async def stop_analysis(job_id: str, db: AsyncSession = Depends(get_db)):
-    from analysis.cancellation import cancel_job
     cancel_job(job_id)
     job = await crud.get_analysis_job(db, job_id)
     if job and job.status.value == "processing":
         await crud.update_analysis_failed(db, job_id, "Cancelled by user")
     return {"status": "cancelled", "job_id": job_id}
+
 
 
 @app.get("/analyses")
@@ -319,9 +288,6 @@ async def get_analysis(
     }
 
 
-# ---------------------------------------------------------------------------
-# Document Chatbot (persisted to PostgreSQL)
-# ---------------------------------------------------------------------------
 
 @app.post("/chat/store")
 async def store_document(

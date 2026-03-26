@@ -4,11 +4,7 @@ import re
 import logging
 import os
 import time
-from dotenv import load_dotenv
 
-# Find the path to the backend/.env folder relative to this file
-env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
-load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +14,6 @@ CEREBRAS_MODEL = "llama3.1-8b"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "phi3.5"
 
-# Global counter for API tracking
 cerebras_request_count = 0
 
 RISK_DEFINITIONS = """
@@ -125,7 +120,6 @@ def classify_clause(clause: dict, features: dict) -> dict:
                     "messages": [{"role": "user", "content": prompt}],
                     "response_format": {"type": "json_object"},
                     "temperature": 0.1,
-                    # Optional: limit number of tokens generated
                     "max_completion_tokens": 200
                 },
                 timeout=120.0
@@ -146,7 +140,7 @@ def classify_clause(clause: dict, features: dict) -> dict:
     else:
         logger.warning(f"CEREBRAS_API_KEY not found. Defaulting to Ollama fallback...")
 
-    # Fallback to Ollama
+
     try:
         logger.info(f"Classifying clause {clause['id']} via Ollama...")
         response = httpx.post(
@@ -195,9 +189,6 @@ def classify_clause(clause: dict, features: dict) -> dict:
         }
 
 
-# ---------------------------------------------------------------------------
-# Batch classification (Upgrade 1)
-# ---------------------------------------------------------------------------
 
 BATCH_PROMPT_TEMPLATE = """You are a legal risk analyst specializing in Terms of Service and Privacy Policy documents.
 
@@ -326,7 +317,6 @@ def _cerebras_post_with_backoff(payload: dict, timeout: float) -> httpx.Response
                 
             response.raise_for_status()
             
-            # Increment global counter on successful request
             global cerebras_request_count
             cerebras_request_count += 1
             
@@ -347,7 +337,6 @@ def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]
     count = len(clauses)
     cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
 
-    # --- Try Cerebras batch ---
     if cerebras_api_key:
         try:
             logger.info(f"Batch classifying {count} clauses via Cerebras...")
@@ -367,7 +356,6 @@ def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]
         except Exception as e:
             logger.warning(f"Cerebras batch error: {e}. Trying Ollama batch...")
 
-    # --- Try Ollama batch ---
     try:
         logger.info(f"Batch classifying {count} clauses via Ollama...")
         response = httpx.post(
@@ -393,7 +381,6 @@ def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]
     except Exception as e:
         logger.warning(f"Ollama batch error: {e}. Falling back to per-clause...")
 
-    # --- Fallback: classify one-by-one ---
     results = []
     for clause, features in zip(clauses, features_list):
         results.append(classify_clause(clause, features))

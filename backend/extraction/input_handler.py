@@ -6,8 +6,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 def handle_input(input_type: str, content: str) -> dict:
-    logger.info("Starting extraction pipeline")
-    logger.info(f"Input type: {input_type}")
     """
     input_type: "url" | "pdf" | "text"
     content:    URL string | filepath string | raw text string
@@ -24,6 +22,7 @@ def handle_input(input_type: str, content: str) -> dict:
         paragraph_count: int
     }
     """
+    logger.info(f"Starting extraction pipeline, input type: {input_type}")
     if input_type == "url":
         raw = extract_from_url(content)
     elif input_type == "pdf":

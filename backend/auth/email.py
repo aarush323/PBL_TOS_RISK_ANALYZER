@@ -3,9 +3,6 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
-from dotenv import load_dotenv
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +23,8 @@ def send_verification_email(to_email: str, token: str):
 
     logger.info(f"Initiating real email delivery to {to_email} via {SMTP_HOST}...")
 
-    # Verification Link
     verify_link = f"{VERIFY_BASE_URL}/auth/verify/{token}"
 
-    # Email Content
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Verify your account - Jurist AI"
     msg["From"] = f"Jurist AI <{SMTP_USER}>"

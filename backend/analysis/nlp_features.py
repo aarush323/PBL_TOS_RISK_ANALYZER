@@ -3,7 +3,6 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# Pre-compile regexes for each risk category along with a weight
 _RISK_LEXICON = [
     (re.compile(r'\b(?:collect|personal data|personal information|third[- ]party|share your|sell|track|monitor|location|cookie|advertising|data retention|retain your|profiling)\b', re.IGNORECASE), 1.0, "Privacy Risk"),
     (re.compile(r'\b(?:arbitration|arbitrate|class action|waive|waiver|jurisdiction|governing law|indemnify|indemnification|liability|lawsuit|litigation|legal action|dispute resolution|binding)\b', re.IGNORECASE), 1.0, "Legal Risk"),
@@ -48,7 +47,7 @@ def extract_features(clause_text: str) -> dict:
         "modal_verbs": modal_hits,
         "has_negation": has_negation,
         "triggered_categories": list(triggered_categories),
-        "entity_types": [],  # Included to maintain downstream compatibility
+        "entity_types": [],
         "risk_score": risk_score
     }
 

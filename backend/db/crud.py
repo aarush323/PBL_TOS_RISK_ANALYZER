@@ -1,7 +1,3 @@
-"""
-db/crud.py
-All database read/write helpers (no SQL in main.py).
-"""
 import uuid
 from datetime import datetime, timezone
 
@@ -10,10 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Analysis, ChatSession, ChatMessage, JobStatus, User
 
-
-# ---------------------------------------------------------------------------
-# Users
-# ---------------------------------------------------------------------------
 
 async def create_user(db: AsyncSession, username: str, email: str, hashed_password: str) -> User:
     user = User(
@@ -41,10 +33,6 @@ async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
     result = await db.execute(select(User).where(User.username == username))
     return result.scalars().first()
 
-
-# ---------------------------------------------------------------------------
-# Analysis jobs
-# ---------------------------------------------------------------------------
 
 async def create_analysis_job(db: AsyncSession, job_id: str, source: str,
                                source_type: str | None = None,
@@ -93,10 +81,6 @@ async def list_analyses(db: AsyncSession, limit: int = 50,
     return result.scalars().all()
 
 
-# ---------------------------------------------------------------------------
-# Chat sessions
-# ---------------------------------------------------------------------------
-
 async def create_chat_session(db: AsyncSession, session_id: str,
                                document_text: str,
                                user_id: str | None = None) -> ChatSession:
@@ -114,10 +98,6 @@ async def create_chat_session(db: AsyncSession, session_id: str,
 async def get_chat_session(db: AsyncSession, session_id: str) -> ChatSession | None:
     return await db.get(ChatSession, session_id)
 
-
-# ---------------------------------------------------------------------------
-# Chat messages
-# ---------------------------------------------------------------------------
 
 async def add_chat_message(db: AsyncSession, session_id: str,
                             role: str, content: str) -> ChatMessage:

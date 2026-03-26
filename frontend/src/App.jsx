@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
- 
 import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap } from 'lucide-react';
 import { marked } from 'marked';
 // eslint-disable-next-line no-unused-vars
@@ -14,7 +13,7 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem('tos_token'));
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [authMode, setAuthMode] = useState('login');
   
   const [activeView, setActiveView] = useState('dashboard');
   const [inputMode, setInputMode] = useState('url');
@@ -576,7 +575,6 @@ export default function App() {
         title="Processing"
         detail="Extracting and analyzing clauses. You can press STOP anytime."
       />
-      {/* SIDEBAR */}
       <aside className="sidebar" style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
         <div className="brand">
           <div className="brand-icon"><Scale size={18} /></div>
@@ -636,7 +634,6 @@ export default function App() {
       </aside>
       <div className="resizer vertical" onMouseDown={startSidebarResize} />
 
-      {/* MAIN WRAPPER */}
       <div className="main-wrapper">
         <header className="topbar">
           <div className="topbar-nav"></div>

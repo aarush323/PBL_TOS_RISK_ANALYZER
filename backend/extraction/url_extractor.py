@@ -42,12 +42,10 @@ def is_noise_element(tag) -> bool:
     return False
 
 def find_main_content(soup):
-    # Level 1: Semantic HTML
     semantic = soup.find("main") or soup.find("article")
     if semantic and len(semantic.get_text(strip=True)) > 1000:
         return semantic
 
-    # Level 2: ID/class pattern matching
     pattern_match = (
         soup.find(id=re.compile(r"content|terms|policy|main|legal|tos", re.I)) or
         soup.find(class_=re.compile(r"content|terms|policy|main|legal|tos", re.I))
@@ -55,14 +53,12 @@ def find_main_content(soup):
     if pattern_match and len(pattern_match.get_text(strip=True)) > 1000:
         return pattern_match
 
-    # Level 3: Text density fallback
     candidates = soup.find_all(["div", "section", "article"])
     if candidates:
         best = max(candidates, key=lambda x: len(x.get_text(strip=True)))
         if len(best.get_text(strip=True)) > 1000:
             return best
 
-    # Level 4: Nuclear fallback
     return soup.body
 
 def extract_from_url(url: str) -> dict:

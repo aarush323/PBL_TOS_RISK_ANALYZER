@@ -12,7 +12,6 @@ MAX_BATCH = 10
 _current_batch_size = MAX_BATCH
 MAX_WORKERS = 3
 
-RISK_SCORE_MAP = {"High": 3, "Medium": 2, "Low": 1}
 
 
 def compute_overall_risk(risky_clauses: list[dict], total: int) -> str:
@@ -58,14 +57,12 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
 
     logger.info(f"Analyzing document from {source}...")
 
-    # Step 1: Segmentation
     clauses = segment_clauses(paragraphs)
     logger.info(f"Segmented {len(clauses)} clauses")
 
-    # Step 2: NLP feature extraction + filtering
     results = []
-    llm_clauses = []      # clauses that need LLM
-    llm_features = []     # matching features
+    llm_clauses = []
+    llm_features = []
     skipped = 0
 
     for clause in clauses:
@@ -89,9 +86,8 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
     logger.info(f"NLP filter: {len(llm_clauses)} clauses flagged for LLM, "
                 f"{skipped} skipped")
 
-    # Step 3: Batch + parallel LLM classification
     if llm_clauses:
-        # Split into batches
+
         batches_clauses = [
             llm_clauses[i:i + _current_batch_size]
             for i in range(0, len(llm_clauses), _current_batch_size)
@@ -102,8 +98,6 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
         ]
         total_batches = len(batches_clauses)
         logger.info(f"Created {total_batches} batches (batch_size={_current_batch_size})")
-
-        # Process batches in parallel
         batch_results_map = {}
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             future_to_idx = {
@@ -126,13 +120,11 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
                     batch_results_map[idx] = future.result()
                 except Exception as e:
                     logger.error(f"Batch {idx + 1}/{total_batches} thread failed: {e}")
-                    # Fallback should already be handled in worker, but catch safety net
                     fallback = []
                     for c, f in zip(batches_clauses[idx], batches_features[idx]):
                         fallback.append(classify_clause(c, f))
                     batch_results_map[idx] = fallback
 
-        # Reassemble results in order
         for idx in range(total_batches):
             batch_cls = batch_results_map[idx]
             for clause, features, classification in zip(
@@ -150,7 +142,7 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
                     "skipped_llm": False
                 })
 
-    # Step 4: Aggregate
+
     risky = [r for r in results if r.get("is_risky")]
     risk_breakdown = {
         "Privacy Risk": 0,

@@ -1,7 +1,3 @@
-"""
-auth/dependencies.py
-FastAPI dependencies for extracting and validating the current user from JWT.
-"""
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError

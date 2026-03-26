@@ -1,7 +1,3 @@
-"""
-db/models.py
-SQLAlchemy ORM models for the ToS Risk Analyzer.
-"""
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Text, DateTime, ForeignKey, Enum as SAEnum, Boolean
@@ -18,10 +14,6 @@ class JobStatus(str, enum.Enum):
     complete = "complete"
     failed = "failed"
 
-
-# ---------------------------------------------------------------------------
-# User accounts
-# ---------------------------------------------------------------------------
 
 class User(Base):
     """Registered user account."""
@@ -40,10 +32,6 @@ class User(Base):
     chat_sessions = relationship("ChatSession", back_populates="user",
                                  cascade="all, delete-orphan")
 
-
-# ---------------------------------------------------------------------------
-# Analysis jobs
-# ---------------------------------------------------------------------------
 
 class Analysis(Base):
     """One row per analysis job.  result stores the full analyze_document() output."""
@@ -66,10 +54,6 @@ class Analysis(Base):
 
     user = relationship("User", back_populates="analyses")
 
-
-# ---------------------------------------------------------------------------
-# Chat sessions & messages
-# ---------------------------------------------------------------------------
 
 class ChatSession(Base):
     """One row per chat session."""

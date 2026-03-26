@@ -6,14 +6,10 @@ logger = logging.getLogger(__name__)
 
 nlp = spacy.load("en_core_web_sm")
 
-# Headings are not clauses — they label sections
-# If a paragraph matches this it gets attached to the next paragraph as context
 HEADING_PATTERN = re.compile(
-    r"^(\d+[\.\)]\s+|[A-Z][A-Z\s]{2,50}$|[IVXLCDM]+\.\s+)",
+    r"^(\d+[\.\\)]\s+|[A-Z][A-Z\s]{2,50}$|[IVXLCDM]+\.\s+)",
 )
 
-# If a paragraph contains these it likely has multiple distinct obligations
-# and should be split further by spaCy sentence boundaries
 SPLIT_INDICATORS = [
     "additionally,",
     "furthermore,",
@@ -24,8 +20,8 @@ SPLIT_INDICATORS = [
     "except that",
 ]
 
-MIN_CLAUSE_LENGTH = 40    # chars — shorter than this is a fragment
-MAX_CLAUSE_LENGTH = 1200  # chars — longer than this gets sentence-split
+MIN_CLAUSE_LENGTH = 40
+MAX_CLAUSE_LENGTH = 1200
 
 
 def is_heading(text: str) -> bool:
@@ -34,7 +30,6 @@ def is_heading(text: str) -> bool:
         return False
     if HEADING_PATTERN.match(stripped):
         return True
-    # All caps short line = heading
     if stripped.isupper() and len(stripped.split()) <= 10:
         return True
     return False
@@ -51,7 +46,6 @@ def split_by_sentences(text: str) -> list[str]:
     doc = nlp(text)
     sentences = [sent.text.strip() for sent in doc.sents]
 
-    # Merge very short sentences back into previous
     merged = []
     buffer = ""
     for sent in sentences:

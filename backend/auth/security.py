@@ -1,7 +1,3 @@
-"""
-auth/security.py
-Password hashing and JWT token helpers.
-"""
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -20,9 +16,7 @@ def hash_password(plain: str) -> str:
     Hash a password using bcrypt with a SHA256 pre-hash 
     to bypass the 72-character limit and ensure constant-time input.
     """
-    # Pre-hash to 64 chars hex string
     pre_hashed = hashlib.sha256(plain.encode("utf-8")).hexdigest()
-    # Hash with bcrypt
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(pre_hashed.encode("utf-8"), salt)
     return hashed.decode("utf-8")
