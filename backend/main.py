@@ -211,7 +211,7 @@ async def analyze_async(
         if body.input_type == "url":
             job_id = str(uuid.uuid4())
             user_id = current_user.id if current_user else None
-            db_source = body.source_label if body.source_label else body.content[:500]
+            db_source = body.source_label if body.source_label else body.content
             
             await crud.create_analysis_job(
                 db, job_id,
@@ -248,7 +248,7 @@ async def analyze_async(
     job_id = str(uuid.uuid4())
     user_id = current_user.id if current_user else None
 
-    db_source = body.source_label if body.source_label else body.content[:500]
+    db_source = body.source_label if body.source_label else body.content
 
     await crud.create_analysis_job(
         db, job_id,

@@ -27,6 +27,7 @@ export default function App() {
   const [analysisJobId, setAnalysisJobId] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [sourceInfo, setSourceInfo] = useState({ type: null, value: null });
+  const [showSourcePopup, setShowSourcePopup] = useState(false);
   
   const [sessionId, setSessionId] = useState(null);
   const [chatMessages, setChatMessages] = useState([
@@ -394,9 +395,9 @@ export default function App() {
       if (inputMode === 'url') {
         setSourceInfo({ type: 'url', value: content });
       } else if (inputMode === 'upload') {
-        setSourceInfo({ type: 'pdf', value: pdfFileName });
+        setSourceInfo({ type: 'pdf', value: pdfFileName, blobUrl: URL.createObjectURL(uploadedFile) });
       } else {
-        setSourceInfo({ type: 'text', value: content.slice(0, 120) });
+        setSourceInfo({ type: 'text', value: content });
       }
 
       const requestBody = {
@@ -601,6 +602,80 @@ export default function App() {
         title="Processing"
         detail="Extracting and analyzing clauses. You can press STOP anytime."
       />
+
+      <AnimatePresence>
+        {showSourcePopup && (
+          <motion.div 
+            className="popup-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowSourcePopup(false)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <motion.div 
+              className="popup-content"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ 
+                background: 'var(--surface, #1e1e2e)', 
+                padding: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '0' : '24px', 
+                borderRadius: '12px', 
+                maxWidth: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '1200px' : '600px', 
+                width: '90%', 
+                height: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '90vh' : 'auto',
+                maxHeight: '90vh', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                border: '1px solid var(--border)',
+                overflow: 'hidden',
+                position: 'relative'
+              }}
+            >
+              {((sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url') && (
+                <button 
+                  onClick={() => setShowSourcePopup(false)}
+                  style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}
+                >
+                  &times;
+                </button>
+              )}
+
+              {sourceInfo.type === 'pdf' ? (
+                sourceInfo.blobUrl ? (
+                  <iframe src={sourceInfo.blobUrl} width="100%" height="100%" style={{ flex: 1, border: 'none', background: '#fff' }} title="PDF Preview" />
+                ) : (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source Content</h3>
+                    <FileText size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                    <p style={{ color: 'var(--text-body)' }}><strong>{sourceInfo.value}</strong></p>
+                    <p style={{ fontSize: '13px', marginTop: '12px', maxWidth: '400px', lineHeight: 1.5 }}>
+                      The original PDF file is not available for historical analyses. It is only stored locally during your active upload session.
+                    </p>
+                    <div style={{ marginTop: '24px', textAlign: 'center', width: '100%' }}>
+                      <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
+                    </div>
+                  </div>
+                )
+              ) : sourceInfo.type === 'url' ? (
+                <iframe src={sourceInfo.value} width="100%" height="100%" style={{ flex: 1, border: 'none', background: '#fff' }} title="URL Preview" />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: 'calc(90vh - 48px)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source Content</h3>
+                  <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-body)', fontSize: '14px', lineHeight: 1.5, overflowY: 'auto', flex: 1, padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    {sourceInfo.value || 'No content loaded.'}
+                  </div>
+                  <div style={{ marginTop: '24px', textAlign: 'right' }}>
+                    <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <aside className="sidebar" style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
         <div className="brand">
           <div className="brand-icon"><Scale size={18} /></div>
@@ -779,17 +854,17 @@ export default function App() {
                     <h1 className="section-title">Analysis Results</h1>
                     <div className="source-badge">
                       {sourceInfo.type === 'url' ? (
-                        <a href={sourceInfo.value} target="_blank" rel="noopener noreferrer" className="source-link">
+                        <span className="source-link source-url" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
                           <Link size={14} />
                           <span className="source-link-text">{sourceInfo.value}</span>
-                        </a>
+                        </span>
                       ) : sourceInfo.type === 'pdf' ? (
-                        <span className="source-link source-pdf">
+                        <span className="source-link source-pdf" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
                           <FileText size={14} />
                           <span className="source-link-text">{sourceInfo.value || 'Uploaded PDF'}</span>
                         </span>
                       ) : sourceInfo.type === 'text' ? (
-                        <span className="source-link source-text">
+                        <span className="source-link source-text" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
                           <FileText size={14} />
                           <span className="source-link-text">Pasted Text</span>
                         </span>
