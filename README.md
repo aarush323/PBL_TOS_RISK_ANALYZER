@@ -1,92 +1,87 @@
 # ToS Risk Analyzer
 
-AI-powered Terms of Service analysis tool that extracts, classifies, and explains legal risks in ToS/Privacy Policy documents.
+AI-powered Terms of Service / Privacy Policy analyzer with extraction, risk classification, and document chat.
 
-## Features
+## Key Features
 
-- **Multi-format extraction** — URL, raw text, PDF upload
-- **NLP pre-filtering** — spaCy-based risk signal detection (modal verbs, negation, keyword matching, NER)
-- **LLM risk classification** — Cerebras API (llama3.1-8b) with Ollama local fallback
-- **5 risk categories** — Privacy, Legal, User Rights, Security, Financial
-- **Batched + parallel processing** — 5 clauses/batch, 3 concurrent workers
-- **Async analysis** — Returns extraction instantly, LLM runs in background
-- **Document Chatbot** — Interactive Q&A on extracted documents via Cerebras/Ollama
-- **Confidence scoring** — High/Medium/Low per clause with plain-English explanations
-- **Premium UI** — Modern, dark-themed tabbed interface with real-time feedback
+- URL, raw text, and PDF extraction
+- Clause segmentation + NLP pre-filtering (spaCy)
+- Risk classification with Cerebras, with Ollama local fallback
+- Async analysis jobs with polling
+- User auth (register/login/JWT) and per-user saved analysis history
+- Document-aware chat over extracted text
 
 ## Tech Stack
 
 | Layer | Tech |
 |-------|------|
-| Backend | FastAPI, Uvicorn |
-| NLP | spaCy (en_core_web_sm) |
-| LLM | Cerebras API + Ollama (fallback) |
-| Extraction | BeautifulSoup4, lxml, pdfplumber |
-| Frontend | React.js (Vite) |
+| Backend | FastAPI, SQLAlchemy async, PostgreSQL |
+| NLP | spaCy (`en_core_web_sm`) |
+| LLM | Cerebras API + Ollama fallback |
+| Extraction | requests, BeautifulSoup4, lxml, pdfplumber |
+| Frontend | React + Vite |
 
-## Setup
+## Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+- PostgreSQL 14+
+
+## Quick Start
 
 ```bash
-# 1. Clone
-git clone <repo-url>
-cd PBL
+# from repository root
 
-# 2. Setup Backend
+# 1) Backend environment
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
 python -m spacy download en_core_web_sm
 
-# 3. Configure API key
+# 2) Backend config
 cp backend/.env.example backend/.env
-# Edit backend/.env and add your Cerebras API key
+# edit backend/.env and set at least:
+# - DATABASE_URL
+# - SECRET_KEY
+# - CEREBRAS_API_KEY (optional if using Ollama only)
 
-# 4. Run Backend
+# 3) Run backend
 cd backend
 uvicorn main:app --reload
 
-# 5. Run Frontend (React)
-cd ../frontend
+# 4) Run frontend (new terminal)
+cd frontend
 npm install
 npm run dev
 ```
 
-## API Endpoints
+Frontend default URL: `http://localhost:5173`  
+Backend default URL: `http://localhost:8000`
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
+## Backend API Summary
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | `GET` | `/health` | Health check |
-| `POST` | `/extract` | Extract text from URL/text |
-| `POST` | `/extract/pdf` | Extract text from PDF |
-| `POST` | `/analyze/async` | Async analysis (returns job_id) |
-| `GET` | `/analyze/status/{job_id}` | Poll async result |
-| `POST` | `/chat/store` | Store document for chat session |
-| `POST` | `/chat` | Interactive chat endpoint |
+| `POST` | `/auth/register` | Create account |
+| `POST` | `/auth/login` | Get JWT token |
+| `GET` | `/auth/me` | Get current user |
+| `POST` | `/extract` | Extract from URL or text |
+| `POST` | `/extract/pdf` | Extract from uploaded PDF |
+| `POST` | `/analyze/async` | Start async analysis |
+| `GET` | `/analyze/status/{job_id}` | Poll analysis status/result |
+| `POST` | `/analyze/stop/{job_id}` | Cancel in-flight analysis |
+| `GET` | `/analyses` | List user analyses |
+| `GET` | `/analyses/{job_id}` | Fetch one saved analysis |
+| `POST` | `/chat/store` | Store source document for chat |
+| `POST` | `/chat` | Ask questions about stored document |
+| `GET` | `/chat/{session_id}/history` | Read chat history |
 
-## Project Structure
+## Testing
 
+```bash
+cd backend
+pytest -q
 ```
-PBL/
-├── backend/
-│   ├── main.py                  # FastAPI app + routes
-│   ├── requirements.txt
-│   ├── .env                     # API keys (not committed)
-│   ├── extraction/
-│   │   ├── input_handler.py     # Routes input by type
-│   │   ├── url_extractor.py     # HTML fetch + parse
-│   │   ├── pdf_extractor.py     # PDF text extraction
-│   │   └── text_cleaner.py      # Text normalization
-│   ├── analysis/
-│   │   ├── segmenter.py         # Paragraph → clause splitting
-│   │   ├── nlp_features.py      # spaCy feature extraction
-│   │   ├── classifier.py        # LLM classification (batch + single)
-│   │   └── analyzer.py          # Pipeline orchestrator
-│   ├── chat/
-│   │   ├── chatbot.py           # Document Q&A logic
-│   │   └── __init__.py
-│   └── tests/
-│       ├── test_extraction.py
-│       └── test_analysis.py
-└── frontend/
-    └── index.html               # Tabbed UI: Analyze & Chat
-```
+
+Note: current tests use live external URLs and can be network-dependent.
