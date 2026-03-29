@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: tos-risk-analyzer-backend
+    env: docker
+    dockerContext: backend
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        sync: false # User will provide Neon URL
+      - key: CEREBRAS_API_KEY
+        sync: false # User will provide
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false # User will provide Vercel URL
