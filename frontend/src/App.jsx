@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap } from 'lucide-react';
+import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap, Maximize2, Minimize2 } from 'lucide-react';
 import { marked } from 'marked';
 // eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
@@ -26,6 +26,8 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisJobId, setAnalysisJobId] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [sourceInfo, setSourceInfo] = useState({ type: null, value: null });
+  const [showSourcePopup, setShowSourcePopup] = useState(false);
   
   const [sessionId, setSessionId] = useState(null);
   const [chatMessages, setChatMessages] = useState([
@@ -286,11 +288,20 @@ export default function App() {
         setSessionId(data.job_id);
       }
 
+      // Restore source info from history
+      const sType = data.source_type || 'text';
+      if (sType === 'url') {
+        setSourceInfo({ type: 'url', value: data.source || '' });
+      } else if (sType === 'pdf') {
+        setSourceInfo({ type: 'pdf', value: data.source || 'Uploaded PDF' });
+      } else {
+        setSourceInfo({ type: 'text', value: data.source || '' });
+      }
+
       setAnalysisJobId(data.job_id);
       setAnalysisResult(data.result);
       setSelectedHistoryId(data.job_id);
       setActiveView('results');
-      addToast('Loaded analysis from history.');
     } catch {
       addToast('Could not open selected history item', true);
     }
@@ -306,7 +317,6 @@ export default function App() {
       if (data.status === 'complete') {
         setAnalysisResult(data.result);
         setIsProcessing(false);
-        addToast('Analysis complete!');
         loadHistory();
         if (settings.autoOpenResults) {
           setActiveView('results');
@@ -361,10 +371,12 @@ export default function App() {
     try {
       let analyzeType = inputMode;
       let analyzeContent = content;
+      let pdfFileName = null;
       
       if (inputMode === 'upload') {
         const formData = new FormData();
         formData.append('file', uploadedFile);
+        pdfFileName = uploadedFile.name;
         
         const extractRes = await fetch(`${API}/extract/pdf`, {
           method: 'POST',
@@ -379,13 +391,30 @@ export default function App() {
         analyzeContent = extractData.cleaned_text || extractData.raw_text;
       }
 
+      // Track the source for display in results
+      if (inputMode === 'url') {
+        setSourceInfo({ type: 'url', value: content });
+      } else if (inputMode === 'upload') {
+        setSourceInfo({ type: 'pdf', value: pdfFileName, blobUrl: URL.createObjectURL(uploadedFile) });
+      } else {
+        setSourceInfo({ type: 'text', value: content });
+      }
+
+      const requestBody = {
+        input_type: analyzeType,
+        content: analyzeContent,
+      };
+      if (inputMode === 'upload') {
+        requestBody.source_label = pdfFileName;
+      }
+
       const res = await fetch(`${API}/analyze/async`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ input_type: analyzeType, content: analyzeContent })
+        body: JSON.stringify(requestBody)
       });
       
       if (!res.ok) throw new Error('Analysis initialization failed');
@@ -393,7 +422,6 @@ export default function App() {
       
       setAnalysisJobId(data.job_id);
       setSelectedHistoryId(data.job_id);
-      addToast('Analysis started. Processing risks...');
       
       if (data.extraction && data.extraction.cleaned_text) {
         initChatSession(data.extraction.cleaned_text, data.job_id);
@@ -479,7 +507,6 @@ export default function App() {
     ].filter(Boolean).join('\n\n');
 
     setChatMessages(prev => [...prev, { role: 'bot', content: chatDetail }]);
-    addToast(`Added detailed explanation for Clause #${index + 1} to chat.`);
   };
 
   useEffect(() => {
@@ -575,6 +602,92 @@ export default function App() {
         title="Processing"
         detail="Extracting and analyzing clauses. You can press STOP anytime."
       />
+
+      <AnimatePresence>
+        {showSourcePopup && (
+          <motion.div 
+            className="popup-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowSourcePopup(false)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <motion.div 
+              className="popup-content"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ 
+                background: 'var(--surface, #1e1e2e)', 
+                padding: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '0' : '24px', 
+                borderRadius: '12px', 
+                maxWidth: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '1200px' : '600px', 
+                width: '90%', 
+                height: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '90vh' : 'auto',
+                maxHeight: '90vh', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                border: '1px solid var(--border)',
+                overflow: 'hidden',
+                position: 'relative'
+              }}
+            >
+              {((sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url') && (
+                <button 
+                  onClick={() => setShowSourcePopup(false)}
+                  style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}
+                >
+                  &times;
+                </button>
+              )}
+
+              {sourceInfo.type === 'pdf' ? (
+                sourceInfo.blobUrl ? (
+                  <iframe src={sourceInfo.blobUrl} width="100%" height="100%" style={{ flex: 1, border: 'none', background: '#fff' }} title="PDF Preview" />
+                ) : (
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source Content</h3>
+                    <FileText size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                    <p style={{ color: 'var(--text-body)' }}><strong>{sourceInfo.value}</strong></p>
+                    <p style={{ fontSize: '13px', marginTop: '12px', maxWidth: '400px', lineHeight: 1.5 }}>
+                      The original PDF file is not available for historical analyses. It is only stored locally during your active upload session.
+                    </p>
+                    <div style={{ marginTop: '24px', textAlign: 'center', width: '100%' }}>
+                      <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
+                    </div>
+                  </div>
+                )
+              ) : sourceInfo.type === 'url' ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source URL</h3>
+                  <Link size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                  <p style={{ color: 'var(--text-body)', wordBreak: 'break-all', maxWidth: '80%' }}>
+                    <strong><a href={sourceInfo.value} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>{sourceInfo.value}</a></strong>
+                  </p>
+                  <p style={{ fontSize: '13px', marginTop: '12px', maxWidth: '400px', lineHeight: 1.5 }}>
+                    For security and performance reasons, live web pages are not loaded in an iframe preview. Click the link above to open it in a new tab.
+                  </p>
+                  <div style={{ marginTop: '24px', textAlign: 'center', width: '100%' }}>
+                    <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: 'calc(90vh - 48px)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source Content</h3>
+                  <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-body)', fontSize: '14px', lineHeight: 1.5, overflowY: 'auto', flex: 1, padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    {sourceInfo.value || 'No content loaded.'}
+                  </div>
+                  <div style={{ marginTop: '24px', textAlign: 'right' }}>
+                    <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <aside className="sidebar" style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
         <div className="brand">
           <div className="brand-icon"><Scale size={18} /></div>
@@ -620,6 +733,7 @@ export default function App() {
         </div>
         
         <div className="sidebar-footer">
+          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => setActiveView('chat')}><BrainCircuit size={18}/> Chat</a>
           <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => setActiveView('settings')}><SettingsIcon size={18}/> Settings</a>
           <a className="nav-item" onClick={logout}><HelpCircle size={18}/> Sign Out</a>
           
@@ -750,7 +864,29 @@ export default function App() {
                 <div className="hero hero-compact hero-row">
                   <div>
                     <h1 className="section-title">Analysis Results</h1>
-                    <p className="source-id">{analysisJobId ? `Source ID: ${analysisJobId.split('-')[0]}` : 'No document loaded'}</p>
+                    <div className="source-badge">
+                      {sourceInfo.type === 'url' ? (
+                        <span className="source-link source-url" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
+                          <Link size={14} />
+                          <span className="source-link-text">{sourceInfo.value}</span>
+                        </span>
+                      ) : sourceInfo.type === 'pdf' ? (
+                        <span className="source-link source-pdf" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
+                          <FileText size={14} />
+                          <span className="source-link-text">{sourceInfo.value || 'Uploaded PDF'}</span>
+                        </span>
+                      ) : sourceInfo.type === 'text' ? (
+                        <span className="source-link source-text" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
+                          <FileText size={14} />
+                          <span className="source-link-text">Pasted Text</span>
+                        </span>
+                      ) : (
+                        <span className="source-link source-text">
+                          <FileText size={14} />
+                          <span className="source-link-text">No document loaded</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -823,12 +959,22 @@ export default function App() {
                   
                   <div className="resizer vertical inner" onMouseDown={startResultsResize} />
                   <div className="results-side" style={{ width: isDesktop() ? `${100 - resultsSplit}%` : '100%' }}>
-                    <div className="chat-header">
-                      <div className="chat-logo"><BrainCircuit size={18}/></div>
-                      <div className="chat-title">
-                        <h3>Digital Jurist Assistant</h3>
-                        <p>Document Q&A</p>
+                    <div className="chat-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="chat-logo"><BrainCircuit size={18}/></div>
+                        <div className="chat-title">
+                          <h3>Digital Jurist Assistant</h3>
+                          <p>Document Q&A</p>
+                        </div>
                       </div>
+                      <button 
+                        className="chat-sugg-btn" 
+                        onClick={() => setActiveView('chat')}
+                        title="Expand to Full Chat"
+                        style={{ padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Maximize2 size={16} />
+                      </button>
                     </div>
                     
                     <div className="chat-messages" ref={chatBoxRef}>
@@ -914,6 +1060,81 @@ export default function App() {
                       onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
                       style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
                     />
+                  </div>
+                </div>
+              </motion.section>
+            )}
+
+            {activeView === 'chat' && (
+              <motion.section
+                key="view-chat"
+                className="view-section active"
+                style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
+                initial={viewMotion.initial}
+                animate={viewMotion.animate}
+                exit={viewMotion.exit}
+              >
+                <div className="chat-header" style={{ borderBottom: '1px solid var(--border)', background: 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="chat-logo"><BrainCircuit size={18}/></div>
+                    <div className="chat-title">
+                      <h3>Digital Jurist Assistant</h3>
+                      <p>Document Q&A</p>
+                    </div>
+                  </div>
+                  {analysisResult && (
+                    <button 
+                      className="chat-sugg-btn" 
+                      onClick={() => setActiveView('results')}
+                      style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '4px' }}
+                    >
+                      <Minimize2 size={14} /> Back to Report
+                    </button>
+                  )}
+                </div>
+                
+                <div className="chat-messages" ref={chatBoxRef}>
+                  {chatMessages.map((msg, i) => (
+                    <div className={`msg ${msg.role}`} key={i}>
+                      <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14}/> : (user?.email?.[0].toUpperCase() || 'U')}</div>
+                      <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
+                    </div>
+                  ))}
+                  {isChatTyping && (
+                     <div className="msg bot">
+                      <div className="msg-avatar"><BrainCircuit size={14}/></div>
+                      <div className="msg-bubble"><TypingDots /></div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="chat-input" style={{
+                  opacity: sessionId ? 1 : 0.5,
+                  pointerEvents: sessionId ? 'all' : 'none',
+                  borderTop: '1px solid var(--border)',
+                  borderBottom: 'none',
+                  paddingTop: '16px',
+                  background: 'transparent',
+                  height: 'auto',
+                  flexShrink: 0
+                }}>
+                  <div className="chat-suggestions">
+                    {['Summarize risks', 'Is there an opt-out?', 'Data collection terms?'].map(sugg => (
+                      <div key={sugg} className="chat-sugg-btn" onClick={() => setChatInput(sugg)}>{sugg}</div>
+                    ))}
+                  </div>
+                  <div className="chat-form">
+                    <input 
+                      type="text" 
+                      className="chat-input-field" 
+                      placeholder="Ask about specific clauses or risks..." 
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyPress={e => e.key === 'Enter' && sendChat()}
+                    />
+                    <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()}>
+                      <ChevronRight size={18} />
+                    </button>
                   </div>
                 </div>
               </motion.section>

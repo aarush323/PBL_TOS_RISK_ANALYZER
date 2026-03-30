@@ -44,23 +44,19 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 app = FastAPI(title="ToS Analyzer API")
 
-ALLOWED_ORIGINS = {
-    "development": [
+if ENVIRONMENT == "production":
+    cors_origins = [FRONTEND_URL]
+else:
+    cors_origins = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-    ],
-    "production": [
-        FRONTEND_URL,
-    ],
-}
-
-allowed = ALLOWED_ORIGINS.get(ENVIRONMENT, ALLOWED_ORIGINS["development"])
+    ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,6 +94,7 @@ async def startup():
 class AnalyzeInput(BaseModel):
     input_type: str
     content: str
+    source_label: str | None = None
 
 
 class ChatMessage(BaseModel):
@@ -260,15 +257,53 @@ async def analyze_async(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+        if body.input_type == "url":
+            job_id = str(uuid.uuid4())
+            user_id = current_user.id if current_user else None
+            db_source = body.source_label if body.source_label else body.content
+
+            await crud.create_analysis_job(
+                db,
+                job_id,
+                source=db_source,
+                source_type=body.input_type,
+                user_id=user_id,
+            )
+
+            mock_result = {
+                "overall_risk": "High",
+                "risky_clause_count": 1,
+                "total_clauses": 1,
+                "clauses": [
+                    {
+                        "id": 0,
+                        "text": "The target website actively blocked automated extraction (e.g., via 403 Forbidden, CAPTCHA, or anti-bot measures).",
+                        "explanation": f"When a company blocks automated analysis of its legal terms, it reduces transparency and makes it harder for users to independently verify their rights. Error details: {str(e)}",
+                        "is_risky": True,
+                        "risk_categories": ["Transparency Risk", "Accessibility Risk"],
+                        "confidence": "High",
+                        "skipped_llm": True,
+                    }
+                ],
+            }
+            await crud.update_analysis_complete(db, job_id, mock_result)
+            return {
+                "job_id": job_id,
+                "status": "processing",
+                "extraction": {"cleaned_text": "Content blocked by host."},
+            }
+        else:
+            raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
     job_id = str(uuid.uuid4())
     user_id = current_user.id if current_user else None
 
+    db_source = body.source_label if body.source_label else body.content
+
     await crud.create_analysis_job(
         db,
         job_id,
-        source=body.content[:500],
+        source=db_source,
         source_type=body.input_type,
         user_id=user_id,
     )

@@ -68,7 +68,7 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
     for clause in clauses:
         features = extract_features(clause["text"])
 
-        if not is_likely_risky(features):
+        if not is_likely_risky(features, clause["text"]):
             skipped += 1
             results.append({
                 **clause,

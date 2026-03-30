@@ -1,0 +1,11 @@
+[phases.setup]
+cmds = ["npm install -g serve"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "serve -s dist -l $PORT"
