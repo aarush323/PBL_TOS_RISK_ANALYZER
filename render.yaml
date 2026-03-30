@@ -3,7 +3,7 @@ services:
     type: web
     runtime: docker
     dockerfilePath: backend/Dockerfile
-    dockerContext: .
+    dockerContext: backend   # ✅ FIXED
     region: oregon
     plan: free
     envVars:
@@ -24,7 +24,7 @@ services:
     type: web
     runtime: docker
     dockerfilePath: frontend/Dockerfile
-    dockerContext: .
+    dockerContext: frontend   # ✅ FIXED
     region: oregon
     plan: free
     envVars:
