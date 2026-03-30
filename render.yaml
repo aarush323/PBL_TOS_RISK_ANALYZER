@@ -1,5 +1,6 @@
 services:
   - name: tos-backend
+    type: web
     dockerfilePath: backend/Dockerfile
     region: oregon
     plan: free
@@ -18,6 +19,7 @@ services:
         sync: false
 
   - name: tos-frontend
+    type: web
     dockerfilePath: frontend/Dockerfile
     region: oregon
     plan: free
