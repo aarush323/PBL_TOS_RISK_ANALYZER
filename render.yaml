@@ -2,8 +2,8 @@ services:
   - name: tos-backend
     type: web
     runtime: docker
-    dockerfilePath: backend/Dockerfile
-    dockerContext: backend   # ✅ FIXED
+    dockerfilePath: Dockerfile     # ✅ FIX
+    dockerContext: backend
     region: oregon
     plan: free
     envVars:
@@ -23,8 +23,8 @@ services:
   - name: tos-frontend
     type: web
     runtime: docker
-    dockerfilePath: frontend/Dockerfile
-    dockerContext: frontend   # ✅ FIXED
+    dockerfilePath: Dockerfile     # ✅ FIX
+    dockerContext: frontend
     region: oregon
     plan: free
     envVars:
