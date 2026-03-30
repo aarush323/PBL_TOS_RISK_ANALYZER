@@ -1,6 +1,9 @@
 services:
   - name: tos-backend
+    type: web
+    runtime: docker
     dockerfilePath: backend/Dockerfile
+    dockerContext: .
     region: oregon
     plan: free
     envVars:
@@ -18,7 +21,10 @@ services:
         sync: false
 
   - name: tos-frontend
+    type: web
+    runtime: docker
     dockerfilePath: frontend/Dockerfile
+    dockerContext: .
     region: oregon
     plan: free
     envVars:
