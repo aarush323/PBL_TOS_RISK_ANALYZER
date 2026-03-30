@@ -5,15 +5,21 @@ from sqlalchemy.orm import DeclarativeBase
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+
+# asyncpg doesn't support sslmode in URL query params - handle via connect_args
+connect_args = {}
+if DATABASE_URL:
+    if "sslmode=disable" in DATABASE_URL:
+        connect_args["ssl"] = False
+        DATABASE_URL = DATABASE_URL.split("?")[0]
+    elif "sslmode=require" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.split("?")[0]
 
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
+    connect_args=connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(

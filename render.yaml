@@ -1,0 +1,26 @@
+services:
+  - name: tos-backend
+    dockerfilePath: backend/Dockerfile
+    region: oregon
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: "production"
+      - key: FRONTEND_URL
+        sync: false
+
+  - name: tos-frontend
+    dockerfilePath: frontend/Dockerfile
+    region: oregon
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        sync: false

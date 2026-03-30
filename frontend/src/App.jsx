@@ -7,7 +7,7 @@ import LoadingOverlay from './components/LoadingOverlay.jsx';
 import SkeletonList from './components/SkeletonList.jsx';
 import TypingDots from './components/TypingDots.jsx';
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('tos_token'));
