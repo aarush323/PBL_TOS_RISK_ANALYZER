@@ -24,7 +24,7 @@ RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
 ENV PYTHONUNBUFFERED=1
-ENV ENVIRONMENT=production
+ENV ENVIRONMENT=development
 
 EXPOSE 8000
 
