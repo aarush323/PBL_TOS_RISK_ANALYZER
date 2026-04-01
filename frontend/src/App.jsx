@@ -519,10 +519,12 @@ export default function App() {
     if (!analysisResult) return 100;
     const r_count = analysisResult.risky_clause_count || 0;
     const t_count = analysisResult.total_clauses || 1;
-    let score = 100 - Math.min((r_count / t_count) * 200, 100);
-    if(analysisResult.overall_risk === 'High') score = Math.max(10, score - 30);
-    if(analysisResult.overall_risk === 'Medium') score = Math.max(40, score - 15);
-    return Math.floor(score);
+    let score = 100 - ((r_count / t_count) * 100);
+    
+    if(analysisResult.overall_risk === 'High') score -= 20;
+    else if(analysisResult.overall_risk === 'Medium') score -= 10;
+    
+    return Math.floor(Math.max(10, Math.min(100, score)));
   };
 
   const renderFauxHTML = (htmlString) => {

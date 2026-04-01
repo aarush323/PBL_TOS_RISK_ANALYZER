@@ -19,10 +19,12 @@ def compute_overall_risk(risky_clauses: list[dict], total: int) -> str:
         return "Low"
     high_count = sum(1 for c in risky_clauses if c["confidence"] == "High")
     ratio = len(risky_clauses) / total
-    if high_count >= 3 or ratio > 0.3:
+    
+    if high_count >= 5 or ratio >= 0.45:
         return "High"
-    elif high_count >= 1 or ratio > 0.15:
+    elif high_count >= 2 or ratio >= 0.25:
         return "Medium"
+        
     return "Low"
 
 
