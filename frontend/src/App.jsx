@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap, Maximize2, Minimize2 } from 'lucide-react';
+import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap, Maximize2, Minimize2, Menu, X } from 'lucide-react';
 import { marked } from 'marked';
 // eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
@@ -15,6 +15,7 @@ export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [inputMode, setInputMode] = useState('url');
   
@@ -690,7 +691,27 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      <aside className="sidebar" style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
+
+      {/* Mobile Top Header */}
+      <div className="mobile-top-header">
+        <div className="brand" style={{ margin: 0 }}>
+          <div className="brand-icon"><Scale size={18} /></div>
+          <span className="brand-title" style={{ fontSize: '18px', fontWeight: 700, marginLeft: '8px' }}>Jurist AI</span>
+        </div>
+        <button className="mobile-menu-btn" onClick={() => setIsMobileNavOpen(true)}>
+          <Menu size={24} />
+        </button>
+      </div>
+
+      {isMobileNavOpen && (
+        <div className="mobile-overlay" onClick={() => setIsMobileNavOpen(false)} />
+      )}
+
+      <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`} style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
+        {/* Mobile Close Button (only visible inside sidebar on mobile) */}
+        <button className="mobile-close-btn" onClick={() => setIsMobileNavOpen(false)}>
+          <X size={24} />
+        </button>
         <div className="brand">
           <div className="brand-icon"><Scale size={18} /></div>
           <div className="brand-text">
@@ -699,8 +720,8 @@ export default function App() {
           </div>
         </div>
         
-        <button className="nav-btn primary" onClick={() => { setActiveView('dashboard'); setSelectedHistoryId(null); }}>
-          <Plus size={16} /> New Analysis
+        <button className="nav-btn primary" onClick={() => { setActiveView('dashboard'); setSelectedHistoryId(null); setIsMobileNavOpen(false); }}>
+          <Plus size={16} /> <span>New Analysis</span>
         </button>
 
         <div className="sidebar-history">
@@ -722,7 +743,7 @@ export default function App() {
                   key={item.job_id}
                   type="button"
                   className={`history-item ${selectedHistoryId === item.job_id ? 'active' : ''}`}
-                  onClick={() => openHistoryAnalysis(item.job_id)}
+                  onClick={() => { openHistoryAnalysis(item.job_id); setIsMobileNavOpen(false); }}
                 >
                   <span className="history-item-main">
                     {item.source_type?.toUpperCase() || 'SRC'} | {(item.overall_risk || 'N/A')}
@@ -735,9 +756,9 @@ export default function App() {
         </div>
         
         <div className="sidebar-footer">
-          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => setActiveView('chat')}><BrainCircuit size={18}/> Chat</a>
-          <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => setActiveView('settings')}><SettingsIcon size={18}/> Settings</a>
-          <a className="nav-item" onClick={logout}><HelpCircle size={18}/> Sign Out</a>
+          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => { setActiveView('chat'); setIsMobileNavOpen(false); }}><BrainCircuit size={18}/> <span>Chat</span></a>
+          <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => { setActiveView('settings'); setIsMobileNavOpen(false); }}><SettingsIcon size={18}/> <span>Settings</span></a>
+          <a className="nav-item" onClick={logout}><HelpCircle size={18}/> <span>Sign Out</span></a>
           
           <div className="user-profile">
             <div className="user-avatar">{user?.email?.[0].toUpperCase() || 'U'}</div>
