@@ -73,10 +73,16 @@ def validate_environment():
         ]
         missing = [var for var in required_vars if not os.getenv(var)]
         if missing:
-            raise RuntimeError(
-                f"Missing required environment variables: {', '.join(missing)}"
-            )
-        logger.info("All required environment variables validated.")
+            # We allow it to continue if a default exists, but we warn
+            for var in missing:
+                if globals().get(var):
+                    logger.warning(f"Using default value for {var} because it is not set in the environment.")
+                else:
+                    raise RuntimeError(
+                        f"CRITICAL: Missing required environment variables: {', '.join(missing)}. "
+                        "Please set these in your deployment settings (e.g., Railway Dashboard)."
+                    )
+        logger.info("Environment validation complete.")
     else:
         logger.info(f"Running in {ENVIRONMENT} mode - CORS allowing localhost origins.")
 

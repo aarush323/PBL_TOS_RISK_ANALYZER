@@ -45,7 +45,7 @@ Respond ONLY with valid JSON. No explanation, no markdown, no extra text. Exactl
   "is_risky": true or false,
   "risk_categories": ["Privacy Risk"] or [],
   "confidence": "High" or "Medium" or "Low",
-  "explanation": "one sentence in plain English explaining why this is risky, or null if not risky"
+  "explanation": "detailed 3-4 sentence explanation in plain English outlining exactly why this is risky and the potential consequences, or null if not risky"
 }}
 
 Rules:
@@ -120,7 +120,7 @@ def classify_clause(clause: dict, features: dict) -> dict:
                     "messages": [{"role": "user", "content": prompt}],
                     "response_format": {"type": "json_object"},
                     "temperature": 0.1,
-                    "max_completion_tokens": 200
+                    "max_completion_tokens": 600
                 },
                 timeout=120.0
             )
@@ -152,7 +152,7 @@ def classify_clause(clause: dict, features: dict) -> dict:
                 "format": "json",
                 "options": {
                     "temperature": 0.1,   # low temp = consistent structured output
-                    "num_predict": 200    # JSON response never needs more than this
+                    "num_predict": 600    # JSON response needs space for longer explanation
                 }
             },
             timeout=120.0
@@ -208,7 +208,7 @@ Respond ONLY with valid JSON. No explanation, no markdown, no extra text. Exactl
       "is_risky": true or false,
       "risk_categories": ["Privacy Risk"] or [],
       "confidence": "High" or "Medium" or "Low",
-      "explanation": "one sentence in plain English explaining why this is risky, or null if not risky"
+      "explanation": "detailed 3-4 sentence explanation in plain English outlining exactly why this is risky and the potential consequences, or null if not risky"
     }}
   ]
 }}
@@ -345,7 +345,7 @@ def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
                 "temperature": 0.1,
-                "max_completion_tokens": 250 * count
+                "max_completion_tokens": 600 * count
             }
             response = _cerebras_post_with_backoff(payload, timeout=180.0)
             raw_text = response.json()["choices"][0]["message"]["content"]
@@ -367,7 +367,7 @@ def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]
                 "format": "json",
                 "options": {
                     "temperature": 0.1,
-                    "num_predict": min(150 * count, 800)
+                    "num_predict": min(450 * count, 2000)
                 }
             },
             timeout=180.0

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap, Maximize2, Minimize2 } from 'lucide-react';
+import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap, Maximize2, Minimize2, Menu, X } from 'lucide-react';
 import { marked } from 'marked';
 // eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
@@ -15,6 +15,7 @@ export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [inputMode, setInputMode] = useState('url');
   
@@ -517,12 +518,29 @@ export default function App() {
 
   const calculateScore = () => {
     if (!analysisResult) return 100;
-    const r_count = analysisResult.risky_clause_count || 0;
-    const t_count = analysisResult.total_clauses || 1;
-    let score = 100 - Math.min((r_count / t_count) * 200, 100);
-    if(analysisResult.overall_risk === 'High') score = Math.max(10, score - 30);
-    if(analysisResult.overall_risk === 'Medium') score = Math.max(40, score - 15);
-    return Math.floor(score);
+    let score = 100;
+
+    // Weight the score based on the actual confidence of individual risky clauses
+    if (analysisResult.clauses && analysisResult.clauses.length > 0) {
+      analysisResult.clauses.forEach(clause => {
+        if (clause.is_risky) {
+          if (clause.confidence === 'High') score -= 5;
+          else if (clause.confidence === 'Medium') score -= 3;
+          else score -= 1;
+        }
+      });
+    } else {
+      // Fallback scaling
+      const r_count = analysisResult.risky_clause_count || 0;
+      const t_count = analysisResult.total_clauses || 1;
+      score -= (r_count / t_count) * 60;
+    }
+    
+    // Apply a smaller modifier for the overall risk label
+    if (analysisResult.overall_risk === 'High') score -= 10;
+    else if (analysisResult.overall_risk === 'Medium') score -= 5;
+    
+    return Math.floor(Math.max(10, Math.min(100, score)));
   };
 
   const renderFauxHTML = (htmlString) => {
@@ -688,7 +706,27 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-      <aside className="sidebar" style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
+
+      {/* Mobile Top Header */}
+      <div className="mobile-top-header">
+        <div className="brand" style={{ margin: 0 }}>
+          <div className="brand-icon"><Scale size={18} /></div>
+          <span className="brand-title" style={{ fontSize: '18px', fontWeight: 700, marginLeft: '8px' }}>Jurist AI</span>
+        </div>
+        <button className="mobile-menu-btn" onClick={() => setIsMobileNavOpen(true)}>
+          <Menu size={24} />
+        </button>
+      </div>
+
+      {isMobileNavOpen && (
+        <div className="mobile-overlay" onClick={() => setIsMobileNavOpen(false)} />
+      )}
+
+      <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`} style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
+        {/* Mobile Close Button (only visible inside sidebar on mobile) */}
+        <button className="mobile-close-btn" onClick={() => setIsMobileNavOpen(false)}>
+          <X size={24} />
+        </button>
         <div className="brand">
           <div className="brand-icon"><Scale size={18} /></div>
           <div className="brand-text">
@@ -697,8 +735,8 @@ export default function App() {
           </div>
         </div>
         
-        <button className="nav-btn primary" onClick={() => { setActiveView('dashboard'); setSelectedHistoryId(null); }}>
-          <Plus size={16} /> New Analysis
+        <button className="nav-btn primary" onClick={() => { setActiveView('dashboard'); setSelectedHistoryId(null); setIsMobileNavOpen(false); }}>
+          <Plus size={16} /> <span>New Analysis</span>
         </button>
 
         <div className="sidebar-history">
@@ -720,7 +758,7 @@ export default function App() {
                   key={item.job_id}
                   type="button"
                   className={`history-item ${selectedHistoryId === item.job_id ? 'active' : ''}`}
-                  onClick={() => openHistoryAnalysis(item.job_id)}
+                  onClick={() => { openHistoryAnalysis(item.job_id); setIsMobileNavOpen(false); }}
                 >
                   <span className="history-item-main">
                     {item.source_type?.toUpperCase() || 'SRC'} | {(item.overall_risk || 'N/A')}
@@ -733,9 +771,9 @@ export default function App() {
         </div>
         
         <div className="sidebar-footer">
-          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => setActiveView('chat')}><BrainCircuit size={18}/> Chat</a>
-          <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => setActiveView('settings')}><SettingsIcon size={18}/> Settings</a>
-          <a className="nav-item" onClick={logout}><HelpCircle size={18}/> Sign Out</a>
+          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => { setActiveView('chat'); setIsMobileNavOpen(false); }}><BrainCircuit size={18}/> <span>Chat</span></a>
+          <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => { setActiveView('settings'); setIsMobileNavOpen(false); }}><SettingsIcon size={18}/> <span>Settings</span></a>
+          <a className="nav-item" onClick={logout}><HelpCircle size={18}/> <span>Sign Out</span></a>
           
           <div className="user-profile">
             <div className="user-avatar">{user?.email?.[0].toUpperCase() || 'U'}</div>
