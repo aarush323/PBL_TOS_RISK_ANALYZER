@@ -10,6 +10,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+try:
+    import spacy
+    _nlp = spacy.load("en_core_web_sm")
+    SPACY_AVAILABLE = True
+except Exception as e:
+    logger.warning(f"spaCy not available: {e}. Using regex-only fallback.")
+    _nlp = None
+    SPACY_AVAILABLE = False
+
 # ─────────────────────────────────────────────
 #  RISK LEXICON  (weight, category, patterns)
 #  Weights reflect severity of a single match:
@@ -191,6 +200,15 @@ def extract_features(clause_text: str) -> dict:
     elif is_boilerplate and not triggered_categories:
         risk_score -= 0.5  # soft penalty only when no real risk fired
 
+    entity_types = []
+    if SPACY_AVAILABLE and len(text) >= 50:
+        try:
+            doc = _nlp(text[:500])
+            entity_types = list(set([ent.label_ for ent in doc.ents if ent.label_ in 
+                {"ORG", "PERSON", "DATE", "GPE", "MONEY", "PERCENT"}]))
+        except Exception as e:
+            logger.debug(f"spaCy NER failed: {e}")
+
     return {
         "risk_score":            round(risk_score, 3),
         "triggered_categories":  sorted(list(triggered_categories)),
@@ -198,7 +216,7 @@ def extract_features(clause_text: str) -> dict:
         "has_negation":          has_negation,
         "has_power_language":    has_power,
         "is_noise":              is_noise,
-        "entity_types":          [],
+        "entity_types":          entity_types,
     }
 
 

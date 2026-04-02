@@ -98,6 +98,17 @@ def parse_llm_response(raw: str) -> dict:
     if parsed["confidence"] not in valid_confidence:
         parsed["confidence"] = "Low"
 
+    category_weights = {
+        "Privacy Risk": 2.0,
+        "Legal Risk": 1.8,
+        "Security Risk": 1.5,
+        "Financial Risk": 1.2,
+        "User Rights Risk": 1.0
+    }
+    confidence_weight = {"High": 1.0, "Medium": 0.6, "Low": 0.3}.get(parsed["confidence"], 0.3)
+    severity = confidence_weight + sum(category_weights.get(c, 1.0) for c in parsed["risk_categories"])
+    parsed["severity_score"] = round(severity, 2)
+
     return parsed
 
 
@@ -276,6 +287,17 @@ def parse_batch_response(raw: str, expected_count: int) -> list[dict]:
         ]
         if item["confidence"] not in valid_confidence:
             item["confidence"] = "Low"
+
+        category_weights = {
+            "Privacy Risk": 2.0,
+            "Legal Risk": 1.8,
+            "Security Risk": 1.5,
+            "Financial Risk": 1.2,
+            "User Rights Risk": 1.0
+        }
+        confidence_weight = {"High": 1.0, "Medium": 0.6, "Low": 0.3}.get(item["confidence"], 0.3)
+        severity = confidence_weight + sum(category_weights.get(c, 1.0) for c in item["risk_categories"])
+        item["severity_score"] = round(severity, 2)
 
         validated.append(item)
 

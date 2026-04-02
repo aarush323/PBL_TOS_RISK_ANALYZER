@@ -14,18 +14,91 @@ MAX_WORKERS = 3
 
 
 
+CATEGORY_WEIGHTS = {
+    "Privacy Risk": 2.0,
+    "Legal Risk": 1.8,
+    "Security Risk": 1.5,
+    "Financial Risk": 1.2,
+    "User Rights Risk": 1.0
+}
+
+CRITICAL_PHRASES = {
+    "class action waiver": 3.0,
+    "binding arbitration": 2.5,
+    "irrevocable license": 2.5,
+    "sell your data": 3.0,
+    "non-refundable": 1.5,
+    "terminate your account": 2.0,
+    "sole discretion": 1.5,
+    "as is": 1.5,
+    "indemnify": 1.8,
+    "limitation of liability": 1.8
+}
+
+
+def compute_clause_severity(clause: dict) -> float:
+    """Compute severity score for a single clause based on multiple factors."""
+    severity = 0.0
+    
+    confidence_weights = {"High": 1.0, "Medium": 0.6, "Low": 0.3}
+    severity += confidence_weights.get(clause.get("confidence", "Low"), 0.3)
+    
+    categories = clause.get("risk_categories", [])
+    for cat in categories:
+        severity += CATEGORY_WEIGHTS.get(cat, 1.0)
+    
+    text_lower = clause.get("text", "").lower()
+    for phrase, weight in CRITICAL_PHRASES.items():
+        if phrase in text_lower:
+            severity += weight
+    
+    return round(severity, 2)
+
+
 def compute_overall_risk(risky_clauses: list[dict], total: int) -> str:
     if not risky_clauses:
         return "Low"
-    high_count = sum(1 for c in risky_clauses if c["confidence"] == "High")
-    ratio = len(risky_clauses) / total
     
-    if high_count >= 5 or ratio >= 0.45:
+    high_count = sum(1 for c in risky_clauses if c["confidence"] == "High")
+    medium_count = sum(1 for c in risky_clauses if c["confidence"] == "Medium")
+    low_count = sum(1 for c in risky_clauses if c["confidence"] == "Low")
+    
+    ratio = len(risky_clauses) / total if total > 0 else 0
+    
+    total_severity = sum(compute_clause_severity(c) for c in risky_clauses)
+    avg_severity = total_severity / len(risky_clauses) if risky_clauses else 0
+    
+    privacy_count = sum(1 for c in risky_clauses if "Privacy Risk" in c.get("risk_categories", []))
+    legal_count = sum(1 for c in risky_clauses if "Legal Risk" in c.get("risk_categories", []))
+    
+    if (high_count >= 3 and avg_severity >= 3.5) or (total_severity >= 15 and high_count >= 3):
         return "High"
-    elif high_count >= 2 or ratio >= 0.25:
+    if high_count >= 2:
+        if privacy_count >= 1 and legal_count >= 1:
+            return "High"
+    if high_count >= 2 or ratio >= 0.30 or total_severity >= 8.0:
+        return "High"
+    if high_count >= 1 or ratio >= 0.15 or total_severity >= 4.0:
         return "Medium"
-        
+    if medium_count >= 3 or ratio >= 0.08 or avg_severity >= 2.0:
+        return "Medium"
+    
     return "Low"
+
+
+def compute_position_weight(index: int, total: int) -> float:
+    """Higher weight for clauses in earlier sections (usually contain critical terms)."""
+    if total <= 0:
+        return 1.0
+    position = index / total
+    if position < 0.15:
+        return 1.5
+    elif position < 0.30:
+        return 1.3
+    elif position < 0.50:
+        return 1.0
+    else:
+        return 0.8
 
 
 def _classify_batch_worker(batch_index: int, total_batches: int,
@@ -160,9 +233,15 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
 
     overall_risk = compute_overall_risk(risky, len(clauses))
 
+    total_severity = sum(compute_clause_severity(c) for c in risky)
+    avg_severity = total_severity / len(risky) if risky else 0
+
+    for i, clause in enumerate(results):
+        clause["position_weight"] = round(compute_position_weight(i, len(results)), 2)
+
     logger.info(
         f"Analysis complete: {len(risky)}/{len(clauses)} risky, "
-        f"overall={overall_risk}, skipped={skipped}"
+        f"overall={overall_risk}, severity={avg_severity:.2f}, skipped={skipped}"
     )
 
     return {
@@ -172,6 +251,8 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
         "risky_clause_count": len(risky),
         "skipped_llm_count": skipped,
         "overall_risk": overall_risk,
+        "total_severity_score": round(total_severity, 2),
+        "avg_severity_score": round(avg_severity, 2),
         "risk_breakdown": risk_breakdown,
         "clauses": results
     }
