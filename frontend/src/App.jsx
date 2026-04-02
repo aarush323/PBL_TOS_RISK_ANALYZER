@@ -942,7 +942,7 @@ export default function App() {
                         </div>
                       </div>
                       <div className="score-circle">
-                        <svg>
+                        <svg viewBox="0 0 100 100" width="100" height="100">
                           <circle className="bg" cx="50" cy="50" r="40"></circle>
                           <circle className="progress" cx="50" cy="50" r="40" style={{
                             strokeDashoffset: 251 - (251 * calculateScore() / 100),

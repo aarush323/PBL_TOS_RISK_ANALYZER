@@ -367,7 +367,7 @@ body::before {
 .score-info p { font-size: 14px; color: var(--text-muted); max-width: 400px; line-height: 1.5; }
 .score-circle { width: 100px; height: 100px; border-radius: 50%; position: relative; display: grid; place-items: center; }
 .score-circle svg { position: absolute; width: 100%; height: 100%; top: 0; left: 0; transform: rotate(-90deg); }
-.score-circle circle { fill: none; stroke-width: 8; stroke-linecap: round; }
+.score-circle circle { fill: none; stroke-width: 8; }
 .score-circle .bg { stroke: var(--surface-3); }
 .score-circle .progress { stroke: var(--error); stroke-dasharray: 251; stroke-dashoffset: 75; transition: stroke-dashoffset 1s ease-out; }
 .score-value { font-size: 32px; font-weight: 800; color: var(--text-heading); z-index: 1; }
