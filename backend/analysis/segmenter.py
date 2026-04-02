@@ -80,6 +80,7 @@ def segment_clauses(paragraphs: list[str]) -> list[dict]:
         if should_split(para):
             sub_clauses = split_by_sentences(para)
             for sub in sub_clauses:
+                logger.info(f"Chunk text: {sub[:200]}...")
                 clauses.append({
                     "id": clause_id,
                     "text": sub,
@@ -89,6 +90,7 @@ def segment_clauses(paragraphs: list[str]) -> list[dict]:
                 clause_id += 1
             pending_heading = None
         else:
+            logger.info(f"Chunk text: {para[:200]}...")
             clauses.append({
                 "id": clause_id,
                 "text": para,
