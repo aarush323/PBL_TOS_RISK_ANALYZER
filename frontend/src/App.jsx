@@ -943,9 +943,10 @@ export default function App() {
                       </div>
                       <div className="score-circle">
                         <svg viewBox="0 0 100 100" width="100" height="100">
-                          <circle className="bg" cx="50" cy="50" r="40"></circle>
-                          <circle className="progress" cx="50" cy="50" r="40" style={{
-                            strokeDashoffset: 251 - (251 * calculateScore() / 100),
+                          <circle className="bg" cx="50" cy="50" r="40" pathLength="100"></circle>
+                          <circle className="progress" cx="50" cy="50" r="40" pathLength="100" style={{
+                            strokeDashoffset: 100 - calculateScore(),
+                            strokeLinecap: calculateScore() === 100 ? 'butt' : 'round',
                             stroke: calculateScore() < 50 ? 'var(--error)' : (calculateScore() < 75 ? 'var(--warning)' : 'var(--success)')
                           }}></circle>
                         </svg>
