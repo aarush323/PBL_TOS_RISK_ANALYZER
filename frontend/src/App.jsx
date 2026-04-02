@@ -518,12 +518,27 @@ export default function App() {
 
   const calculateScore = () => {
     if (!analysisResult) return 100;
-    const r_count = analysisResult.risky_clause_count || 0;
-    const t_count = analysisResult.total_clauses || 1;
-    let score = 100 - ((r_count / t_count) * 100);
+    let score = 100;
+
+    // Weight the score based on the actual confidence of individual risky clauses
+    if (analysisResult.clauses && analysisResult.clauses.length > 0) {
+      analysisResult.clauses.forEach(clause => {
+        if (clause.is_risky) {
+          if (clause.confidence === 'High') score -= 5;
+          else if (clause.confidence === 'Medium') score -= 3;
+          else score -= 1;
+        }
+      });
+    } else {
+      // Fallback scaling
+      const r_count = analysisResult.risky_clause_count || 0;
+      const t_count = analysisResult.total_clauses || 1;
+      score -= (r_count / t_count) * 60;
+    }
     
-    if(analysisResult.overall_risk === 'High') score -= 20;
-    else if(analysisResult.overall_risk === 'Medium') score -= 10;
+    // Apply a smaller modifier for the overall risk label
+    if (analysisResult.overall_risk === 'High') score -= 10;
+    else if (analysisResult.overall_risk === 'Medium') score -= 5;
     
     return Math.floor(Math.max(10, Math.min(100, score)));
   };
