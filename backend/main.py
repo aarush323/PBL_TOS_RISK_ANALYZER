@@ -29,13 +29,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from extraction.input_handler import handle_input
 from analysis.analyzer import analyze_document
 from analysis.cancellation import cancel_job, clear_job
-from chat.chatbot import chat_with_document
+from chat.chatbot import chat_with_document, chat_with_document_rag, chat_comparison
+from chat.indexer import index_document, get_index_status, reindex_document
+from chat.retriever import (
+    retrieve_for_session,
+    get_clauses_by_category,
+    get_clause_by_id,
+    get_risks_summary,
+)
 
 from db.connection import engine, AsyncSessionLocal, get_db
 from db.models import Base, User
 from db import crud
 from auth.security import hash_password, verify_password, create_access_token
 from auth.dependencies import get_current_user, get_optional_user
+import compare_service
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +84,9 @@ def validate_environment():
             # We allow it to continue if a default exists, but we warn
             for var in missing:
                 if globals().get(var):
-                    logger.warning(f"Using default value for {var} because it is not set in the environment.")
+                    logger.warning(
+                        f"Using default value for {var} because it is not set in the environment."
+                    )
                 else:
                     raise RuntimeError(
                         f"CRITICAL: Missing required environment variables: {', '.join(missing)}. "
@@ -111,6 +121,132 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str
     message: str
+    history: list[ChatMessage] = []
+    comparison_session_id: str | None = None
+
+
+COMPARISON_PATTERNS = [
+    "compare",
+    "comparison",
+    "vs",
+    "versus",
+    "difference between",
+    "diff between",
+    "differences between",
+    "which is better",
+    "which is worse",
+    "compare with",
+    "compare to",
+]
+
+
+def match_document_by_name(name: str, sources: list[str]) -> int | None:
+    """Match a document name against stored source URLs. Returns index or None."""
+    if not name or not sources:
+        return None
+    name_lower = name.lower().strip()
+    for idx, source in enumerate(sources):
+        if not source:
+            continue
+        source_lower = source.lower()
+        domain = (
+            source_lower.split("//")[-1].split("/")[0]
+            if "//" in source_lower
+            else source_lower
+        )
+        if name_lower in domain or domain.split(".")[0] == name_lower:
+            return idx
+    return None
+
+
+STOP_WORDS = {
+    "the",
+    "a",
+    "an",
+    "of",
+    "and",
+    "to",
+    "in",
+    "for",
+    "on",
+    "with",
+    "by",
+    "privacy",
+    "policy",
+    "policies",
+    "terms",
+    "service",
+    "conditions",
+    "between",
+    "vs",
+    "versus",
+    "compare",
+    "comparison",
+    "difference",
+    "user",
+    "data",
+    "collection",
+    "usage",
+    "information",
+    "legal",
+}
+
+
+def extract_comparison_targets(message: str) -> tuple[str | None, str | None]:
+    """Extract two document names from comparison message."""
+    msg_lower = message.lower()
+
+    for pattern in COMPARISON_PATTERNS:
+        if pattern in msg_lower:
+            remaining = msg_lower.split(pattern)[-1].strip()
+
+            keywords = ["prev", "previous", "last", "two", "last two", "previous two"]
+            if any(kw in remaining for kw in ["prev", "previous", "last"]) and (
+                "two" in remaining or "2" in remaining
+            ):
+                return ("__recent_two__", None)
+
+            words = remaining.split()
+            meaningful_words = [
+                w.strip(" ,;:!?.'\"")
+                for w in words
+                if w.strip(" ,;:!?.'\"") not in STOP_WORDS
+                and len(w.strip(" ,;:!?.'\"")) > 1
+            ]
+
+            if len(meaningful_words) >= 2:
+                return (meaningful_words[0], meaningful_words[1])
+            elif len(meaningful_words) == 1:
+                return (meaningful_words[0], None)
+
+            if len(words) >= 2:
+                filtered = [w for w in words if w.lower() not in STOP_WORDS]
+                if len(filtered) >= 2:
+                    return (filtered[0], filtered[1])
+                elif len(filtered) == 1:
+                    return (filtered[0], None)
+
+    return (None, None)
+
+
+def extract_document_names_from_message(message: str) -> list[str]:
+    """Extract all potential document names from a message."""
+    msg_lower = message.lower()
+    words = msg_lower.split()
+
+    potential_docs = []
+    for word in words:
+        clean = word.strip(" ,;:!?.'\"")
+        if clean and len(clean) > 2 and clean not in STOP_WORDS:
+            potential_docs.append(clean)
+
+    return potential_docs
+
+
+class CompareRequest(BaseModel):
+    session_id_a: str
+    session_id_b: str
+    question: str = "Compare the risk profiles of both documents"
     history: list[ChatMessage] = []
 
 
@@ -251,6 +387,20 @@ async def _run_analysis_background(job_id: str, extraction: dict):
             clear_job(job_id)
 
 
+async def _index_document_background(session_id: str, document_text: str):
+    async with AsyncSessionLocal() as db:
+        try:
+            clause_count = await index_document(session_id, document_text, db)
+            logger.info(f"Session {session_id} indexed with {clause_count} clauses.")
+        except Exception as e:
+            logger.error(f"Indexing failed for session {session_id}: {e}")
+            session = await crud.get_chat_session(db, session_id)
+            if session:
+                session.is_indexed = False
+                session.indexed_at = None
+                await db.commit()
+
+
 @app.post("/analyze/async")
 async def analyze_async(
     body: AnalyzeInput,
@@ -354,6 +504,7 @@ async def list_analyses(
             "source_type": j.source_type,
             "status": j.status.value,
             "overall_risk": (j.result or {}).get("overall_risk"),
+            "has_result": j.result is not None,
             "created_at": j.created_at.isoformat(),
         }
         for j in jobs
@@ -383,6 +534,7 @@ async def get_analysis(
 @app.post("/chat/store")
 async def store_document(
     body: dict,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ):
@@ -397,19 +549,137 @@ async def store_document(
     existing = await crud.get_chat_session(db, session_id)
     if existing:
         existing.document_text = document_text
+        existing.is_indexed = False
         await db.commit()
     else:
         await crud.create_chat_session(db, session_id, document_text, user_id=user_id)
+
+    background_tasks.add_task(_index_document_background, session_id, document_text)
 
     return {
         "status": "stored",
         "session_id": session_id,
         "char_count": len(document_text),
+        "indexing": "started",
     }
 
 
 @app.post("/chat")
-async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(
+    body: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
+    message_lower = body.message.lower()
+    is_comparison = any(pattern in message_lower for pattern in COMPARISON_PATTERNS)
+
+    if is_comparison:
+        doc1_name, doc2_name = extract_comparison_targets(body.message)
+
+        if doc1_name == "__recent_two__":
+            user_analyses = await crud.list_analyses(
+                db, limit=50, user_id=current_user.id if current_user else None
+            )
+            if len(user_analyses) >= 2:
+                session_a = user_analyses[-2].job_id
+                session_b = user_analyses[-1].job_id
+                return await _handle_comparison(
+                    body,
+                    session_a,
+                    session_b,
+                    db,
+                    current_user.id if current_user else None,
+                )
+            else:
+                return {
+                    "reply": "You need at least 2 documents to compare. Please analyze more documents first.",
+                    "comparison_needed": True,
+                }
+
+        if not doc1_name:
+            potential_docs = extract_document_names_from_message(body.message)
+            if len(potential_docs) >= 2:
+                doc1_name = potential_docs[0]
+                doc2_name = potential_docs[1]
+            elif len(potential_docs) == 1:
+                doc1_name = potential_docs[0]
+                doc2_name = None
+            else:
+                return {
+                    "reply": "Please specify which documents to compare. For example: 'compare discord and zoom' or 'compare prev 2 docs'",
+                    "comparison_needed": True,
+                }
+
+        user_analyses = await crud.list_analyses(
+            db, limit=50, user_id=current_user.id if current_user else None
+        )
+        sources = [a.source for a in user_analyses if a.source]
+        job_ids = [a.job_id for a in user_analyses if a.job_id]
+
+        idx1 = (
+            match_document_by_name(doc1_name, sources)
+            if sources and doc1_name
+            else None
+        )
+        idx2 = (
+            match_document_by_name(doc2_name, sources)
+            if doc2_name and sources
+            else None
+        )
+
+        if idx1 is None and idx2 is None:
+            potential_matches = []
+            for doc_name in [doc1_name, doc2_name]:
+                if not doc_name:
+                    continue
+                for i, source in enumerate(sources):
+                    if source and doc_name in source.lower():
+                        potential_matches.append(
+                            (source.split("//")[-1].split("/")[0], job_ids[i])
+                        )
+                        break
+
+            if potential_matches:
+                session_a = potential_matches[0][1]
+                session_b = (
+                    potential_matches[1][1]
+                    if len(potential_matches) > 1
+                    else body.session_id
+                )
+                return await _handle_comparison(
+                    body,
+                    session_a,
+                    session_b,
+                    db,
+                    current_user.id if current_user else None,
+                )
+
+            options = [
+                {
+                    "name": s.split("//")[-1].split("/")[0] if s else f"Doc {i}",
+                    "index": i,
+                }
+                for i, s in enumerate(sources[:6])
+            ]
+            return {
+                "reply": f"Couldn't find documents matching '{doc1_name}'{f' and {doc2_name}' if doc2_name else ''}. Did you mean?",
+                "comparison_options": options,
+                "comparison_needed": True,
+            }
+
+        if idx1 is not None:
+            session_a = job_ids[idx1]
+            if idx2 is not None:
+                session_b = job_ids[idx2]
+            else:
+                session_b = body.session_id
+            return await _handle_comparison(body, session_a, session_b, db)
+
+        return {
+            "reply": "Please specify both documents to compare. For example: 'compare discord and zoom'",
+            "comparison_needed": True,
+        }
+
     session = await crud.get_chat_session(db, body.session_id)
     if not session:
         raise HTTPException(
@@ -419,19 +689,209 @@ async def chat(body: ChatRequest, db: AsyncSession = Depends(get_db)):
 
     db_history = await crud.get_chat_history(db, body.session_id)
     conversation = [{"role": m.role, "content": m.content} for m in db_history]
-    conversation.append({"role": "user", "content": body.message})
+
+    clauses = []
+    use_rag = session.is_indexed
+
+    if use_rag:
+        try:
+            clauses = await retrieve_for_session(
+                body.message, body.session_id, db, top_k=5
+            )
+            logger.info(f"RAG retrieved {len(clauses)} clauses for query")
+        except Exception as e:
+            logger.warning(f"RAG retrieval failed, falling back: {e}")
+            use_rag = False
 
     try:
-        reply = await asyncio.to_thread(
-            chat_with_document, session.document_text, conversation
-        )
+        if use_rag:
+            reply = await chat_with_document_rag(
+                body.message, session.document_text, conversation, clauses
+            )
+        else:
+            reply = await asyncio.to_thread(
+                chat_with_document, session.document_text, conversation
+            )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
 
     await crud.add_chat_message(db, body.session_id, "user", body.message)
     await crud.add_chat_message(db, body.session_id, "assistant", reply)
 
-    return {"reply": reply, "session_id": body.session_id}
+    return {
+        "reply": reply,
+        "session_id": body.session_id,
+        "rag_enabled": use_rag,
+        "clauses_retrieved": len(clauses),
+    }
+
+
+async def _handle_comparison(
+    body: ChatRequest,
+    session_id_a: str,
+    session_id_b: str,
+    db: AsyncSession,
+    user_id: str | None = None,
+) -> dict:
+    session_a = await crud.get_chat_session(db, session_id_a)
+    session_b = await crud.get_chat_session(db, session_id_b)
+
+    if not session_a or not session_b:
+        return {
+            "reply": "One of the comparison documents is not available.",
+            "comparison_needed": True,
+        }
+
+    if not session_a.is_indexed or not session_b.is_indexed:
+        return {
+            "reply": "One of the documents isn't indexed yet. Please wait for indexing to complete.",
+            "comparison_needed": True,
+        }
+
+    try:
+        result = await compare_service.run(session_id_a, session_id_b, user_id, db)
+
+        source_a = result.get("source_a", session_id_a[:8])
+        source_b = result.get("source_b", session_id_b[:8])
+        overall = result.get("overall_riskier", "Similar")
+
+        if overall == "A":
+            verdict = f"{source_a} is riskier"
+        elif overall == "B":
+            verdict = f"{source_b} is riskier"
+        else:
+            verdict = "Both documents have similar risk levels"
+
+        reply = f"I compared **{source_a}** and **{source_b}**. {verdict}. "
+
+        categories_compared = result.get("categories_compared", 0)
+        only_a = result.get("categories_only_in_a", [])
+        only_b = result.get("categories_only_in_b", [])
+
+        if only_a:
+            reply += f"Categories only in {source_a}: {', '.join(only_a)}. "
+        if only_b:
+            reply += f"Categories only in {source_b}: {', '.join(only_b)}. "
+
+        reply += f"I analyzed {categories_compared} risk categories. Check the detailed comparison for more."
+
+        return {
+            "reply": reply,
+            "session_id": body.session_id,
+            "comparison_result": True,
+            "session_id_a": session_id_a,
+            "session_id_b": session_id_b,
+            "structured": result,
+        }
+    except Exception as e:
+        logger.error(f"Comparison failed: {e}")
+        return {"reply": f"Comparison failed: {str(e)}", "comparison_needed": True}
+
+
+def _build_comparison_structured(
+    result_a: dict, result_b: dict, label_a: str, label_b: str
+) -> dict:
+    score_a = _calc_score_from_result(result_a)
+    score_b = _calc_score_from_result(result_b)
+
+    categories = [
+        "Privacy Risk",
+        "Legal Risk",
+        "Financial Risk",
+        "User Rights Risk",
+        "Security Risk",
+    ]
+    cat_comparison = []
+
+    breakdown_a = result_a.get("risk_breakdown", {})
+    breakdown_b = result_b.get("risk_breakdown", {})
+
+    for cat in categories:
+        val_a = breakdown_a.get(cat, 0)
+        val_b = breakdown_b.get(cat, 0)
+        if val_a > val_b:
+            winner = "a"
+        elif val_b > val_a:
+            winner = "b"
+        else:
+            winner = "tie"
+        cat_comparison.append(
+            {"category": cat, "a_count": val_a, "b_count": val_b, "winner": winner}
+        )
+
+    risk_a = result_a.get("overall_risk", "Low")
+    risk_b = result_b.get("overall_risk", "Low")
+    risk_order = {"High": 3, "Medium": 2, "Low": 1}
+    overall_winner = (
+        "a"
+        if risk_order.get(risk_a, 1) > risk_order.get(risk_b, 1)
+        else ("b" if risk_order.get(risk_b, 1) > risk_order.get(risk_a, 1) else "tie")
+    )
+
+    diff_pct = abs(score_a - score_b)
+    verdict = (
+        f"{label_b} is {diff_pct}% safer"
+        if score_b > score_a
+        else (
+            f"{label_a} is {diff_pct}% safer"
+            if score_a > score_b
+            else "Both have equal risk"
+        )
+    )
+
+    return {
+        "doc_a": {
+            "label": label_a,
+            "score": score_a,
+            "risk": risk_a,
+            "risky_count": result_a.get("risky_clause_count", 0),
+            "total_clauses": result_a.get("total_clauses", 0),
+        },
+        "doc_b": {
+            "label": label_b,
+            "score": score_b,
+            "risk": risk_b,
+            "risky_count": result_b.get("risky_clause_count", 0),
+            "total_clauses": result_b.get("total_clauses", 0),
+        },
+        "categories": cat_comparison,
+        "overall_winner": overall_winner,
+        "verdict": verdict,
+    }
+
+
+def _calc_score_from_result(result: dict) -> int:
+    if not result:
+        return 50
+    severity = result.get("total_severity_score", 0)
+    risky = result.get("risky_clause_count", 0)
+    total = result.get("total_clauses", 1)
+    risk = result.get("overall_risk", "Low")
+
+    score = 100
+    if severity <= 2:
+        score = 95
+    elif severity <= 5:
+        score = 90 - int((severity - 2) * 6.67)
+    elif severity <= 10:
+        score = 80 - int((severity - 5) * 4)
+    elif severity <= 20:
+        score = 60 - int((severity - 10) * 3)
+    else:
+        score = max(10, 25 - int((severity - 40) * 0.5))
+
+    if risk == "High":
+        score = max(10, score - 15)
+    elif risk == "Medium":
+        score = max(20, score - 8)
+
+    ratio = risky / max(1, total)
+    if ratio > 0.5:
+        score = max(10, score - 15)
+    elif ratio > 0.3:
+        score = max(20, score - 8)
+
+    return score
 
 
 @app.get("/chat/{session_id}/history")
@@ -444,3 +904,212 @@ async def chat_history(session_id: str, db: AsyncSession = Depends(get_db)):
         {"role": m.role, "content": m.content, "created_at": m.created_at.isoformat()}
         for m in msgs
     ]
+
+
+@app.get("/chat/{session_id}/index/status")
+async def index_status(session_id: str, db: AsyncSession = Depends(get_db)):
+    """Check if a session has been indexed for RAG."""
+    session = await crud.get_chat_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    status = await get_index_status(session_id, db)
+    return status
+
+
+@app.post("/chat/{session_id}/reindex")
+async def reindex(session_id: str, db: AsyncSession = Depends(get_db)):
+    """Manually trigger re-indexing for a session."""
+    session = await crud.get_chat_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    try:
+        clause_count = await reindex_document(session_id, db)
+        return {"success": True, "clause_count": clause_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reindexing failed: {str(e)}")
+
+
+@app.get("/chat/{session_id}/clauses")
+async def list_clauses(
+    session_id: str,
+    risk_category: str | None = None,
+    risky_only: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all clauses for a session with optional filtering."""
+    session = await crud.get_chat_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    clauses = await get_clauses_by_category(
+        session_id, db, risk_category=risk_category, risky_only=risky_only
+    )
+
+    return {
+        "clauses": clauses,
+        "total": len(clauses),
+        "risky_count": sum(1 for c in clauses if c["is_risky"]),
+    }
+
+
+@app.get("/chat/{session_id}/clauses/{clause_id}")
+async def get_clause(
+    session_id: str, clause_id: int, db: AsyncSession = Depends(get_db)
+):
+    """Get a specific clause by ID."""
+    session = await crud.get_chat_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    clause = await get_clause_by_id(session_id, clause_id, db)
+    if not clause:
+        raise HTTPException(status_code=404, detail="Clause not found")
+
+    return clause
+
+
+@app.get("/chat/{session_id}/risks")
+async def get_risks(
+    session_id: str, category: str | None = None, db: AsyncSession = Depends(get_db)
+):
+    """Get risk summary for a session."""
+    session = await crud.get_chat_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    summary = await get_risks_summary(session_id, db)
+
+    if category:
+        filtered_clauses = summary["by_category"].get(category, [])
+        return {
+            "category": category,
+            "clauses": filtered_clauses,
+            "count": len(filtered_clauses),
+            "overall_risk": summary["overall_risk"],
+        }
+
+    return summary
+
+
+@app.post("/chat/compare")
+async def compare_documents(
+    body: CompareRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """Compare two documents side by side."""
+    session_a = await crud.get_chat_session(db, body.session_id_a)
+    session_b = await crud.get_chat_session(db, body.session_id_b)
+
+    if not session_a:
+        raise HTTPException(
+            status_code=404, detail=f"Session {body.session_id_a} not found"
+        )
+    if not session_b:
+        raise HTTPException(
+            status_code=404, detail=f"Session {body.session_id_b} not found"
+        )
+
+    if not session_a.is_indexed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Session {body.session_id_a} is not indexed. Please wait for indexing to complete.",
+        )
+    if not session_b.is_indexed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Session {body.session_id_b} is not indexed. Please wait for indexing to complete.",
+        )
+
+    try:
+        user_id = current_user.id if current_user else None
+        result = await compare_service.run(
+            body.session_id_a,
+            body.session_id_b,
+            user_id,
+            db,
+        )
+
+        result_a = await crud.get_analysis_job(db, body.session_id_a)
+        result_b = await crud.get_analysis_job(db, body.session_id_b)
+        analysis_a = result_a.result if result_a else {}
+        analysis_b = result_b.result if result_b else {}
+
+        overall_winner = (
+            result.get("overall_riskier", "").lower()
+            if result.get("overall_riskier")
+            else ""
+        )
+        verdict = (
+            f"Document {result.get('source_b', 'B') if overall_winner == 'a' else result.get('source_a', 'A')} has higher risk"
+            if overall_winner
+            else "Documents have similar risk"
+        )
+
+        structured = {
+            "doc_a": {
+                "label": result.get("source_a", "Document A"),
+                "risk": analysis_a.get("overall_risk", "Unknown"),
+                "risky_clause_count": analysis_a.get("risky_clause_count", 0),
+                "total_clauses": analysis_a.get("total_clauses", 0),
+                "score": analysis_a.get("overall_score", 50),
+            },
+            "doc_b": {
+                "label": result.get("source_b", "Document B"),
+                "risk": analysis_b.get("overall_risk", "Unknown"),
+                "risky_clause_count": analysis_b.get("risky_clause_count", 0),
+                "total_clauses": analysis_b.get("total_clauses", 0),
+                "score": analysis_b.get("overall_score", 50),
+            },
+            "categories": result.get("pairs", []),
+            "overall_winner": overall_winner,
+            "verdict": verdict,
+        }
+
+        return {
+            "structured": structured,
+            "session_id_a": body.session_id_a,
+            "session_id_b": body.session_id_b,
+            "result": result,
+        }
+    except Exception as e:
+        logger.error(f"Comparison failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Comparison failed: {str(e)}")
+
+
+@app.get("/compare/history")
+async def get_compare_history(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get user's comparison history."""
+    history = await crud.get_compare_history(db, current_user.id)
+    return {
+        "compares": [
+            {
+                "compare_id": str(h.compare_id),
+                "source_a": h.source_a,
+                "source_b": h.source_b,
+                "created_at": h.created_at.isoformat(),
+                "overall_riskier": h.result.get("overall_riskier")
+                if h.result
+                else None,
+            }
+            for h in history
+        ]
+    }
+
+
+@app.get("/compare/{compare_id}")
+async def get_compare(
+    compare_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get a specific comparison by ID."""
+    compare = await crud.get_compare_by_id(db, compare_id, current_user.id)
+    if not compare:
+        raise HTTPException(status_code=404, detail="Comparison not found")
+    return {"result": compare.result}

@@ -43,3 +43,10 @@ chroma_data/
 
 # Gemini agent artifacts
 .gemini/
+
+# Sentence-transformers model cache
+.cache/
+hub/
+
+# pgvector data (if using local storage)
+vector_data/

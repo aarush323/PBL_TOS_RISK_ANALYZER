@@ -54,6 +54,12 @@ export default function App() {
   const [resultsSplit, setResultsSplit] = useState(64);
   const [chatPanelHeight, setChatPanelHeight] = useState(140);
 
+  const [comparisonData, setComparisonData] = useState(null);
+  const [showCompareSelector, setShowCompareSelector] = useState(false);
+  const [compareDocA, setCompareDocA] = useState(null);
+  const [compareDocB, setCompareDocB] = useState(null);
+  const [isComparing, setIsComparing] = useState(false);
+
   const isDesktop = () => window.innerWidth > 1024;
 
   const startSidebarResize = (e) => {
@@ -472,12 +478,55 @@ export default function App() {
       });
       const data = await res.json();
       
-      setChatMessages([...newChat, { role: 'bot', content: data.reply }]);
+      if (data.comparison_result && data.structured) {
+        setComparisonData(data.structured);
+        setChatMessages([...newChat, { role: 'bot', content: data.reply + "\n\n💡 I've loaded the comparison details. Switch to the Compare view for the full side-by-side analysis!" }]);
+        addToast('Comparison complete! Check the Compare page for details.');
+      } else if (data.comparison_needed) {
+        setChatMessages([...newChat, { role: 'bot', content: data.reply }]);
+        if (data.comparison_options) {
+          setShowCompareSelector(true);
+        }
+      } else {
+        setChatMessages([...newChat, { role: 'bot', content: data.reply }]);
+      }
     } catch (err) {
       console.error(err);
       setChatMessages([...newChat, { role: 'bot', content: "Sorry, I couldn't connect." }]);
     } finally {
       setIsChatTyping(false);
+    }
+  };
+
+  const performComparison = async (sessionIdA, sessionIdB) => {
+    try {
+      const res = await fetch(`${API}/chat/compare`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          session_id_a: sessionIdA, 
+          session_id_b: sessionIdB, 
+          question: "Compare the risk profiles of both documents",
+          history: []
+        })
+      });
+      const data = await res.json();
+      
+      if (data.structured) {
+        setComparisonData(data.structured);
+        setShowCompareSelector(false);
+        addToast('Comparison complete!');
+      } else {
+        addToast(data.detail || 'Comparison failed', true);
+      }
+    } catch (err) {
+      console.error(err);
+      addToast('Failed to compare documents', true);
+    } finally {
+      setIsComparing(false);
     }
   };
 
@@ -518,27 +567,49 @@ export default function App() {
 
   const calculateScore = () => {
     if (!analysisResult) return 100;
+    
+    const totalSeverity = analysisResult.total_severity_score || 0;
+    const avgSeverity = analysisResult.avg_severity_score || 0;
+    const riskyCount = analysisResult.risky_clause_count || 0;
+    const totalCount = analysisResult.total_clauses || 1;
+    const overallRisk = analysisResult.overall_risk || 'Low';
+    
+    if (riskyCount === 0) return 100;
+    
     let score = 100;
-
-    // Weight the score based on the actual confidence of individual risky clauses
-    if (analysisResult.clauses && analysisResult.clauses.length > 0) {
-      analysisResult.clauses.forEach(clause => {
-        if (clause.is_risky) {
-          if (clause.confidence === 'High') score -= 5;
-          else if (clause.confidence === 'Medium') score -= 3;
-          else score -= 1;
-        }
-      });
+    
+    // Map severity score to 100-point scale
+    // Severity ranges: 0-2 = 90-100, 2-5 = 70-90, 5-10 = 50-70, 10-20 = 30-50, 20+ = 10-30
+    if (totalSeverity <= 2) {
+      score = 95;
+    } else if (totalSeverity <= 5) {
+      score = 90 - ((totalSeverity - 2) * 6.67);
+    } else if (totalSeverity <= 10) {
+      score = 80 - ((totalSeverity - 5) * 4);
+    } else if (totalSeverity <= 20) {
+      score = 60 - ((totalSeverity - 10) * 3);
+    } else if (totalSeverity <= 40) {
+      score = 40 - ((totalSeverity - 20) * 1.5);
     } else {
-      // Fallback scaling
-      const r_count = analysisResult.risky_clause_count || 0;
-      const t_count = analysisResult.total_clauses || 1;
-      score -= (r_count / t_count) * 60;
+      score = Math.max(10, 25 - ((totalSeverity - 40) * 0.5));
     }
     
-    // Apply a smaller modifier for the overall risk label
-    if (analysisResult.overall_risk === 'High') score -= 10;
-    else if (analysisResult.overall_risk === 'Medium') score -= 5;
+    // Adjust based on overall risk level
+    if (overallRisk === 'High') {
+      score = Math.max(10, score - 15);
+    } else if (overallRisk === 'Medium') {
+      score = Math.max(20, score - 8);
+    }
+    
+    // Adjust based on ratio of risky clauses
+    const riskyRatio = riskyCount / totalCount;
+    if (riskyRatio > 0.5) {
+      score = Math.max(10, score - 15);
+    } else if (riskyRatio > 0.3) {
+      score = Math.max(20, score - 8);
+    } else if (riskyRatio > 0.15) {
+      score = Math.max(30, score - 3);
+    }
     
     return Math.floor(Math.max(10, Math.min(100, score)));
   };
@@ -772,6 +843,7 @@ export default function App() {
         
         <div className="sidebar-footer">
           <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => { setActiveView('chat'); setIsMobileNavOpen(false); }}><BrainCircuit size={18}/> <span>Chat</span></a>
+          <a className={`nav-item ${activeView === 'compare' ? 'active' : ''}`} onClick={() => { setActiveView('compare'); setIsMobileNavOpen(false); }}><Scale size={18}/> <span>Compare</span></a>
           <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => { setActiveView('settings'); setIsMobileNavOpen(false); }}><SettingsIcon size={18}/> <span>Settings</span></a>
           <a className="nav-item" onClick={logout}><HelpCircle size={18}/> <span>Sign Out</span></a>
           
@@ -926,6 +998,9 @@ export default function App() {
                       )}
                     </div>
                   </div>
+                  <button className="chat-sugg-btn" onClick={() => { setShowCompareSelector(true); setActiveView('compare'); }} style={{alignSelf: 'center', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <Scale size={14} /> Compare with...
+                  </button>
                 </div>
                 
                 <div className="results-layout">
@@ -935,10 +1010,26 @@ export default function App() {
                         <h2>Aggregate Risk Score</h2>
                         <p>Overall risk profile based on identified clauses within the provided document.</p>
                         <div style={{display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
-                          <span style={{background: 'rgba(0,240,255,0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>Risk Summary</span>
+                          <span style={{
+                            background: analysisResult?.overall_risk === 'High' ? 'rgba(255,85,85,0.15)' : (analysisResult?.overall_risk === 'Medium' ? 'rgba(255,200,0,0.15)' : 'rgba(0,200,100,0.15)'),
+                            color: analysisResult?.overall_risk === 'High' ? 'var(--error)' : (analysisResult?.overall_risk === 'Medium' ? 'var(--warning)' : 'var(--success)'),
+                            padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase'
+                          }}>{analysisResult?.overall_risk || 'Unknown'} Risk</span>
                           <span style={{background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>
-                            Flagged Clauses: {analysisResult?.risky_clause_count ?? 0}
+                            {analysisResult?.risky_clause_count ?? 0} / {analysisResult?.total_clauses ?? 0} Clauses
                           </span>
+                        </div>
+                        {analysisResult?.risk_breakdown && (
+                          <div style={{marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
+                            {Object.entries(analysisResult.risk_breakdown).filter(([_, count]) => count > 0).map(([cat, count]) => (
+                              <span key={cat} style={{background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '3px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: 500}}>
+                                {cat}: {count}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div style={{marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)'}}>
+                          Severity: {analysisResult?.total_severity_score?.toFixed(1) || '0.0'} | Avg: {analysisResult?.avg_severity_score?.toFixed(2) || '0.00'}
                         </div>
                       </div>
                       <div className="score-circle">
@@ -1101,6 +1192,274 @@ export default function App() {
                     />
                   </div>
                 </div>
+              </motion.section>
+            )}
+
+            {activeView === 'compare' && (
+              <motion.section
+                key="view-compare"
+                className="view-section active"
+                initial={viewMotion.initial}
+                animate={viewMotion.animate}
+                exit={viewMotion.exit}
+              >
+                <div className="hero hero-compact">
+                  <h1 className="section-title">Document Comparison</h1>
+                  <p>Compare risk profiles between two analyzed documents side-by-side.</p>
+                </div>
+
+                {showCompareSelector ? (
+                  <div className="input-card" style={{maxWidth: '800px'}}>
+                    <h3 style={{marginBottom: '16px'}}>Select Two Documents to Compare</h3>
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px'}}>
+                      <div>
+                        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)'}}>Document A</label>
+                        <select 
+                          className="chat-input-field"
+                          value={compareDocA || ''}
+                          onChange={(e) => setCompareDocA(e.target.value)}
+                          style={{width: '100%', padding: '12px'}}
+                        >
+                          <option value="">Select a document...</option>
+                          {historyItems.filter(h => h.has_result).map(item => {
+                            let displayName = item.source;
+                            if (item.source_type === 'url') {
+                              try {
+                                const url = new URL(item.source);
+                                displayName = url.hostname;
+                              } catch (e) {
+                                displayName = item.source;
+                              }
+                            }
+                            return (
+                              <option key={item.job_id} value={item.job_id}>
+                                {displayName} ({item.overall_risk})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)'}}>Document B</label>
+                        <select 
+                          className="chat-input-field"
+                          value={compareDocB || ''}
+                          onChange={(e) => setCompareDocB(e.target.value)}
+                          style={{width: '100%', padding: '12px'}}
+                        >
+                          <option value="">Select a document...</option>
+                          {historyItems.filter(h => h.has_result && h.job_id !== compareDocA).map(item => {
+                            let displayName = item.source;
+                            if (item.source_type === 'url') {
+                              try {
+                                const url = new URL(item.source);
+                                displayName = url.hostname;
+                              } catch (e) {
+                                displayName = item.source;
+                              }
+                            }
+                            return (
+                              <option key={item.job_id} value={item.job_id}>
+                                {displayName} ({item.overall_risk})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{display: 'flex', gap: '12px', marginTop: '20px'}}>
+                      <button className="action-btn" onClick={() => {
+                        if (compareDocA && compareDocB) {
+                          setIsComparing(true);
+                          performComparison(compareDocA, compareDocB);
+                        }
+                      }} disabled={!compareDocA || !compareDocB || isComparing}>
+                        {isComparing ? 'Comparing...' : 'Compare Documents'}
+                      </button>
+                      <button className="action-btn" onClick={() => { setShowCompareSelector(false); }} style={{background: 'var(--surface-2)', borderColor: 'var(--border)'}}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{maxWidth: '1000px'}}>
+                    <div style={{display: 'flex', gap: '12px', marginBottom: '24px'}}>
+                      <button className="action-btn" onClick={() => setShowCompareSelector(true)}>
+                        <Plus size={16} /> Select Documents
+                      </button>
+                      {historyItems.length < 2 && (
+                        <span style={{color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center'}}>
+                          Need at least 2 analyzed documents to compare
+                        </span>
+                      )}
+                    </div>
+
+                    {comparisonData ? (
+                      <div className="comparison-results">
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px'}}>
+                          <div className="score-card">
+                            <div className="score-info">
+                              <h3>{comparisonData.doc_a?.label || 'Document A'}</h3>
+                              <p>Risk Level: <span style={{
+                                color: comparisonData.doc_a?.risk === 'High' ? 'var(--error)' : (comparisonData.doc_a?.risk === 'Medium' ? 'var(--warning)' : 'var(--success)')
+                              }}>{comparisonData.doc_a?.risk}</span></p>
+                              <p>Risky Clauses: {comparisonData.doc_a?.risky_clause_count || 0} / {comparisonData.doc_a?.total_clauses || 0}</p>
+                            </div>
+                            <div className="score-circle">
+                              <svg viewBox="0 0 100 100" width="80" height="80">
+                                <circle className="bg" cx="50" cy="50" r="40" pathLength="100"></circle>
+                                <circle className="progress" cx="50" cy="50" r="40" pathLength="100" style={{
+                                  strokeDashoffset: 100 - (comparisonData.doc_a?.score || 50),
+                                  stroke: comparisonData.doc_a?.score < 50 ? 'var(--error)' : (comparisonData.doc_a?.score < 75 ? 'var(--warning)' : 'var(--success)')
+                                }}></circle>
+                              </svg>
+                              <span className="score-value" style={{fontSize: '18px'}}>{comparisonData.doc_a?.score || '-'}</span>
+                            </div>
+                          </div>
+                          <div className="score-card">
+                            <div className="score-info">
+                              <h3>{comparisonData.doc_b?.label || 'Document B'}</h3>
+                              <p>Risk Level: <span style={{
+                                color: comparisonData.doc_b?.risk === 'High' ? 'var(--error)' : (comparisonData.doc_b?.risk === 'Medium' ? 'var(--warning)' : 'var(--success)')
+                              }}>{comparisonData.doc_b?.risk}</span></p>
+                              <p>Risky Clauses: {comparisonData.doc_b?.risky_clause_count || 0} / {comparisonData.doc_b?.total_clauses || 0}</p>
+                            </div>
+                            <div className="score-circle">
+                              <svg viewBox="0 0 100 100" width="80" height="80">
+                                <circle className="bg" cx="50" cy="50" r="40" pathLength="100"></circle>
+                                <circle className="progress" cx="50" cy="50" r="40" pathLength="100" style={{
+                                  strokeDashoffset: 100 - (comparisonData.doc_b?.score || 50),
+                                  stroke: comparisonData.doc_b?.score < 50 ? 'var(--error)' : (comparisonData.doc_b?.score < 75 ? 'var(--warning)' : 'var(--success)')
+                                }}></circle>
+                              </svg>
+                              <span className="score-value" style={{fontSize: '18px'}}>{comparisonData.doc_b?.score || '-'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="input-card" style={{marginBottom: '24px'}}>
+                          <h3 style={{marginBottom: '16px'}}>Category Comparison</h3>
+                          <table style={{width: '100%', borderCollapse: 'collapse'}}>
+                            <thead>
+                              <tr style={{borderBottom: '1px solid var(--border)'}}>
+                                <th style={{textAlign: 'left', padding: '12px', color: 'var(--text-muted)', fontSize: '12px'}}>CATEGORY</th>
+                                <th style={{textAlign: 'center', padding: '12px', color: 'var(--text-muted)', fontSize: '12px'}}>DOC A</th>
+                                <th style={{textAlign: 'center', padding: '12px', color: 'var(--text-muted)', fontSize: '12px'}}>WINNER</th>
+                                <th style={{textAlign: 'center', padding: '12px', color: 'var(--text-muted)', fontSize: '12px'}}>DOC B</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {comparisonData.categories?.map((cat, idx) => {
+                                const aSev = cat.severity_delta > 0 ? cat.severity_delta : 0;
+                                const bSev = cat.severity_delta < 0 ? Math.abs(cat.severity_delta) : 0;
+                                return (
+                                <tr key={idx} style={{borderBottom: '1px solid var(--border)'}}>
+                                  <td style={{padding: '12px', fontSize: '13px', verticalAlign: 'top'}}>
+                                    <div style={{fontWeight: 600}}>{cat.category}</div>
+                                    {cat.key_difference && (
+                                      <div style={{fontSize: '11px', color: 'var(--warning)', marginTop: '4px', fontStyle: 'italic'}}>
+                                        {cat.key_difference}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td style={{padding: '12px', textAlign: 'center'}}>
+                                    <div style={{
+                                      background: cat.winner === 'a' ? 'rgba(255,85,85,0.15)' : 'rgba(0,200,100,0.1)',
+                                      padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                                      color: cat.winner === 'a' ? 'var(--error)' : 'var(--success)'
+                                    }}>
+                                      {cat.doc_a_risk_count || 0} clauses
+                                    </div>
+                                    <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>
+                                      severity: {aSev.toFixed(1)}
+                                    </div>
+                                    {cat.clause_a_summary && (
+                                      <details style={{marginTop: '6px', textAlign: 'left'}}>
+                                        <summary style={{fontSize: '10px', cursor: 'pointer', color: 'var(--text-muted)'}}>summary</summary>
+                                        <div style={{fontSize: '11px', color: 'var(--text-muted)', padding: '4px', background: 'var(--surface-2)', borderRadius: '4px', marginTop: '2px'}}>
+                                          {cat.clause_a_summary}
+                                        </div>
+                                      </details>
+                                    )}
+                                  </td>
+                                  <td style={{textAlign: 'center', padding: '12px', fontSize: '16px', fontWeight: 600, verticalAlign: 'middle'}}>
+                                    {cat.winner === 'a' ? <span style={{color: 'var(--error)'}}>← Riskier</span> : 
+                                     cat.winner === 'b' ? <span style={{color: 'var(--success)'}}>Riskier →</span> : 
+                                     <span style={{color: 'var(--text-muted)'}}>Tie</span>}
+                                  </td>
+                                  <td style={{padding: '12px', textAlign: 'center'}}>
+                                    <div style={{
+                                      background: cat.winner === 'b' ? 'rgba(255,85,85,0.15)' : 'rgba(0,200,100,0.1)',
+                                      padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                                      color: cat.winner === 'b' ? 'var(--error)' : 'var(--success)'
+                                    }}>
+                                      {cat.doc_b_risk_count || 0} clauses
+                                    </div>
+                                    <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>
+                                      severity: {bSev.toFixed(1)}
+                                    </div>
+                                    {cat.clause_b_summary && (
+                                      <details style={{marginTop: '6px', textAlign: 'left'}}>
+                                        <summary style={{fontSize: '10px', cursor: 'pointer', color: 'var(--text-muted)'}}>summary</summary>
+                                        <div style={{fontSize: '11px', color: 'var(--text-muted)', padding: '4px', background: 'var(--surface-2)', borderRadius: '4px', marginTop: '2px'}}>
+                                          {cat.clause_b_summary}
+                                        </div>
+                                      </details>
+                                    )}
+                                  </td>
+                                </tr>
+                              )})}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div style={{
+                          background: comparisonData.overall_winner === 'a' ? 'rgba(255,85,85,0.1)' : (comparisonData.overall_winner === 'b' ? 'rgba(0,200,100,0.1)' : 'var(--surface-2)'),
+                          border: `1px solid ${comparisonData.overall_winner === 'a' ? 'var(--error)' : (comparisonData.overall_winner === 'b' ? 'var(--success)' : 'var(--border)')}`,
+                          borderRadius: '12px',
+                          padding: '20px',
+                          textAlign: 'center'
+                        }}>
+                          <h3 style={{marginBottom: '8px'}}>Verdict</h3>
+                          <p style={{fontSize: '18px', fontWeight: 600}}>{comparisonData.verdict}</p>
+                          {(() => {
+                            const cats = comparisonData.categories || [];
+                            const wonA = cats.filter(c => c.winner === 'a').length;
+                            const wonB = cats.filter(c => c.winner === 'b').length;
+                            const tied = cats.filter(c => c.winner === 'tie').length;
+                            const mostDangerous = cats.length > 0 ? cats.reduce((max, c) => 
+                              Math.abs(c.severity_delta || 0) > Math.abs(max?.severity_delta || 0) ? c : max, cats[0]) : null;
+                            return (
+                              <div style={{marginTop: '12px', fontSize: '13px', color: 'var(--text-muted)'}}>
+                                <span style={{color: 'var(--error)', fontWeight: 600}}>Won: {wonA}</span>
+                                {' | '}
+                                <span style={{color: 'var(--text-muted)', fontWeight: 600}}>Tied: {tied}</span>
+                                {' | '}
+                                <span style={{color: 'var(--success)', fontWeight: 600}}>Won: {wonB}</span>
+                                {mostDangerous && mostDangerous.key_difference && (
+                                  <div style={{marginTop: '8px', fontSize: '12px', color: 'var(--warning)'}}>
+                                    Most dangerous: {mostDangerous.category} (delta: {mostDangerous.severity_delta?.toFixed(1)})
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        <div style={{marginTop: '20px', display: 'flex', gap: '12px'}}>
+                          <button className="action-btn" onClick={() => { setShowCompareSelector(true); setComparisonData(null); }}>
+                            Compare New Documents
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{padding: '60px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: '12px'}}>
+                        <Scale size={48} style={{opacity: 0.3, marginBottom: '16px'}} />
+                        <p>Select two documents above to see a detailed comparison</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </motion.section>
             )}
 
