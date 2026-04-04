@@ -1295,158 +1295,206 @@ export default function App() {
                     </div>
 
                     {comparisonData ? (
-                      <div className="comparison-results">
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px'}}>
-                          <div className="score-card">
-                            <div className="score-info">
-                              <h3>{comparisonData.doc_a?.label || 'Document A'}</h3>
-                              <p>Risk Level: <span style={{
-                                color: comparisonData.doc_a?.risk === 'High' ? 'var(--error)' : (comparisonData.doc_a?.risk === 'Medium' ? 'var(--warning)' : 'var(--success)')
-                              }}>{comparisonData.doc_a?.risk}</span></p>
-                              <p>Risky Clauses: {comparisonData.doc_a?.risky_clause_count || 0} / {comparisonData.doc_a?.total_clauses || 0}</p>
-                            </div>
-                            <div className="score-circle">
-                              <svg viewBox="0 0 100 100" width="80" height="80">
-                                <circle className="bg" cx="50" cy="50" r="40" pathLength="100"></circle>
-                                <circle className="progress" cx="50" cy="50" r="40" pathLength="100" style={{
-                                  strokeDashoffset: 100 - (comparisonData.doc_a?.score || 50),
-                                  stroke: comparisonData.doc_a?.score < 50 ? 'var(--error)' : (comparisonData.doc_a?.score < 75 ? 'var(--warning)' : 'var(--success)')
-                                }}></circle>
-                              </svg>
-                              <span className="score-value" style={{fontSize: '18px'}}>{comparisonData.doc_a?.score || '-'}</span>
-                            </div>
-                          </div>
-                          <div className="score-card">
-                            <div className="score-info">
-                              <h3>{comparisonData.doc_b?.label || 'Document B'}</h3>
-                              <p>Risk Level: <span style={{
-                                color: comparisonData.doc_b?.risk === 'High' ? 'var(--error)' : (comparisonData.doc_b?.risk === 'Medium' ? 'var(--warning)' : 'var(--success)')
-                              }}>{comparisonData.doc_b?.risk}</span></p>
-                              <p>Risky Clauses: {comparisonData.doc_b?.risky_clause_count || 0} / {comparisonData.doc_b?.total_clauses || 0}</p>
-                            </div>
-                            <div className="score-circle">
-                              <svg viewBox="0 0 100 100" width="80" height="80">
-                                <circle className="bg" cx="50" cy="50" r="40" pathLength="100"></circle>
-                                <circle className="progress" cx="50" cy="50" r="40" pathLength="100" style={{
-                                  strokeDashoffset: 100 - (comparisonData.doc_b?.score || 50),
-                                  stroke: comparisonData.doc_b?.score < 50 ? 'var(--error)' : (comparisonData.doc_b?.score < 75 ? 'var(--warning)' : 'var(--success)')
-                                }}></circle>
-                              </svg>
-                              <span className="score-value" style={{fontSize: '18px'}}>{comparisonData.doc_b?.score || '-'}</span>
-                            </div>
-                          </div>
+                      <div className="comparison-results" style={{paddingBottom: '40px'}}>
+                        {/* Document Header Cards */}
+                        <div style={{display: 'grid', gridTemplateColumns: {xs: '1fr', md: '1fr 1fr'}, gap: '16px', marginBottom: '24px'}}>
+                          {[
+                            { doc: comparisonData.doc_a, label: comparisonData.doc_a?.label, side: 'a' },
+                            { doc: comparisonData.doc_b, label: comparisonData.doc_b?.label, side: 'b' }
+                          ].map(({ doc, label, side }) => {
+                            const risk = doc?.risk || 'Unknown';
+                            const riskColor = risk === 'High' ? 'var(--error)' : risk === 'Medium' ? 'var(--warning)' : 'var(--success)';
+                            const borderColor = riskColor;
+                            const score = doc?.score || 50;
+                            const clauses = doc?.risky_clause_count || 0;
+                            const total = doc?.total_clauses || 0;
+                            const domain = label ? label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document';
+                            
+                            return (
+                              <div key={side} style={{
+                                background: 'var(--surface-2)',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                borderLeft: `3px solid ${borderColor}`,
+                                padding: '20px 24px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px'
+                              }}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                                  <div>
+                                    <div style={{fontSize: '22px', fontWeight: 600, color: 'var(--text)', lineHeight: 1.2}}>{domain}</div>
+                                    <div style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px'}}>{label}</div>
+                                  </div>
+                                  <span style={{
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    color: riskColor,
+                                    background: `${riskColor}15`,
+                                    padding: '4px 10px',
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
+                                  }}>{risk} Risk</span>
+                                </div>
+                                
+                                <div style={{marginTop: '8px'}}>
+                                  <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px'}}>
+                                    <span>{clauses} of {total} clauses flagged</span>
+                                    <span>score {score}</span>
+                                  </div>
+                                  <div style={{height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden'}}>
+                                    <div style={{
+                                      height: '100%',
+                                      width: `${score}%`,
+                                      background: riskColor,
+                                      borderRadius: '3px',
+                                      transition: 'width 0.3s ease'
+                                    }} />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
 
-                        <div className="input-card" style={{marginBottom: '24px'}}>
-                          <h3 style={{marginBottom: '16px'}}>Category Comparison</h3>
-                          <table style={{width: '100%', borderCollapse: 'collapse'}}>
+                        {/* Category Table */}
+                        <div style={{
+                          background: 'var(--surface-2)',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          padding: '24px',
+                          marginBottom: '24px',
+                          overflowX: 'auto'
+                        }}>
+                          <h3 style={{fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '16px', letterSpacing: '0.02em'}}>Category Comparison</h3>
+                          <table style={{width: '100%', borderCollapse: 'collapse', minWidth: '500px'}}>
                             <thead>
-                              <tr style={{borderBottom: '1px solid var(--border)'}}>
-                                <th style={{textAlign: 'left', padding: '12px', color: 'var(--text-muted)', fontSize: '12px'}}>CATEGORY</th>
-                                <th style={{textAlign: 'center', padding: '12px', color: 'var(--text-muted)', fontSize: '12px'}}>DOC A</th>
-                                <th style={{textAlign: 'center', padding: '12px', color: 'var(--text-muted)', fontSize: '12px'}}>WINNER</th>
-                                <th style={{textAlign: 'center', padding: '12px', color: 'var(--text-muted)', fontSize: '12px'}}>DOC B</th>
+                              <tr style={{borderBottom: '1px solid rgba(255,255,255,0.08)'}}>
+                                <th style={{textAlign: 'left', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500}}>Category</th>
+                                <th style={{textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500}}>Doc A</th>
+                                <th style={{textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500}}>Winner</th>
+                                <th style={{textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500}}>Doc B</th>
                               </tr>
                             </thead>
                             <tbody>
                               {comparisonData.categories?.map((cat, idx) => {
-                                const aSev = cat.severity_delta > 0 ? cat.severity_delta : 0;
-                                const bSev = cat.severity_delta < 0 ? Math.abs(cat.severity_delta) : 0;
+                                const aSev = cat.doc_a_avg_severity || 0;
+                                const bSev = cat.doc_b_avg_severity || 0;
+                                const winnerColor = cat.winner === 'a' ? 'var(--error)' : cat.winner === 'b' ? 'var(--success)' : 'var(--text-muted)';
+                                const winnerDot = cat.winner === 'a' ? '🔴' : cat.winner === 'b' ? '🔴' : '⚪';
+                                const winnerText = cat.winner === 'a' ? 'A Riskier' : cat.winner === 'b' ? 'B Riskier' : 'Tie';
+                                const aSummary = cat.clause_a_summary ? (cat.clause_a_summary.length > 80 ? cat.clause_a_summary.slice(0, 80) + '...' : cat.clause_a_summary) : '';
+                                const bSummary = cat.clause_b_summary ? (cat.clause_b_summary.length > 80 ? cat.clause_b_summary.slice(0, 80) + '...' : cat.clause_b_summary) : '';
+                                
                                 return (
-                                <tr key={idx} style={{borderBottom: '1px solid var(--border)'}}>
-                                  <td style={{padding: '12px', fontSize: '13px', verticalAlign: 'top'}}>
-                                    <div style={{fontWeight: 600}}>{cat.category}</div>
-                                    {cat.key_difference && (
-                                      <div style={{fontSize: '11px', color: 'var(--warning)', marginTop: '4px', fontStyle: 'italic'}}>
-                                        {cat.key_difference}
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td style={{padding: '12px', textAlign: 'center'}}>
-                                    <div style={{
-                                      background: cat.winner === 'a' ? 'rgba(255,85,85,0.15)' : 'rgba(0,200,100,0.1)',
-                                      padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                                      color: cat.winner === 'a' ? 'var(--error)' : 'var(--success)'
-                                    }}>
-                                      {cat.doc_a_risk_count || 0} clauses
-                                    </div>
-                                    <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>
-                                      severity: {aSev.toFixed(1)}
-                                    </div>
-                                    {cat.clause_a_summary && (
-                                      <details style={{marginTop: '6px', textAlign: 'left'}}>
-                                        <summary style={{fontSize: '10px', cursor: 'pointer', color: 'var(--text-muted)'}}>summary</summary>
-                                        <div style={{fontSize: '11px', color: 'var(--text-muted)', padding: '4px', background: 'var(--surface-2)', borderRadius: '4px', marginTop: '2px'}}>
-                                          {cat.clause_a_summary}
+                                  <tr key={idx} style={{
+                                    borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                    background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent',
+                                    minHeight: '60px'
+                                  }}>
+                                    <td style={{padding: '16px', verticalAlign: 'top'}}>
+                                      <div style={{fontWeight: 600, fontSize: '13px', color: 'var(--text)'}}>{cat.category}</div>
+                                      {cat.key_difference && (
+                                        <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                          {cat.key_difference}
                                         </div>
-                                      </details>
-                                    )}
-                                  </td>
-                                  <td style={{textAlign: 'center', padding: '12px', fontSize: '16px', fontWeight: 600, verticalAlign: 'middle'}}>
-                                    {cat.winner === 'a' ? <span style={{color: 'var(--error)'}}>← Riskier</span> : 
-                                     cat.winner === 'b' ? <span style={{color: 'var(--success)'}}>Riskier →</span> : 
-                                     <span style={{color: 'var(--text-muted)'}}>Tie</span>}
-                                  </td>
-                                  <td style={{padding: '12px', textAlign: 'center'}}>
-                                    <div style={{
-                                      background: cat.winner === 'b' ? 'rgba(255,85,85,0.15)' : 'rgba(0,200,100,0.1)',
-                                      padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                                      color: cat.winner === 'b' ? 'var(--error)' : 'var(--success)'
-                                    }}>
-                                      {cat.doc_b_risk_count || 0} clauses
-                                    </div>
-                                    <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>
-                                      severity: {bSev.toFixed(1)}
-                                    </div>
-                                    {cat.clause_b_summary && (
-                                      <details style={{marginTop: '6px', textAlign: 'left'}}>
-                                        <summary style={{fontSize: '10px', cursor: 'pointer', color: 'var(--text-muted)'}}>summary</summary>
-                                        <div style={{fontSize: '11px', color: 'var(--text-muted)', padding: '4px', background: 'var(--surface-2)', borderRadius: '4px', marginTop: '2px'}}>
-                                          {cat.clause_b_summary}
-                                        </div>
-                                      </details>
-                                    )}
-                                  </td>
-                                </tr>
-                              )})}
+                                      )}
+                                    </td>
+                                    <td style={{padding: '16px', textAlign: 'center', verticalAlign: 'top'}}>
+                                      <div style={{fontSize: '20px', fontWeight: 600, color: cat.winner === 'a' ? 'var(--error)' : 'var(--text)'}}>{cat.doc_a_risk_count || 0}</div>
+                                      <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>avg {aSev.toFixed(1)}</div>
+                                      {aSummary && <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic'}}>{aSummary}</div>}
+                                    </td>
+                                    <td style={{padding: '16px', textAlign: 'center', verticalAlign: 'middle'}}>
+                                      <span style={{fontSize: '12px', color: winnerColor, fontWeight: 500}}>
+                                        {winnerDot} {winnerText}
+                                      </span>
+                                    </td>
+                                    <td style={{padding: '16px', textAlign: 'center', verticalAlign: 'top'}}>
+                                      <div style={{fontSize: '20px', fontWeight: 600, color: cat.winner === 'b' ? 'var(--error)' : 'var(--text)'}}>{cat.doc_b_risk_count || 0}</div>
+                                      <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>avg {bSev.toFixed(1)}</div>
+                                      {bSummary && <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic'}}>{bSummary}</div>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
 
-                        <div style={{
-                          background: comparisonData.overall_winner === 'a' ? 'rgba(255,85,85,0.1)' : (comparisonData.overall_winner === 'b' ? 'rgba(0,200,100,0.1)' : 'var(--surface-2)'),
-                          border: `1px solid ${comparisonData.overall_winner === 'a' ? 'var(--error)' : (comparisonData.overall_winner === 'b' ? 'var(--success)' : 'var(--border)')}`,
-                          borderRadius: '12px',
-                          padding: '20px',
-                          textAlign: 'center'
-                        }}>
-                          <h3 style={{marginBottom: '8px'}}>Verdict</h3>
-                          <p style={{fontSize: '18px', fontWeight: 600}}>{comparisonData.verdict}</p>
-                          {(() => {
-                            const cats = comparisonData.categories || [];
-                            const wonA = cats.filter(c => c.winner === 'a').length;
-                            const wonB = cats.filter(c => c.winner === 'b').length;
-                            const tied = cats.filter(c => c.winner === 'tie').length;
-                            const mostDangerous = cats.length > 0 ? cats.reduce((max, c) => 
-                              Math.abs(c.severity_delta || 0) > Math.abs(max?.severity_delta || 0) ? c : max, cats[0]) : null;
-                            return (
-                              <div style={{marginTop: '12px', fontSize: '13px', color: 'var(--text-muted)'}}>
-                                <span style={{color: 'var(--error)', fontWeight: 600}}>Won: {wonA}</span>
-                                {' | '}
-                                <span style={{color: 'var(--text-muted)', fontWeight: 600}}>Tied: {tied}</span>
-                                {' | '}
-                                <span style={{color: 'var(--success)', fontWeight: 600}}>Won: {wonB}</span>
-                                {mostDangerous && mostDangerous.key_difference && (
-                                  <div style={{marginTop: '8px', fontSize: '12px', color: 'var(--warning)'}}>
-                                    Most dangerous: {mostDangerous.category} (delta: {mostDangerous.severity_delta?.toFixed(1)})
-                                  </div>
-                                )}
+                        {/* Verdict Section */}
+                        {(() => {
+                          const cats = comparisonData.categories || [];
+                          const wonA = cats.filter(c => c.winner === 'a').length;
+                          const wonB = cats.filter(c => c.winner === 'b').length;
+                          const tied = cats.filter(c => c.winner === 'tie').length;
+                          const mostDangerous = cats.length > 0 ? cats.reduce((max, c) => 
+                            Math.abs(c.severity_delta || 0) > Math.abs(max?.severity_delta || 0) ? c : max, cats[0]) : null;
+                          
+                          const docAName = comparisonData.doc_a?.label ? comparisonData.doc_a.label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document A';
+                          const docBName = comparisonData.doc_b?.label ? comparisonData.doc_b.label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document B';
+                          
+                          let summaryLine = '';
+                          if (comparisonData.overall_winner === 'a') {
+                            summaryLine = `${docAName} poses greater contractual and legal risk. ${docBName} has more clauses overall but lower average severity.`;
+                          } else if (comparisonData.overall_winner === 'b') {
+                            summaryLine = `${docBName} poses greater contractual and legal risk. ${docAName} has more clauses overall but lower average severity.`;
+                          } else {
+                            summaryLine = `Both documents have similar overall risk profiles across categories.`;
+                          }
+                          
+                          return (
+                            <div style={{
+                              background: 'var(--surface-2)',
+                              borderRadius: '8px',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              padding: '24px',
+                              textAlign: 'center'
+                            }}>
+                              <h3 style={{fontSize: '20px', fontWeight: 600, color: 'var(--text)', marginBottom: '20px'}}>
+                                {comparisonData.verdict || 'Analysis Complete'}
+                              </h3>
+                              
+                              <div style={{display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '20px'}}>
+                                <div style={{textAlign: 'center'}}>
+                                  <div style={{fontSize: '28px', fontWeight: 700, color: 'var(--error)'}}>{wonA}</div>
+                                  <div style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px'}}>A Won</div>
+                                </div>
+                                <div style={{textAlign: 'center'}}>
+                                  <div style={{fontSize: '28px', fontWeight: 700, color: 'var(--text-muted)'}}>{tied}</div>
+                                  <div style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px'}}>Tied</div>
+                                </div>
+                                <div style={{textAlign: 'center'}}>
+                                  <div style={{fontSize: '28px', fontWeight: 700, color: 'var(--success)'}}>{wonB}</div>
+                                  <div style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px'}}>B Won</div>
+                                </div>
                               </div>
-                            );
-                          })()}
-                        </div>
+                              
+                              {mostDangerous && (
+                                <div style={{fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px'}}>
+                                  Most dangerous category: <span style={{color: 'var(--accent)', fontWeight: 600}}>{mostDangerous.category}</span>
+                                </div>
+                              )}
+                              
+                              <div style={{
+                                fontSize: '13px',
+                                color: 'var(--text-muted)',
+                                fontStyle: 'italic',
+                                padding: '12px 16px',
+                                background: 'rgba(255,255,255,0.03)',
+                                borderRadius: '6px',
+                                maxWidth: '500px',
+                                margin: '0 auto',
+                                lineHeight: 1.5
+                              }}>
+                                {summaryLine}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
-                        <div style={{marginTop: '20px', display: 'flex', gap: '12px'}}>
+                        <div style={{marginTop: '24px', display: 'flex', justifyContent: 'center'}}>
                           <button className="action-btn" onClick={() => { setShowCompareSelector(true); setComparisonData(null); }}>
                             Compare New Documents
                           </button>

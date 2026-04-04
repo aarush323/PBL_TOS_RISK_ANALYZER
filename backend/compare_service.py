@@ -108,14 +108,14 @@ def _build_pair_prompt(pair: dict, max_clauses: int = 3) -> str:
     doc_a_block = ""
     if clauses_a:
         for i, c in enumerate(clauses_a, 1):
-            doc_a_block += f"[{i}] severity: {c['severity_score']}, why risky: {c['explanation'][:150]}\n"
+            doc_a_block += f"[{i}] severity: {c['severity_score']}, why risky: {c['explanation']}\n"
     else:
         doc_a_block = "(none)"
 
     doc_b_block = ""
     if clauses_b:
         for i, c in enumerate(clauses_b, 1):
-            doc_b_block += f"[{i}] severity: {c['severity_score']}, why risky: {c['explanation'][:150]}\n"
+            doc_b_block += f"[{i}] severity: {c['severity_score']}, why risky: {c['explanation']}\n"
     else:
         doc_b_block = "(none)"
 
@@ -242,6 +242,26 @@ async def _run_comparison_pairs(pairs: list[dict]) -> list[dict]:
         prompt = _build_pair_prompt(pair, max_clauses=3)
         result = await _call_with_fallback(prompt, pair)
         result["category"] = pair["category"]
+        result["doc_a_avg_severity"] = (
+            round(
+                sum(c["severity_score"] for c in pair["clauses_a"])
+                / len(pair["clauses_a"]),
+                2,
+            )
+            if pair["clauses_a"]
+            else 0.0
+        )
+
+        result["doc_b_avg_severity"] = (
+            round(
+                sum(c["severity_score"] for c in pair["clauses_b"])
+                / len(pair["clauses_b"]),
+                2,
+            )
+            if pair["clauses_b"]
+            else 0.0
+        )
+
         result["doc_a_risk_count"] = len(pair["clauses_a"])
         result["doc_b_risk_count"] = len(pair["clauses_b"])
 
