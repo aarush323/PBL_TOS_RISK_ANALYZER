@@ -1,76 +1,96 @@
 """
-Embedding service using sentence-transformers.
-Model: all-MiniLM-L6-v2 (384 dimensions, CPU-friendly, fast)
+Embedding utilities.
+
+Default: ONNX embeddings via `fastembed` (Hugging Face models, CPU-friendly).
+Fallback: spaCy document vectors (kept for safety / minimal environments).
 """
 
 import logging
+import os
 from functools import lru_cache
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-_model = None
-_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_FASTEMBED_MODEL = os.getenv("FASTEMBED_MODEL", "BAAI/bge-small-en-v1.5")
+EMBEDDINGS_PROVIDER = os.getenv("EMBEDDINGS_PROVIDER", "fastembed").lower().strip()
 
+def _should_use_fastembed() -> bool:
+    if EMBEDDINGS_PROVIDER in {"spacy"}:
+        return False
+    # Default to fastembed if installed.
+    try:
+        import fastembed  # noqa: F401
 
-def _load_model():
-    global _model
-    if _model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-
-            logger.info(f"Loading embedding model: {_model_name}")
-            _model = SentenceTransformer(_model_name)
-            logger.info("Embedding model loaded successfully")
-        except ImportError:
-            logger.error(
-                "sentence-transformers not installed. Run: pip install sentence-transformers"
-            )
-            raise
-    return _model
+        return True
+    except Exception:
+        return False
 
 
 def get_model():
-    return _load_model()
+    """
+    Backwards-compatible accessor for the active embedding backend.
+
+    Historically this returned a spaCy `nlp` object; now it may return a
+    `fastembed.TextEmbedding` instance when `EMBEDDINGS_PROVIDER=fastembed`.
+    """
+    return _get_fastembed() if _should_use_fastembed() else _get_spacy()
+
+
+@lru_cache(maxsize=1)
+def _get_fastembed():
+    from fastembed import TextEmbedding
+
+    model_name = DEFAULT_FASTEMBED_MODEL
+    logger.info("Loading fastembed model: %s", model_name)
+    return TextEmbedding(model_name=model_name)
+
+
+@lru_cache(maxsize=1)
+def _get_spacy():
+    import spacy
+
+    logger.info("Loading spaCy model: en_core_web_sm")
+    return spacy.load("en_core_web_sm")
+
+
+def _doc_vector(text: str) -> list[float]:
+    """
+    Compute an embedding vector for a single string.
+    """
+    if _should_use_fastembed():
+        embedder = _get_fastembed()
+        # fastembed returns an iterator of numpy arrays
+        vec = next(embedder.embed([text]))
+        return vec.tolist()
+
+    nlp = _get_spacy()
+    doc = nlp(text)
+    return doc.vector.tolist()
 
 
 def embed_text(text: str) -> list[float]:
     """
-    Embed a single string. Returns list of 384 floats.
-
-    Args:
-        text: Single text string to embed
-
-    Returns:
-        List of 384 float values (normalized)
+    Embed a single string.
     """
-    model = get_model()
-    embedding = model.encode(text, normalize_embeddings=True)
-    return embedding.tolist()
+    if not text:
+        return []
+    return _doc_vector(text)
 
 
-def embed_batch(texts: list[str], batch_size: int = 32) -> list[list[float]]:
+def embed_batch(texts: list[str]) -> list[list[float]]:
     """
-    Embed multiple strings at once. More efficient than looping.
-
-    Args:
-        texts: List of text strings to embed
-        batch_size: Batch size for processing (default 32)
-
-    Returns:
-        List of embedding lists (each 384 floats)
+    Embed multiple strings at once.
     """
     if not texts:
         return []
 
-    model = get_model()
-    embeddings = model.encode(
-        texts,
-        normalize_embeddings=True,
-        batch_size=batch_size,
-        show_progress_bar=False,
-    )
-    return embeddings.tolist()
+    if _should_use_fastembed():
+        embedder = _get_fastembed()
+        return [vec.tolist() for vec in embedder.embed(texts)]
+
+    nlp = _get_spacy()
+    docs = list(nlp.pipe(texts))
+    return [doc.vector.tolist() for doc in docs]
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:

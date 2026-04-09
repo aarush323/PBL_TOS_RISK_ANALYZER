@@ -1,6 +1,5 @@
 .venv
 .git
-frontend
 node_modules
 testing_documentation.docx
 *.pdf
