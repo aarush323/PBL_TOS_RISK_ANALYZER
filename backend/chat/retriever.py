@@ -4,6 +4,7 @@ Given a query and session_id, returns relevant clauses.
 """
 
 import logging
+import os
 from typing import Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from db.models import ClauseEmbedding, ChatSession
 from .embeddings import embed_text
+from .reranker import rerank_clauses
 
 logger = logging.getLogger(__name__)
 
@@ -193,6 +195,11 @@ async def retrieve_for_session(
 
     query_embedding = embed_text(query)
 
+    # Pull a wider candidate set so reranking (if enabled) has room to work.
+    candidate_k = int(top_k * float(os.getenv("RETRIEVAL_CANDIDATE_MULTIPLIER", "6")))
+    candidate_k = max(candidate_k, top_k * 2)
+    candidate_k = min(candidate_k, int(os.getenv("RETRIEVAL_MAX_CANDIDATES", "60")))
+
     base_query = (
         select(
             ClauseEmbedding,
@@ -202,7 +209,7 @@ async def retrieve_for_session(
         )
         .where(ClauseEmbedding.session_id == session_id)
         .order_by("distance")
-        .limit(top_k * 2)
+        .limit(candidate_k)
     )
 
     if filter_category:
@@ -243,7 +250,8 @@ async def retrieve_for_session(
         )
 
     clauses.sort(key=lambda x: x["similarity_score"], reverse=True)
-    clauses = clauses[:top_k]
+    # Optional LLM rerank (e.g., Groq) to improve semantic match quality.
+    clauses = rerank_clauses(query, clauses, top_k=top_k)
 
     clauses = await _expand_with_neighbors(clauses, session_id, db)
 
