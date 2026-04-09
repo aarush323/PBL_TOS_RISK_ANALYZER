@@ -4,6 +4,7 @@ Called automatically in background after store_document().
 """
 
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import select, delete
@@ -77,7 +78,13 @@ async def index_document(session_id: str, document_text: str, db: AsyncSession) 
     """
     logger.info(f"Starting indexing for session {session_id}")
 
-    paragraphs = [p.strip() for p in document_text.split("\n\n") if p.strip()]
+    doc_len = len(document_text or "")
+    preview = (document_text or "").strip().replace("\n", " ")[:200]
+    logger.info("Index input chars=%s preview=%r", doc_len, preview)
+
+    # More robust than `split("\n\n")`: handles any number of blank lines.
+    normalized = (document_text or "").replace("\r\n", "\n").replace("\r", "\n")
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", normalized) if p.strip()]
     clauses = segment_clauses(paragraphs)
 
     if not clauses:

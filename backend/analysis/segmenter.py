@@ -80,7 +80,6 @@ def segment_clauses(paragraphs: list[str]) -> list[dict]:
         if should_split(para):
             sub_clauses = split_by_sentences(para)
             for sub in sub_clauses:
-                print(f"[CHUNK] {sub[:300]}...")
                 clauses.append({
                     "id": clause_id,
                     "text": sub,
@@ -90,7 +89,6 @@ def segment_clauses(paragraphs: list[str]) -> list[dict]:
                 clause_id += 1
             pending_heading = None
         else:
-            print(f"[CHUNK] {para[:300]}...")
             clauses.append({
                 "id": clause_id,
                 "text": para,
@@ -99,6 +97,33 @@ def segment_clauses(paragraphs: list[str]) -> list[dict]:
             })
             clause_id += 1
             pending_heading = None
+
+    # Fallback: if we produced nothing (common when input is a short title
+    # or formatting doesn't include blank lines), chunk the full text anyway.
+    if not clauses:
+        full_text = " ".join(p.strip() for p in paragraphs if p and p.strip())
+        full_text = re.sub(r"\s+", " ", full_text).strip()
+        if full_text:
+            chunk_size = 900
+            overlap = 120
+            start = 0
+            while start < len(full_text):
+                end = min(len(full_text), start + chunk_size)
+                chunk = full_text[start:end].strip()
+                if chunk:
+                    clauses.append(
+                        {
+                            "id": clause_id,
+                            "text": chunk,
+                            "section_heading": None,
+                            "char_length": len(chunk),
+                            "is_fallback_chunk": True,
+                        }
+                    )
+                    clause_id += 1
+                if end >= len(full_text):
+                    break
+                start = max(0, end - overlap)
 
     logger.info(f"Segmentation complete: {len(clauses)} clauses produced")
     return clauses
