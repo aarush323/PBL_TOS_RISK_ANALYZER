@@ -1,6 +1,6 @@
 -- Jurist AI RAG System Migration
--- Run this on Railway Postgres after deploying the new code
--- 
+-- Run this on Neon Postgres after deploying the new code
+--
 -- This migration:
 -- 1. Enables pgvector extension
 -- 2. Adds indexing columns to chat_sessions
