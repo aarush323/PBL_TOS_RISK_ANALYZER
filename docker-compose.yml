@@ -1,45 +1,34 @@
-version: '3.8'
-
 services:
-  backend:
-    build: ./backend
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./backend:/app
-    command: uvicorn main:app --host 0.0.0.0 --port $PORT
+  - name: tos-backend
+    type: web
+    env: docker
+    rootDir: backend
+    dockerfilePath: ./backend/Dockerfile
+    region: oregon
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: "production"
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://tos-frontend.onrender.com"
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "5173:80"
-    env_file:
-      - .env
-
-  db:
-    image: postgres:16-alpine
-    env_file:
-      - .env
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
+  - name: tos-frontend
+    type: web
+    env: docker
+    rootDir: frontend
+    dockerfilePath: ./frontend/Dockerfile
+    region: oregon
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        sync: false
