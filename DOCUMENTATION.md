@@ -42,6 +42,8 @@
 - **Batched + parallel processing** — 5-10 clauses/batch, 3 concurrent workers
 - **Async analysis** — Instant extraction, LLM runs in background
 - **Document chatbot** — Interactive Q&A on extracted documents
+- **RAG-powered chat** — Semantic similarity search with clause citations
+- **Document comparison** — Compare two policies side-by-side
 
 ---
 
@@ -65,17 +67,17 @@
                               │    (Uvicorn)        │
                               └──────────┬──────────┘
                                          │
-           ┌──────────────────────────────┼──────────────────────────────┐
-           │                              │                              │
-           ▼                              ▼                              ▼
+            ┌──────────────────────────────┼──────────────────────────────┐
+            │                              │                              │
+            ▼                              ▼                              ▼
 ┌─────────────────────┐      ┌─────────────────────┐      ┌─────────────────────┐
 │   EXTRACTION       │      │     ANALYSIS        │      │      CHAT          │
 │   PIPELINE         │      │     PIPELINE        │      │    PIPELINE        │
 │                    │      │                     │      │                    │
-│ • URL (Beautiful   │      │ • NLP Pre-filter    │      │ • Session mgmt     │
-│   Soup + lxml)    │      │ • Clause Segment    │      │ • Context building │
-│ • PDF (pdfplumber)│      │ • LLM Classification │      │ • LLM Chat          │
-│ • Text (direct)   │      │ • Risk Aggregation   │      │                    │
+│ • URL (Beautiful   │      │ • NLP Pre-filter    │      │ • RAG retrieval    │
+│   Soup + lxml)    │      │ • Clause Segment    │      │ • Session mgmt     │
+│ • PDF (pdfplumber)│      │ • LLM Classification │      │ • Context building │
+│ • Text (direct)   │      │ • Risk Aggregation   │      │ • LLM Chat          │
 └─────────┬─────────┘      └──────────┬────────────┘      └─────────┬─────────┘
           │                           │                           │
           │                           │                           │
@@ -83,11 +85,14 @@
 ┌─────────────────────┐      ┌─────────────────────┐      ┌─────────────────────┐
 │  POSTGRESQL         │      │    CEREBRAS API     │      │    OLLAMA          │
 │  DATABASE           │      │    (Llama 3.1 8B)   │      │    (Local LLM)      │
-│                     │      │                     │      │                     │
-│ • Users             │      │ • Primary LLM       │      │ • Fallback LLM      │
-│ • Analyses          │      │ • Fast inference    │      │ • Offline support   │
-│ • Chat Sessions     │      │ • JSON mode         │      │ • Privacy           │
-└─────────────────────┘      └─────────────────────┘      └─────────────────────┘
+│  + pgvector         │      │                     │      │                     │
+│                     │      │ • Primary LLM       │      │ • Fallback LLM      │
+│ • Users             │      │ • Fast inference    │      │ • Offline support   │
+│ • Analyses          │      │ • JSON mode         │      │ • Privacy           │
+│ • Chat Sessions     │      └─────────────────────┘      └─────────────────────┘
+│ • Clause Embeddings │
+│   (vector search)  │
+└─────────────────────┘
 ```
 
 ---
@@ -202,23 +207,25 @@ async def analyze_async(
     │ email       │          │ source       │          │user_id (FK)│
     │ hashed_pw   │          │ source_type  │          │document_   │
     │ is_active   │          │ status       │          │ text       │
-    │ created_at  │          │ result (JSON)│          │created_at  │
-    └─────────────┘          │ error        │          └──────┬──────┘
-                            │ created_at   │                 │
-                            └──────┬───────┘                 │
+    │ created_at  │          │ result (JSON)│          │is_indexed  │
+    └─────────────┘          │ error        │          │indexed_at  │
+                            │ created_at   │          │clause_count│
+                            └──────┬───────┘          └──────┬──────┘
                                    │                        │
                                    │ 1:N                    │ 1:N
                                    ▼                        ▼
                             ┌─────────────┐          ┌─────────────┐
-                            │CHAT_MESSAGE │          │             │
-                            ├─────────────┤          │             │
-                            │ id (PK)     │          │             │
-                            │session_id(FK)          │             │
-                            │ role        │          │             │
-                            │ content     │          │             │
-                            │ created_at  │          │             │
-                            └─────────────┘          │             │
-                                                    │             │
+                            │CHAT_MESSAGE │          │CLAUSE_EMBED│
+                            ├─────────────┤          ├─────────────┤
+                            │ id (PK)     │          │ id (PK)    │
+                            │session_id(FK)          │session_id(FK)
+                            │ role        │          │clause_id   │
+                            │ content     │          │clause_text │
+                            │ created_at  │          │embedding   │
+                            └─────────────┘          │(vector)    │
+                                                    │risk_cat    │
+                                                    │severity    │
+                                                    └─────────────┘
 ```
 
 #### Key Design Decisions
@@ -879,7 +886,142 @@ Respond with JSON:
 
 ### Document Chatbot
 
+#### RAG Architecture (2026)
+
+The chatbot now uses **Retrieval-Augmented Generation (RAG)** with pgvector for semantic search:
+
 ```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    RAG CHATBOT PIPELINE                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+   USER QUESTION + SESSION
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 1. CHECK INDEXING STATUS                                                  │
+│                                                                             │
+│ ChatSession.is_indexed?                                                   │
+│   ├── YES → Use RAG (retrieve relevant clauses)                           │
+│   └── NO  → Fall back to full document (backward compatible)             │
+└──────────────────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 2. EMBEDDING + RETRIEVAL (if indexed)                                     │
+│                                                                             │
+│ • Embed user query (all-MiniLM-L6-v2, 384 dim)                           │
+│ • Cosine similarity search in pgvector                                    │
+│ • Filter by session_id                                                    │
+│ • Optional: filter by risk category                                       │
+│ • Return top-5 relevant clauses                                           │
+│                                                                             │
+│ clause_embeddings table:                                                  │
+│   - clause_id, clause_text, section_heading                               │
+│   - risk_categories (JSONB), severity_score, is_risky                     │
+│   - embedding (vector(384))                                               │
+└──────────────────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 3. BUILD CONTEXT                                                          │
+│                                                                             │
+│ System prompt includes:                                                   │
+│ • Top 5-8 relevant clauses with clause IDs                                │
+│ • Section headings and risk categories                                    │
+│ • Conversation history (last 6 messages)                                  │
+│                                                                             │
+│ Format:                                                                   │
+│ [Clause 3 | Privacy Risk | Severity: 0.8]                               │
+│ "We may share your data with third parties..."                            │
+└──────────────────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 4. LLM REQUEST (Cerebras → Ollama fallback)                              │
+│                                                                             │
+│ try Cerebras:                                                             │
+│   response = httpx.post(CEREBRAS_API, json={                              │
+│     model: "llama3.1-8b",                                                │
+│     messages: messages,                                                   │
+│     temperature: 0.3,                                                     │
+│     max_completion_tokens: 800                                            │
+│   })                                                                      │
+│ except: fallback to Ollama (qwen3.5:9b)                                   │
+└──────────────────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 5. SAVE + RETURN                                                          │
+│                                                                             │
+│ • Save chat message to history                                            │
+│ • Return: { reply, session_id, rag_enabled, clauses_retrieved }          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Auto-Indexing Flow
+
+When a document is stored for chat, it is automatically indexed in the background:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    AUTO-INDEXING PIPELINE                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+   POST /chat/store
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 1. STORE DOCUMENT                                                         │
+│                                                                             │
+│ • Save to chat_sessions table                                             │
+│ • Set is_indexed = FALSE initially                                        │
+│ • Return immediately to client                                            │
+└──────────────────────────────────────────────────────────────────────────┘
+          │
+          ▼ (background task)
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 2. INDEX IN BACKGROUND                                                    │
+│                                                                             │
+│ • Segment document into clauses (reuse segmenter.py)                      │
+│ • Extract NLP features (reuse nlp_features.py)                            │
+│ • Embed all clauses (sentence-transformers batch)                         │
+│ • INSERT into clause_embeddings                                           │
+│ • UPDATE chat_sessions SET is_indexed = TRUE                             │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Comparison Feature
+
+New in 2026: Compare two documents side-by-side:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DOCUMENT COMPARISON                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+   POST /chat/compare
+   { session_id_a, session_id_b, question }
+          │
+          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ • Retrieve top-4 clauses from each document (semantic search)             │
+│ • Build comparison context with clause citations                          │
+│ • LLM compares directly, states which is riskier per category           │
+│ • Return: { reply, doc_a_clauses, doc_b_clauses }                       │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Clause Browsing API
+
+Users can browse document clauses directly:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /chat/{id}/clauses` | List all clauses (filter by risk/category) |
+| `GET /chat/{id}/clauses/{cid}` | Get specific clause |
+| `GET /chat/{id}/risks` | Get risk summary by category |
+| `GET /chat/{id}/index/status` | Check indexing progress |
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    CHATBOT PIPELINE                                         │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -1281,7 +1423,8 @@ Respond with JSON:
 | Layer | Technology | Why |
 |-------|------------|-----|
 | **Web Framework** | FastAPI + Uvicorn | High-performance async API |
-| **Database** | PostgreSQL + SQLAlchemy async | Robust + scalable |
+| **Database** | PostgreSQL + SQLAlchemy async + pgvector | Robust + scalable + vector search |
+| **Vector Search** | pgvector + sentence-transformers | Semantic similarity, CPU-friendly |
 | **Auth** | JWT + bcrypt | Stateless + secure |
 | **NLP** | spaCy (en_core_web_sm) | Sentence segmentation, linguistic features |
 | **LLM (Primary)** | Cerebras API (Llama 3.1 8B) | Fast inference, JSON mode |

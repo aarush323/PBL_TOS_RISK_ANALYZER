@@ -17,6 +17,7 @@ AI-powered Terms of Service / Privacy Policy analyzer with extraction, risk clas
 |-------|------|
 | Backend | FastAPI, SQLAlchemy async, PostgreSQL |
 | NLP | spaCy (`en_core_web_sm`) |
+| Vector Search | pgvector + sentence-transformers |
 | LLM | Cerebras API + Ollama fallback |
 | Extraction | requests, BeautifulSoup4, lxml, pdfplumber |
 | Frontend | React + Vite |
@@ -85,9 +86,15 @@ When the limit is exceeded, the API returns `429 Too Many Requests` with `Retry-
 | `POST` | `/analyze/stop/{job_id}` | Cancel in-flight analysis |
 | `GET` | `/analyses` | List user analyses |
 | `GET` | `/analyses/{job_id}` | Fetch one saved analysis |
-| `POST` | `/chat/store` | Store source document for chat |
-| `POST` | `/chat` | Ask questions about stored document |
+| `POST` | `/chat/store` | Store document for chat (auto-indexes) |
+| `POST` | `/chat` | RAG-powered Q&A on document |
 | `GET` | `/chat/{session_id}/history` | Read chat history |
+| `GET` | `/chat/{session_id}/index/status` | Check indexing status |
+| `POST` | `/chat/{session_id}/reindex` | Force re-indexing |
+| `GET` | `/chat/{session_id}/clauses` | List all clauses (filterable) |
+| `GET` | `/chat/{session_id}/clauses/{id}` | Get specific clause |
+| `GET` | `/chat/{session_id}/risks` | Get risk summary by category |
+| `POST` | `/chat/compare` | Compare two documents |
 
 ## Testing
 
