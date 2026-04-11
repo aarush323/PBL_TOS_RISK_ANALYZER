@@ -7,32 +7,32 @@ import LoadingOverlay from './components/LoadingOverlay.jsx';
 import SkeletonList from './components/SkeletonList.jsx';
 import TypingDots from './components/TypingDots.jsx';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('tos_token'));
   const [user, setUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authMode, setAuthMode] = useState('login');
-  
+
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
   const [inputMode, setInputMode] = useState('url');
-  
+
   const [urlInput, setUrlInput] = useState('');
   const [textInput, setTextInput] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const fileInputRef = useRef(null);
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisJobId, setAnalysisJobId] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [sourceInfo, setSourceInfo] = useState({ type: null, value: null });
   const [showSourcePopup, setShowSourcePopup] = useState(false);
-  
+
   const [sessionId, setSessionId] = useState(null);
   const [chatMessages, setChatMessages] = useState([
-    { role: 'bot', content: 'Hello. I am the Digital Jurist Assistant. Extract a document first, and I can help you navigate the findings!'}
+    { role: 'bot', content: 'Hello. I am the Digital Jurist Assistant. Extract a document first, and I can help you navigate the findings!' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isChatTyping, setIsChatTyping] = useState(false);
@@ -295,7 +295,6 @@ export default function App() {
         setSessionId(data.job_id);
       }
 
-      // Restore source info from history
       const sType = data.source_type || 'text';
       if (sType === 'url') {
         setSourceInfo({ type: 'url', value: data.source || '' });
@@ -320,7 +319,7 @@ export default function App() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-      
+
       if (data.status === 'complete') {
         setAnalysisResult(data.result);
         setIsProcessing(false);
@@ -328,7 +327,7 @@ export default function App() {
         if (settings.autoOpenResults) {
           setActiveView('results');
         }
-        
+
         if (data.result.clauses && data.result.clauses.some(c => c.is_risky)) {
           const count = data.result.clauses.filter(c => c.is_risky).length;
           setChatMessages(prev => [...prev, { role: 'bot', content: `I've analyzed the document and found ${count} flagged clauses. The overarching risk profile is **${data.result.overall_risk}**. How can I assist you?` }]);
@@ -349,13 +348,13 @@ export default function App() {
   const stopAnalysis = async () => {
     if (!analysisJobId) return;
     try {
-      await fetch(`${API}/analyze/stop/${analysisJobId}`, { 
+      await fetch(`${API}/analyze/stop/${analysisJobId}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setIsProcessing(false);
       addToast('Analysis stopped by user.', true);
-    } catch(err) {
+    } catch (err) {
       console.error(err);
       addToast('Failed to stop analysis', true);
     }
@@ -374,31 +373,30 @@ export default function App() {
     }
 
     setIsProcessing(true);
-    
+
     try {
       let analyzeType = inputMode;
       let analyzeContent = content;
       let pdfFileName = null;
-      
+
       if (inputMode === 'upload') {
         const formData = new FormData();
         formData.append('file', uploadedFile);
         pdfFileName = uploadedFile.name;
-        
+
         const extractRes = await fetch(`${API}/extract/pdf`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
         });
-        
+
         if (!extractRes.ok) throw new Error('File extraction failed. Ensure it is a valid PDF.');
         const extractData = await extractRes.json();
-        
+
         analyzeType = 'text';
         analyzeContent = extractData.cleaned_text || extractData.raw_text;
       }
 
-      // Track the source for display in results
       if (inputMode === 'url') {
         setSourceInfo({ type: 'url', value: content });
       } else if (inputMode === 'upload') {
@@ -417,23 +415,23 @@ export default function App() {
 
       const res = await fetch(`${API}/analyze/async`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(requestBody)
       });
-      
+
       if (!res.ok) throw new Error('Analysis initialization failed');
       const data = await res.json();
-      
+
       setAnalysisJobId(data.job_id);
       setSelectedHistoryId(data.job_id);
-      
+
       if (data.extraction && data.extraction.cleaned_text) {
         initChatSession(data.extraction.cleaned_text, data.job_id);
       }
-      
+
       pollAnalysisResults(data.job_id);
     } catch (err) {
       addToast(err.message, true);
@@ -447,13 +445,13 @@ export default function App() {
     try {
       await fetch(`${API}/chat/store`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ session_id: newSessionId, document_text: text })
       });
-    } catch(e) {
+    } catch (e) {
       console.error('Chat init fail', e);
     }
   };
@@ -461,23 +459,23 @@ export default function App() {
   const sendChat = async () => {
     const msg = chatInput.trim();
     if (!msg || !sessionId) return;
-    
+
     setChatInput('');
     const newChat = [...chatMessages, { role: 'user', content: msg }];
     setChatMessages(newChat);
     setIsChatTyping(true);
-    
+
     try {
       const res = await fetch(`${API}/chat`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ session_id: sessionId, message: msg, history: [] })
       });
       const data = await res.json();
-      
+
       if (data.comparison_result && data.structured) {
         setComparisonData(data.structured);
         setChatMessages([...newChat, { role: 'bot', content: data.reply + "\n\n💡 I've loaded the comparison details. Switch to the Compare view for the full side-by-side analysis!" }]);
@@ -502,19 +500,19 @@ export default function App() {
     try {
       const res = await fetch(`${API}/chat/compare`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          session_id_a: sessionIdA, 
-          session_id_b: sessionIdB, 
+        body: JSON.stringify({
+          session_id_a: sessionIdA,
+          session_id_b: sessionIdB,
           question: "Compare the risk profiles of both documents",
           history: []
         })
       });
       const data = await res.json();
-      
+
       if (data.structured) {
         setComparisonData(data.structured);
         setShowCompareSelector(false);
@@ -567,19 +565,17 @@ export default function App() {
 
   const calculateScore = () => {
     if (!analysisResult) return 100;
-    
+
     const totalSeverity = analysisResult.total_severity_score || 0;
     const avgSeverity = analysisResult.avg_severity_score || 0;
     const riskyCount = analysisResult.risky_clause_count || 0;
     const totalCount = analysisResult.total_clauses || 1;
     const overallRisk = analysisResult.overall_risk || 'Low';
-    
+
     if (riskyCount === 0) return 100;
-    
+
     let score = 100;
-    
-    // Map severity score to 100-point scale
-    // Severity ranges: 0-2 = 90-100, 2-5 = 70-90, 5-10 = 50-70, 10-20 = 30-50, 20+ = 10-30
+
     if (totalSeverity <= 2) {
       score = 95;
     } else if (totalSeverity <= 5) {
@@ -593,15 +589,13 @@ export default function App() {
     } else {
       score = Math.max(10, 25 - ((totalSeverity - 40) * 0.5));
     }
-    
-    // Adjust based on overall risk level
+
     if (overallRisk === 'High') {
       score = Math.max(10, score - 15);
     } else if (overallRisk === 'Medium') {
       score = Math.max(20, score - 8);
     }
-    
-    // Adjust based on ratio of risky clauses
+
     const riskyRatio = riskyCount / totalCount;
     if (riskyRatio > 0.5) {
       score = Math.max(10, score - 15);
@@ -610,7 +604,7 @@ export default function App() {
     } else if (riskyRatio > 0.15) {
       score = Math.max(30, score - 3);
     }
-    
+
     return Math.floor(Math.max(10, Math.min(100, score)));
   };
 
@@ -629,7 +623,7 @@ export default function App() {
       <div className="auth-overlay">
         <div className="auth-card">
           <div className="auth-header">
-            <div className="brand" style={{justifyContent: 'center', marginBottom: '20px'}}>
+            <div className="brand" style={{ justifyContent: 'center', marginBottom: '20px' }}>
               <div className="brand-icon"><Scale size={18} /></div>
               <div className="brand-text">
                 <span className="brand-title">Jurist AI</span>
@@ -638,8 +632,6 @@ export default function App() {
             <h2>{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
             <p>{authMode === 'login' ? 'Enter your credentials to access Jurist AI' : 'Join the elite legal AI platform'}</p>
           </div>
-
-
 
           <form className="auth-form" onSubmit={handleAuth}>
             {authMode === 'signup' && (
@@ -676,7 +668,7 @@ export default function App() {
         <div className="toast-container">
           {toasts.map(t => (
             <div key={t.id} className={`toast show ${t.isError ? 'error' : ''}`}>
-              <span style={{fontSize: '18px'}}>{t.isError ? '⚠️' : '✓'}</span> {t.message}
+              <span style={{ fontSize: '18px' }}>{t.isError ? '⚠️' : '✓'}</span> {t.message}
             </div>
           ))}
         </div>
@@ -694,7 +686,7 @@ export default function App() {
 
       <AnimatePresence>
         {showSourcePopup && (
-          <motion.div 
+          <motion.div
             className="popup-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -702,29 +694,29 @@ export default function App() {
             onClick={() => setShowSourcePopup(false)}
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <motion.div 
+            <motion.div
               className="popup-content"
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              style={{ 
-                background: 'var(--surface, #1e1e2e)', 
-                padding: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '0' : '24px', 
-                borderRadius: '12px', 
-                maxWidth: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '1200px' : '600px', 
-                width: '90%', 
+              style={{
+                background: 'var(--surface, #1e1e2e)',
+                padding: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '0' : '24px',
+                borderRadius: '12px',
+                maxWidth: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '1200px' : '600px',
+                width: '90%',
                 height: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '90vh' : 'auto',
-                maxHeight: '90vh', 
-                display: 'flex', 
-                flexDirection: 'column', 
+                maxHeight: '90vh',
+                display: 'flex',
+                flexDirection: 'column',
                 border: '1px solid var(--border)',
                 overflow: 'hidden',
                 position: 'relative'
               }}
             >
               {((sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url') && (
-                <button 
+                <button
                   onClick={() => setShowSourcePopup(false)}
                   style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}
                 >
@@ -794,7 +786,6 @@ export default function App() {
       )}
 
       <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`} style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
-        {/* Mobile Close Button (only visible inside sidebar on mobile) */}
         <button className="mobile-close-btn" onClick={() => setIsMobileNavOpen(false)}>
           <X size={24} />
         </button>
@@ -805,13 +796,13 @@ export default function App() {
             <span className="brand-subtitle">TERMS RISK REVIEW</span>
           </div>
         </div>
-        
+
         <button className="nav-btn primary" onClick={() => { setActiveView('dashboard'); setSelectedHistoryId(null); setIsMobileNavOpen(false); }}>
           <Plus size={16} /> <span>New Analysis</span>
         </button>
 
         <div className="sidebar-history">
-          <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 8px 8px'}}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 8px 8px' }}>
             <div className="sidebar-section-title">
               <History size={14} /> Recent Analyses
             </div>
@@ -822,7 +813,7 @@ export default function App() {
             {isHistoryLoading ? (
               <SkeletonList rows={5} />
             ) : historyItems.length === 0 ? (
-              <div style={{padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)'}}>No history yet</div>
+              <div style={{ padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)' }}>No history yet</div>
             ) : (
               historyItems.slice(0, 8).map((item) => (
                 <button
@@ -840,13 +831,13 @@ export default function App() {
             )}
           </div>
         </div>
-        
+
         <div className="sidebar-footer">
           <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => { setActiveView('chat'); setIsMobileNavOpen(false); }}><BrainCircuit size={18}/> <span>Chat</span></a>
           <a className={`nav-item ${activeView === 'compare' ? 'active' : ''}`} onClick={() => { setActiveView('compare'); setIsMobileNavOpen(false); }}><Scale size={18}/> <span>Compare</span></a>
           <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => { setActiveView('settings'); setIsMobileNavOpen(false); }}><SettingsIcon size={18}/> <span>Settings</span></a>
           <a className="nav-item" onClick={logout}><HelpCircle size={18}/> <span>Sign Out</span></a>
-          
+
           <div className="user-profile">
             <div className="user-avatar">{user?.email?.[0].toUpperCase() || 'U'}</div>
             <div className="user-info">
@@ -862,8 +853,8 @@ export default function App() {
         <header className="topbar">
           <div className="topbar-nav"></div>
           <div className="topbar-actions">
-            <Bell size={18} style={{cursor: 'pointer'}} />
-            <span style={{fontSize: '14px', cursor: 'pointer', color: 'var(--primary)'}} onClick={logout}>Sign Out</span>
+            <Bell size={18} style={{ cursor: 'pointer' }} />
+            <span style={{ fontSize: '14px', cursor: 'pointer', color: 'var(--primary)' }} onClick={logout}>Sign Out</span>
           </div>
         </header>
 
@@ -881,7 +872,7 @@ export default function App() {
                   <h1>Welcome, {user?.email?.split('@')[0] || 'User'}.</h1>
                   <p>Ready to deconstruct legal complexity? Initiate a new risk assessment by pasting your legal document, uploading a file, or providing a URL. Our AI provides deep structural analysis in seconds.</p>
                 </div>
-                
+
                 <div className="input-container">
                   <div className="input-main">
                     <div className="tabs">
@@ -889,7 +880,7 @@ export default function App() {
                       <button className={`tab-btn ${inputMode === 'url' ? 'active' : ''}`} onClick={() => setInputMode('url')}>Provide Link</button>
                       <button className={`tab-btn ${inputMode === 'text' ? 'active' : ''}`} onClick={() => setInputMode('text')}>Paste Text</button>
                     </div>
-                    
+
                     <div className="input-card">
                       <div className="input-card-header">
                         <span className="input-label">
@@ -899,45 +890,45 @@ export default function App() {
                         </span>
                         <span className="inline-chip">FORMAT: AUTO</span>
                       </div>
-                      
+
                       {inputMode === 'url' && (
                         <div>
                           <div className="url-input-wrapper">
                             <Link className="link-icon" size={16} />
                             <input type="url" className="url-input" placeholder="https://legal.enterprise.com/terms-of-service" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
                           </div>
-                          <div style={{display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', fontSize: '13px', color: 'var(--primary)'}}>
-                            <input type="checkbox" defaultChecked style={{accentColor: 'var(--primary)'}} /> Secure SSL Encrypted Crawl ✓
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', fontSize: '13px', color: 'var(--primary)' }}>
+                            <input type="checkbox" defaultChecked style={{ accentColor: 'var(--primary)' }} /> Secure SSL Encrypted Crawl ✓
                           </div>
                         </div>
                       )}
-                      
+
                       {inputMode === 'text' && (
                         <textarea className="text-input" placeholder="Paste your Terms of Service or Privacy Policy text here..." value={textInput} onChange={e => setTextInput(e.target.value)} />
                       )}
 
                       {inputMode === 'upload' && (
                         <div className="upload-zone" onClick={() => fileInputRef.current?.click()}>
-                          <input type="file" ref={fileInputRef} accept=".pdf" onChange={e => setUploadedFile(e.target.files[0])} style={{display: 'none'}} />
+                          <input type="file" ref={fileInputRef} accept=".pdf" onChange={e => setUploadedFile(e.target.files[0])} style={{ display: 'none' }} />
                           <FileText className="upload-icon" />
                           <div className="upload-title">{uploadedFile ? uploadedFile.name : 'Drag & drop legal documents here'}</div>
                           <div className="upload-desc">Support for PDF files. Up to 50MB per analysis.</div>
                           <button className="upload-btn" type="button">{uploadedFile ? 'Change File' : 'Select Files from Device'}</button>
                         </div>
                       )}
-                      
-                      <div style={{display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap'}}>
-                        <button className="action-btn" onClick={startAnalysis} disabled={isProcessing} style={{flex: 1, minWidth: '200px'}}>
-                          {isProcessing ? <div className="loader" style={{display: 'block'}} /> : <Zap size={18} />}
+
+                      <div style={{ display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
+                        <button className="action-btn" onClick={startAnalysis} disabled={isProcessing} style={{ flex: 1, minWidth: '200px' }}>
+                          {isProcessing ? <div className="loader" style={{ display: 'block' }} /> : <Zap size={18} />}
                           {isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}
                         </button>
                         {isProcessing && (
-                          <button className="action-btn" onClick={stopAnalysis} style={{background: 'var(--error)', borderColor: 'var(--error)', minWidth: '100px'}}>
+                          <button className="action-btn" onClick={stopAnalysis} style={{ background: 'var(--error)', borderColor: 'var(--error)', minWidth: '100px' }}>
                             STOP
                           </button>
                         )}
                       </div>
-                      
+
                       <div className="supported-list">
                         <span className="supported-title">Supported:</span>
                         <span className="inline-chip">🌐 HTML 5</span>
@@ -946,15 +937,15 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="input-side">
                     <div className="info-card">
-                      <div className="info-icon"><Activity size={18}/></div>
+                      <div className="info-icon"><Activity size={18} /></div>
                       <h3 className="info-title">How To Get Better Results</h3>
                       <p className="info-desc">Use complete policy text when possible. Short excerpts may miss context and produce weaker risk explanations.</p>
-                      <div style={{marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6}}>
-                        • Prefer full ToS or Privacy Policy documents<br/>
-                        • Use PDF upload for long legal agreements<br/>
+                      <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                        • Prefer full ToS or Privacy Policy documents<br />
+                        • Use PDF upload for long legal agreements<br />
                         • Open each flagged clause in chat for examples
                       </div>
                     </div>
@@ -1002,7 +993,7 @@ export default function App() {
                     <Scale size={14} /> Compare with...
                   </button>
                 </div>
-                
+
                 <div className="results-layout">
                   <div className="results-main" style={{ width: isDesktop() ? `${resultsSplit}%` : '100%' }}>
                     <div className="score-card">
@@ -1045,11 +1036,11 @@ export default function App() {
                         <span className="score-label">SCORE</span>
                       </div>
                     </div>
-                    
-                    <h3 style={{fontSize: '16px', marginBottom: '16px', color: 'var(--text-heading)'}}>Identified Risk Vectors</h3>
+
+                    <h3 style={{ fontSize: '16px', marginBottom: '16px', color: 'var(--text-heading)' }}>Identified Risk Vectors</h3>
                     <div className="risk-cards">
                       {(!analysisResult || !analysisResult.clauses || analysisResult.clauses.length === 0) ? (
-                        <div style={{padding: '40px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)'}}>
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
                           No analysis data yet. Run an analysis from the dashboard.
                         </div>
                       ) : (
@@ -1057,12 +1048,12 @@ export default function App() {
                           const cat = c.risk_categories && c.risk_categories.length > 0 ? c.risk_categories[0] : 'General';
                           const conf = c.confidence || 'Medium';
                           const cssClass = conf === 'High' ? 'high' : (conf === 'Medium' ? 'medium' : 'low');
-                          
+
                           return (
                             <div className={`risk-card ${cssClass}`} key={idx} style={{ padding: settings.compactRiskCards ? '14px' : '20px' }}>
                               <div className="risk-header">
                                 <div className="risk-title-wrapper">
-                                  <div className="risk-icon"><Scale size={16}/></div>
+                                  <div className="risk-icon"><Scale size={16} /></div>
                                   <div>
                                     <div className="risk-title">{cat}</div>
                                     <div className="risk-section">Clause #{idx + 1}</div>
@@ -1071,7 +1062,7 @@ export default function App() {
                                 <span className="risk-badge">{conf} RISK</span>
                               </div>
                               <div className="risk-desc">{c.explanation || c.text}</div>
-                            <div className="risk-action-row">
+                              <div className="risk-action-row">
                                 <button
                                   type="button"
                                   className="chat-sugg-btn"
@@ -1086,19 +1077,19 @@ export default function App() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="resizer vertical inner" onMouseDown={startResultsResize} />
                   <div className="results-side" style={{ width: isDesktop() ? `${100 - resultsSplit}%` : '100%' }}>
                     <div className="chat-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div className="chat-logo"><BrainCircuit size={18}/></div>
+                        <div className="chat-logo"><BrainCircuit size={18} /></div>
                         <div className="chat-title">
                           <h3>Digital Jurist Assistant</h3>
                           <p>Document Q&A</p>
                         </div>
                       </div>
-                      <button 
-                        className="chat-sugg-btn" 
+                      <button
+                        className="chat-sugg-btn"
                         onClick={() => setActiveView('chat')}
                         title="Expand to Full Chat"
                         style={{ padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -1106,22 +1097,22 @@ export default function App() {
                         <Maximize2 size={16} />
                       </button>
                     </div>
-                    
+
                     <div className="chat-messages" ref={chatBoxRef}>
                       {chatMessages.map((msg, i) => (
                         <div className={`msg ${msg.role}`} key={i}>
-                          <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14}/> : (user?.email?.[0].toUpperCase() || 'U')}</div>
+                          <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14} /> : (user?.email?.[0].toUpperCase() || 'U')}</div>
                           <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
                         </div>
                       ))}
                       {isChatTyping && (
-                         <div className="msg bot">
-                          <div className="msg-avatar"><BrainCircuit size={14}/></div>
+                        <div className="msg bot">
+                          <div className="msg-avatar"><BrainCircuit size={14} /></div>
                           <div className="msg-bubble"><TypingDots /></div>
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="resizer horizontal" onMouseDown={startChatResize} />
                     <div className="chat-input" style={{
                       opacity: sessionId ? 1 : 0.5,
@@ -1134,10 +1125,10 @@ export default function App() {
                         ))}
                       </div>
                       <div className="chat-form">
-                        <input 
-                          type="text" 
-                          className="chat-input-field" 
-                          placeholder="Ask about specific clauses or risks..." 
+                        <input
+                          type="text"
+                          className="chat-input-field"
+                          placeholder="Ask about specific clauses or risks..."
                           value={chatInput}
                           onChange={e => setChatInput(e.target.value)}
                           onKeyPress={e => e.key === 'Enter' && sendChat()}
@@ -1165,8 +1156,8 @@ export default function App() {
                   <p>Customize behavior for analysis and results views.</p>
                 </div>
 
-                <div className="input-card" style={{maxWidth: '720px'}}>
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                <div className="input-card" style={{ maxWidth: '720px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <div>
                       <div className="risk-title">Auto-open Results After Analysis</div>
                       <div className="risk-section">Switch to Risk Analysis view automatically when processing completes.</div>
@@ -1175,11 +1166,11 @@ export default function App() {
                       type="checkbox"
                       checked={settings.autoOpenResults}
                       onChange={(e) => setSettings(prev => ({ ...prev, autoOpenResults: e.target.checked }))}
-                      style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
+                      style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }}
                     />
                   </div>
 
-                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div className="risk-title">Compact Risk Cards</div>
                       <div className="risk-section">Reduce spacing in risk cards for denser reading.</div>
@@ -1188,7 +1179,7 @@ export default function App() {
                       type="checkbox"
                       checked={settings.compactRiskCards}
                       onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
-                      style={{accentColor: 'var(--primary)', width: '18px', height: '18px'}}
+                      style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }}
                     />
                   </div>
                 </div>
@@ -1214,7 +1205,7 @@ export default function App() {
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px'}}>
                       <div>
                         <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)'}}>Document A</label>
-                        <select 
+                        <select
                           className="chat-input-field"
                           value={compareDocA || ''}
                           onChange={(e) => setCompareDocA(e.target.value)}
@@ -1241,7 +1232,7 @@ export default function App() {
                       </div>
                       <div>
                         <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)'}}>Document B</label>
-                        <select 
+                        <select
                           className="chat-input-field"
                           value={compareDocB || ''}
                           onChange={(e) => setCompareDocB(e.target.value)}
@@ -1296,26 +1287,24 @@ export default function App() {
 
                     {comparisonData ? (
                       <div className="comparison-results" style={{paddingBottom: '40px'}}>
-                        {/* Document Header Cards */}
-                        <div style={{display: 'grid', gridTemplateColumns: {xs: '1fr', md: '1fr 1fr'}, gap: '16px', marginBottom: '24px'}}>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px'}}>
                           {[
                             { doc: comparisonData.doc_a, label: comparisonData.doc_a?.label, side: 'a' },
                             { doc: comparisonData.doc_b, label: comparisonData.doc_b?.label, side: 'b' }
                           ].map(({ doc, label, side }) => {
                             const risk = doc?.risk || 'Unknown';
                             const riskColor = risk === 'High' ? 'var(--error)' : risk === 'Medium' ? 'var(--warning)' : 'var(--success)';
-                            const borderColor = riskColor;
                             const score = doc?.score || 50;
                             const clauses = doc?.risky_clause_count || 0;
                             const total = doc?.total_clauses || 0;
                             const domain = label ? label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document';
-                            
+
                             return (
                               <div key={side} style={{
                                 background: 'var(--surface-2)',
                                 borderRadius: '8px',
                                 border: '1px solid rgba(255,255,255,0.08)',
-                                borderLeft: `3px solid ${borderColor}`,
+                                borderLeft: `3px solid ${riskColor}`,
                                 padding: '20px 24px',
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -1327,30 +1316,18 @@ export default function App() {
                                     <div style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px'}}>{label}</div>
                                   </div>
                                   <span style={{
-                                    fontSize: '11px',
-                                    fontWeight: 500,
-                                    color: riskColor,
-                                    background: `${riskColor}15`,
-                                    padding: '4px 10px',
-                                    borderRadius: '4px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em'
+                                    fontSize: '11px', fontWeight: 500, color: riskColor,
+                                    background: `${riskColor}15`, padding: '4px 10px', borderRadius: '4px',
+                                    textTransform: 'uppercase', letterSpacing: '0.05em'
                                   }}>{risk} Risk</span>
                                 </div>
-                                
                                 <div style={{marginTop: '8px'}}>
                                   <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px'}}>
                                     <span>{clauses} of {total} clauses flagged</span>
                                     <span>score {score}</span>
                                   </div>
                                   <div style={{height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden'}}>
-                                    <div style={{
-                                      height: '100%',
-                                      width: `${score}%`,
-                                      background: riskColor,
-                                      borderRadius: '3px',
-                                      transition: 'width 0.3s ease'
-                                    }} />
+                                    <div style={{height: '100%', width: `${score}%`, background: riskColor, borderRadius: '3px', transition: 'width 0.3s ease'}} />
                                   </div>
                                 </div>
                               </div>
@@ -1358,15 +1335,7 @@ export default function App() {
                           })}
                         </div>
 
-                        {/* Category Table */}
-                        <div style={{
-                          background: 'var(--surface-2)',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          padding: '24px',
-                          marginBottom: '24px',
-                          overflowX: 'auto'
-                        }}>
+                        <div style={{background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', marginBottom: '24px', overflowX: 'auto'}}>
                           <h3 style={{fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '16px', letterSpacing: '0.02em'}}>Category Comparison</h3>
                           <table style={{width: '100%', borderCollapse: 'collapse', minWidth: '500px'}}>
                             <thead>
@@ -1382,17 +1351,13 @@ export default function App() {
                                 const aSev = cat.doc_a_avg_severity || 0;
                                 const bSev = cat.doc_b_avg_severity || 0;
                                 const winnerColor = cat.winner === 'a' ? 'var(--error)' : cat.winner === 'b' ? 'var(--success)' : 'var(--text-muted)';
-                                const winnerDot = cat.winner === 'a' ? '🔴' : cat.winner === 'b' ? '🔴' : '⚪';
+                                const winnerDot = cat.winner === 'tie' ? '⚪' : '🔴';
                                 const winnerText = cat.winner === 'a' ? 'A Riskier' : cat.winner === 'b' ? 'B Riskier' : 'Tie';
                                 const aSummary = cat.clause_a_summary ? (cat.clause_a_summary.length > 80 ? cat.clause_a_summary.slice(0, 80) + '...' : cat.clause_a_summary) : '';
                                 const bSummary = cat.clause_b_summary ? (cat.clause_b_summary.length > 80 ? cat.clause_b_summary.slice(0, 80) + '...' : cat.clause_b_summary) : '';
-                                
+
                                 return (
-                                  <tr key={idx} style={{
-                                    borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                    background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent',
-                                    minHeight: '60px'
-                                  }}>
+                                  <tr key={idx} style={{borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent'}}>
                                     <td style={{padding: '16px', verticalAlign: 'top'}}>
                                       <div style={{fontWeight: 600, fontSize: '13px', color: 'var(--text)'}}>{cat.category}</div>
                                       {cat.key_difference && (
@@ -1407,9 +1372,7 @@ export default function App() {
                                       {aSummary && <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic'}}>{aSummary}</div>}
                                     </td>
                                     <td style={{padding: '16px', textAlign: 'center', verticalAlign: 'middle'}}>
-                                      <span style={{fontSize: '12px', color: winnerColor, fontWeight: 500}}>
-                                        {winnerDot} {winnerText}
-                                      </span>
+                                      <span style={{fontSize: '12px', color: winnerColor, fontWeight: 500}}>{winnerDot} {winnerText}</span>
                                     </td>
                                     <td style={{padding: '16px', textAlign: 'center', verticalAlign: 'top'}}>
                                       <div style={{fontSize: '20px', fontWeight: 600, color: cat.winner === 'b' ? 'var(--error)' : 'var(--text)'}}>{cat.doc_b_risk_count || 0}</div>
@@ -1423,18 +1386,15 @@ export default function App() {
                           </table>
                         </div>
 
-                        {/* Verdict Section */}
                         {(() => {
                           const cats = comparisonData.categories || [];
                           const wonA = cats.filter(c => c.winner === 'a').length;
                           const wonB = cats.filter(c => c.winner === 'b').length;
                           const tied = cats.filter(c => c.winner === 'tie').length;
-                          const mostDangerous = cats.length > 0 ? cats.reduce((max, c) => 
+                          const mostDangerous = cats.length > 0 ? cats.reduce((max, c) =>
                             Math.abs(c.severity_delta || 0) > Math.abs(max?.severity_delta || 0) ? c : max, cats[0]) : null;
-                          
                           const docAName = comparisonData.doc_a?.label ? comparisonData.doc_a.label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document A';
                           const docBName = comparisonData.doc_b?.label ? comparisonData.doc_b.label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document B';
-                          
                           let summaryLine = '';
                           if (comparisonData.overall_winner === 'a') {
                             summaryLine = `${docAName} poses greater contractual and legal risk. ${docBName} has more clauses overall but lower average severity.`;
@@ -1443,19 +1403,11 @@ export default function App() {
                           } else {
                             summaryLine = `Both documents have similar overall risk profiles across categories.`;
                           }
-                          
                           return (
-                            <div style={{
-                              background: 'var(--surface-2)',
-                              borderRadius: '8px',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                              padding: '24px',
-                              textAlign: 'center'
-                            }}>
+                            <div style={{background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', textAlign: 'center'}}>
                               <h3 style={{fontSize: '20px', fontWeight: 600, color: 'var(--text)', marginBottom: '20px'}}>
                                 {comparisonData.verdict || 'Analysis Complete'}
                               </h3>
-                              
                               <div style={{display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '20px'}}>
                                 <div style={{textAlign: 'center'}}>
                                   <div style={{fontSize: '28px', fontWeight: 700, color: 'var(--error)'}}>{wonA}</div>
@@ -1470,24 +1422,12 @@ export default function App() {
                                   <div style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px'}}>B Won</div>
                                 </div>
                               </div>
-                              
                               {mostDangerous && (
                                 <div style={{fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px'}}>
                                   Most dangerous category: <span style={{color: 'var(--accent)', fontWeight: 600}}>{mostDangerous.category}</span>
                                 </div>
                               )}
-                              
-                              <div style={{
-                                fontSize: '13px',
-                                color: 'var(--text-muted)',
-                                fontStyle: 'italic',
-                                padding: '12px 16px',
-                                background: 'rgba(255,255,255,0.03)',
-                                borderRadius: '6px',
-                                maxWidth: '500px',
-                                margin: '0 auto',
-                                lineHeight: 1.5
-                              }}>
+                              <div style={{fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.5}}>
                                 {summaryLine}
                               </div>
                             </div>
@@ -1522,15 +1462,15 @@ export default function App() {
               >
                 <div className="chat-header" style={{ borderBottom: '1px solid var(--border)', background: 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div className="chat-logo"><BrainCircuit size={18}/></div>
+                    <div className="chat-logo"><BrainCircuit size={18} /></div>
                     <div className="chat-title">
                       <h3>Digital Jurist Assistant</h3>
                       <p>Document Q&A</p>
                     </div>
                   </div>
                   {analysisResult && (
-                    <button 
-                      className="chat-sugg-btn" 
+                    <button
+                      className="chat-sugg-btn"
                       onClick={() => setActiveView('results')}
                       style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '4px' }}
                     >
@@ -1538,22 +1478,22 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                
+
                 <div className="chat-messages" ref={chatBoxRef}>
                   {chatMessages.map((msg, i) => (
                     <div className={`msg ${msg.role}`} key={i}>
-                      <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14}/> : (user?.email?.[0].toUpperCase() || 'U')}</div>
+                      <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14} /> : (user?.email?.[0].toUpperCase() || 'U')}</div>
                       <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
                     </div>
                   ))}
                   {isChatTyping && (
-                     <div className="msg bot">
-                      <div className="msg-avatar"><BrainCircuit size={14}/></div>
+                    <div className="msg bot">
+                      <div className="msg-avatar"><BrainCircuit size={14} /></div>
                       <div className="msg-bubble"><TypingDots /></div>
                     </div>
                   )}
                 </div>
-                
+
                 <div className="chat-input" style={{
                   opacity: sessionId ? 1 : 0.5,
                   pointerEvents: sessionId ? 'all' : 'none',
@@ -1570,10 +1510,10 @@ export default function App() {
                     ))}
                   </div>
                   <div className="chat-form">
-                    <input 
-                      type="text" 
-                      className="chat-input-field" 
-                      placeholder="Ask about specific clauses or risks..." 
+                    <input
+                      type="text"
+                      className="chat-input-field"
+                      placeholder="Ask about specific clauses or risks..."
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyPress={e => e.key === 'Enter' && sendChat()}
@@ -1586,15 +1526,13 @@ export default function App() {
               </motion.section>
             )}
           </AnimatePresence>
-          
         </main>
       </div>
 
-      {/* TOASTS */}
       <div className="toast-container">
         {toasts.map(t => (
           <div key={t.id} className={`toast show ${t.isError ? 'error' : ''}`}>
-            <span style={{fontSize: '18px'}}>{t.isError ? '⚠️' : '✓'}</span> {t.message}
+            <span style={{ fontSize: '18px' }}>{t.isError ? '⚠️' : '✓'}</span> {t.message}
           </div>
         ))}
       </div>
