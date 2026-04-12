@@ -388,12 +388,14 @@ async def _run_analysis_background(job_id: str, extraction: dict):
 
 
 async def _index_document_background(session_id: str, document_text: str):
-    async with AsyncSessionLocal() as db:
-        try:
-            clause_count = await index_document(session_id, document_text, db)
-            logger.info(f"Session {session_id} indexed with {clause_count} clauses.")
-        except Exception as e:
-            logger.error(f"Indexing failed for session {session_id}: {e}")
+    try:
+        # Pass db=None so index_document orchestrates its own short-lived DB connection
+        # AFTER it spends 3.5 minutes generating embeddings via Gemini API.
+        clause_count = await index_document(session_id, document_text, db=None)
+        logger.info(f"Session {session_id} indexed with {clause_count} clauses.")
+    except Exception as e:
+        logger.error(f"Indexing failed for session {session_id}: {e}")
+        async with AsyncSessionLocal() as db:
             session = await crud.get_chat_session(db, session_id)
             if session:
                 session.is_indexed = False
@@ -690,6 +692,9 @@ async def chat(
     db_history = await crud.get_chat_history(db, body.session_id)
     conversation = [{"role": m.role, "content": m.content} for m in db_history]
 
+    logger.info(f"[CHAT] Query: '{body.message[:100]}' | session={body.session_id}")
+    logger.info(f"[CHAT] RAG indexed={session.is_indexed}")
+
     clauses = []
     use_rag = session.is_indexed
 
@@ -698,10 +703,15 @@ async def chat(
             clauses = await retrieve_for_session(
                 body.message, body.session_id, db, top_k=5
             )
-            logger.info(f"RAG retrieved {len(clauses)} clauses for query")
+            logger.info(f"[RAG] Retrieved {len(clauses)} clauses for query")
+            for i, c in enumerate(clauses[:3]):
+                logger.info(f"[RAG]   clause[{i}]: {c.get('text', '')[:80]}...")
         except Exception as e:
-            logger.warning(f"RAG retrieval failed, falling back: {e}")
+            logger.warning(f"[RAG] Retrieval FAILED, falling back to full-doc: {e}")
             use_rag = False
+
+    if not use_rag:
+        logger.info("[CHAT] Using full-document context (RAG disabled)")
 
     try:
         if use_rag:
@@ -712,6 +722,7 @@ async def chat(
             reply = await asyncio.to_thread(
                 chat_with_document, session.document_text, conversation
             )
+        logger.info(f"[CHAT] Response generated via {'RAG' if use_rag else 'full-doc'} ({len(reply)} chars)")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
 
@@ -771,13 +782,39 @@ async def _handle_comparison(
 
         reply += f"I analyzed {categories_compared} risk categories. Check the detailed comparison for more."
 
+        # Build structured data matching frontend expectations
+        analysis_a = await crud.get_analysis_job(db, session_id_a)
+        analysis_b = await crud.get_analysis_job(db, session_id_b)
+        result_data_a = analysis_a.result if analysis_a else {}
+        result_data_b = analysis_b.result if analysis_b else {}
+
+        structured = {
+            "doc_a": {
+                "label": source_a,
+                "risk": result_data_a.get("overall_risk", "Unknown"),
+                "risky_clause_count": result_data_a.get("risky_clause_count", 0),
+                "total_clauses": result_data_a.get("total_clauses", 0),
+                "score": _calc_score_from_result(result_data_a),
+            },
+            "doc_b": {
+                "label": source_b,
+                "risk": result_data_b.get("overall_risk", "Unknown"),
+                "risky_clause_count": result_data_b.get("risky_clause_count", 0),
+                "total_clauses": result_data_b.get("total_clauses", 0),
+                "score": _calc_score_from_result(result_data_b),
+            },
+            "categories": result.get("pairs", []),
+            "overall_winner": overall.lower() if overall else "",
+            "verdict": verdict,
+        }
+
         return {
             "reply": reply,
             "session_id": body.session_id,
             "comparison_result": True,
             "session_id_a": session_id_a,
             "session_id_b": session_id_b,
-            "structured": result,
+            "structured": structured,
         }
     except Exception as e:
         logger.error(f"Comparison failed: {e}")

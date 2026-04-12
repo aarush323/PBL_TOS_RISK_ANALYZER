@@ -87,16 +87,64 @@ async def index_document(session_id: str, document_text: str, db: AsyncSession) 
     logger.info(f"Segmented {len(clauses)} clauses for session {session_id}")
 
     texts_to_embed = [c["text"] for c in clauses]
-    embeddings = embed_batch(texts_to_embed)
+    
+    # Run the synchronous embedding (which has time.sleep delays) in a background thread
+    # so we don't freeze the main FastAPI asyncio event loop
+    import asyncio
+    embeddings = await asyncio.to_thread(embed_batch, texts_to_embed)
 
-    existing = await db.execute(
-        select(ChatSession).where(ChatSession.session_id == session_id)
-    )
-    session = existing.scalar_one_or_none()
+    async def _save_to_db(session_db: AsyncSession):
+        existing = await session_db.execute(
+            select(ChatSession).where(ChatSession.session_id == session_id)
+        )
+        session = existing.scalar_one_or_none()
 
-    if not session:
-        logger.error(f"Session {session_id} not found")
-        return 0
+        if not session:
+            logger.error(f"Session {session_id} not found")
+            return 0
+
+        await session_db.execute(
+            delete(ClauseEmbedding).where(ClauseEmbedding.session_id == session_id)
+        )
+
+        clause_embeddings = []
+        for clause, embedding in zip(clauses, embeddings):
+            metadata = _extract_clause_metadata(clause)
+
+            severity = 0.0
+            if metadata["is_risky"]:
+                severity = 0.5 + metadata["risk_score"] * 0.5
+
+            clause_emb = ClauseEmbedding(
+                session_id=session_id,
+                clause_id=clause["id"],
+                clause_text=clause["text"],
+                section_heading=metadata["section_heading"],
+                risk_categories=metadata["risk_categories"],
+                severity_score=severity,
+                is_risky=metadata["is_risky"],
+                has_negation=metadata.get("has_negation", False),
+                embedding=embedding,
+            )
+            clause_embeddings.append(clause_emb)
+
+        session_db.add_all(clause_embeddings)
+
+        session.is_indexed = True
+        session.indexed_at = datetime.now(timezone.utc)
+        session.clause_count = len(clauses)
+
+        await session_db.commit()
+
+        logger.info(f"Indexed {len(clauses)} clauses for session {session_id}")
+        return len(clauses)
+        
+    if db is not None:
+        return await _save_to_db(db)
+    else:
+        from db.connection import AsyncSessionLocal
+        async with AsyncSessionLocal() as short_lived_db:
+            return await _save_to_db(short_lived_db)
 
     await db.execute(
         delete(ClauseEmbedding).where(ClauseEmbedding.session_id == session_id)

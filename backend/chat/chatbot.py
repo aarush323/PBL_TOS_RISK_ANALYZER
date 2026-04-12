@@ -38,8 +38,10 @@ async def chat_with_document_rag(
     from chat.context_builder import build_single_doc_context, build_fallback_context
 
     if clauses:
+        logger.info(f"[RAG] Building context with {len(clauses)} retrieved clauses")
         messages = build_single_doc_context(clauses, conversation, query)
     else:
+        logger.info("[RAG] No clauses retrieved, using fallback (full document) context")
         messages = build_fallback_context(document_text, conversation, query)
 
     cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
@@ -135,6 +137,7 @@ async def chat_comparison(
     """
     from chat.context_builder import build_comparison_context
 
+    logger.info(f"[COMPARE] Building context: '{source_a}' ({len(doc_a_clauses)} clauses) vs '{source_b}' ({len(doc_b_clauses)} clauses)")
     messages = build_comparison_context(
         doc_a_clauses, doc_b_clauses, source_a, source_b, conversation, query
     )
