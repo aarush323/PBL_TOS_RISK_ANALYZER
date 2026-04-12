@@ -1,13 +1,13 @@
 # ToS Risk Analyzer - Technical Documentation
 
 <p align="center">
-  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
-  <img src="https://img.shields.io/badge/spaCy-09A3FF?style=for-the-badge&logo=spacy&logoColor=white" alt="spaCy">
-  <img src="https://img.shields.io/badge/LLMs-Cerebras_+_Groq-orange?style=for-the-badge" alt="LLM">
-  <img src="https://img.shields.io/badge/Gemini_Embeddings-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini">
-  <img src="https://img.shields.io/badge/PostgreSQL_+_pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
-  <img src="https://img.shields.io/badge/Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white" alt="Railway">
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![spaCy](https://img.shields.io/badge/spaCy_NLP-09A3FF?style=for-the-badge&logo=spacy&logoColor=white)](https://spacy.io)
+[![RAG](https://img.shields.io/badge/RAG-FF6B35?style=for-the-badge&logo=ai&logoColor=white)]()
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL_+_pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![NeonDB](https://img.shields.io/badge/NeonDB-00E599?style=for-the-badge&logo=neon&logoColor=white)](https://neon.tech)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://railway.app)
 </p>
 
 ---
@@ -51,57 +51,19 @@
 
 ## System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                                    SYSTEM OVERVIEW                                   │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    React[React Frontend] -->|HTTP / REST| FastAPI[FastAPI Backend]
 
-                              ┌─────────────────────┐
-                              │     FRONTEND        │
-                              │    (React + Vite)   │
-                              └──────────┬──────────┘
-                                         │
-                                         │ HTTP/REST
-                                         │
-                                         ▼
-                              ┌─────────────────────┐
-                              │   FASTAPI BACKEND   │
-                              │    (Uvicorn)        │
-                              └──────────┬──────────┘
-                                         │
-            ┌──────────────────────────────┼──────────────────────────────┐
-            │                              │                              │
-            ▼                              ▼                              ▼
-┌─────────────────────┐      ┌─────────────────────┐      ┌─────────────────────┐
-│   EXTRACTION       │      │     ANALYSIS        │      │      CHAT          │
-│   PIPELINE         │      │     PIPELINE        │      │    PIPELINE        │
-│                    │      │                     │      │                    │
-│ • URL (Beautiful   │      │ • NLP Pre-filter    │      │ • Gemini embed     │
-│   Soup + lxml)    │      │ • Clause Segment    │      │ • pgvector search  │
-│ • PDF (pdfplumber)│      │ • LLM Classification │      │ • Context building │
-│ • Text (direct)   │      │ • Risk Aggregation   │      │ • LLM Chat (RAG)   │
-└─────────┬─────────┘      └──────────┬────────────┘      └─────────┬─────────┘
-          │                           │                           │
-          ▼                           ▼                           ▼
-┌─────────────────────┐      ┌─────────────────────────────────────────────────┐
-│  POSTGRESQL         │      │           LLM PROVIDERS (Round-Robin)           │
-│  DATABASE           │      │                                                 │
-│  + pgvector         │      │  ┌────────────┐  ┌────────────┐  ┌───────────┐  │
-│                     │      │  │  CEREBRAS  │  │   GROQ     │  │  OLLAMA   │  │
-│ • Users             │      │  │ llama3.1   │  │ llama-3.1  │  │ phi3.5 /  │  │
-│ • Analyses          │      │  │ -8b        │  │ -8b-instant│  │ qwen3.5   │  │
-│ • Chat Sessions     │      │  │ (Primary)  │  │ (Secondary)│  │ (Fallback)│  │
-│ • Clause Embeddings │      │  └────────────┘  └────────────┘  └───────────┘  │
-│   (vector search)  │      └─────────────────────────────────────────────────┘
-└─────────────────────┘
-                              ┌─────────────────────┐
-            ┌─────────────────│   GEMINI EMBED API  │
-            │                 │  gemini-embedding-001│
-            │                 │  (384 dim vectors)  │
-            │                 └─────────────────────┘
-            │ Used by RAG indexing + retrieval
-            ▼
-  clause_embeddings table (pgvector cosine search)
+    FastAPI --> Ext[Extraction Pipeline]
+    FastAPI --> NLP[Analysis Pipeline with NLP+LLM]
+    FastAPI --> RAG[RAG Chat Pipeline]
+    
+    Gemini[Gemini Embeddings] --> RAG
+    
+    Ext --> DB[(PostgreSQL + pgvector)]
+    NLP --> DB
+    RAG --> DB
 ```
 
 ---
@@ -114,24 +76,14 @@
 
 #### Why FastAPI?
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         FASTAPI ADVANTAGES                                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐  │
-│  │   NATIVE    │    │   BUILT-IN  │    │   TYPE      │    │   EASY      │  │
-│  │   ASYNC     │    │   OPENAPI    │    │   SAFETY    │    │   MIDDLEWARE│  │
-│  │   SUPPORT   │    │   DOCS       │    │   (Pydantic)│    │   (CORS)    │  │
-│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘  │
-│         │                  │                  │                  │         │
-│         ▼                  ▼                  ▼                  ▼         │
-│  • Non-blocking I/O  • Auto-generated   • Validation,     • Cross-origin │
-│  • High concurrency   docs at /docs      serialization     requests      │
-│  • Scale to 1000s    • Interactive API  • IDE support     • Security      │
-│    of concurrent      testing                                               │
-│    requests                                                                       │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph FastAPI Advantages
+        A[Native Async Support] --> A1[Non-blocking I/O<br/>High concurrency<br/>Scale to 1000s of requests]
+        B[Built-in OpenAPI Docs] --> B1[Auto-generated docs at /docs<br/>Interactive API testing]
+        C[Type Safety] --> C1[Pydantic validation<br/>Serialization<br/>IDE support]
+        D[Easy Middleware] --> D1[Cross-origin requests CORS<br/>Security headers]
+    end
 ```
 
 #### Async Analysis Pattern
@@ -172,69 +124,69 @@ async def analyze_async(
 
 #### Technology Stack
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         DATABASE ARCHITECTURE                                │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-                    ┌──────────────────────────────────┐
-                    │       POSTGRESQL DATABASE         │
-                    │                                  │
-                    │  ┌────────────────────────────┐  │
-                    │  │      SQLAlchemy 2.0        │  │
-                    │  │    (Async Engine)          │  │
-                    │  └─────────────┬──────────────┘  │
-                    │                │                 │
-                    │    ┌───────────┴───────────┐      │
-                    │    │   asyncpg driver      │      │
-                    │    │   (async postgres)    │      │
-                    │    └───────────┬───────────┘      │
-                    └────────────────┼──────────────────┘
-                                     │
-                                     ▼
-                    ┌──────────────────────────────────┐
-                    │     CONNECTION POOLING            │
-                    │                                    │
-                    │   pool_size = 5                   │
-                    │   max_overflow = 10               │
-                    │   pool_pre_ping = True            │
-                    └──────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph PostgreSQL Database Layer
+        SQL[SQLAlchemy 2.0<br/>Async Engine] --> Driver[asyncpg driver<br/>async postgres]
+        Driver --> Pool[Connection Pooling<br/>pool_size = 5<br/>max_overflow = 10<br/>pool_pre_ping = True]
+    end
 ```
 
 #### Data Models
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            ER DIAGRAM                                        │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+erDiagram
+    USER ||--o{ ANALYSIS : has
+    USER ||--o{ CHAT_SESSION : has
+    CHAT_SESSION ||--o{ CHAT_MESSAGE : contains
+    CHAT_SESSION ||--o{ CLAUSE_EMBED : has
 
-    ┌─────────────┐          ┌─────────────┐          ┌─────────────┐
-    │    USER     │          │  ANALYSIS   │          │CHAT_SESSION│
-    ├─────────────┤          ├─────────────┤          ├─────────────┤
-    │ id (PK)     │◄─────────│ user_id (FK)│          │session_id  │
-    │ username    │   1:N    │ job_id (PK)  │          │ (PK)       │
-    │ email       │          │ source       │          │user_id (FK)│
-    │ hashed_pw   │          │ source_type  │          │document_   │
-    │ is_active   │          │ status       │          │ text       │
-    │ created_at  │          │ result (JSON)│          │is_indexed  │
-    └─────────────┘          │ error        │          │indexed_at  │
-                            │ created_at   │          │clause_count│
-                            └──────┬───────┘          └──────┬──────┘
-                                   │                        │
-                                   │ 1:N                    │ 1:N
-                                   ▼                        ▼
-                            ┌─────────────┐          ┌─────────────┐
-                            │CHAT_MESSAGE │          │CLAUSE_EMBED│
-                            ├─────────────┤          ├─────────────┤
-                            │ id (PK)     │          │ id (PK)    │
-                            │session_id(FK)          │session_id(FK)
-                            │ role        │          │clause_id   │
-                            │ content     │          │clause_text │
-                            │ created_at  │          │embedding   │
-                            └─────────────┘          │(vector)    │
-                                                    │risk_cat    │
-                                                    │severity    │
-                                                    └─────────────┘
+    USER {
+        int id PK
+        string username
+        string email
+        string hashed_pw
+        boolean is_active
+        timestamp created_at
+    }
+    
+    ANALYSIS {
+        int job_id PK
+        int user_id FK
+        string source
+        string source_type
+        string status
+        jsonb result
+        string error
+        timestamp created_at
+    }
+    
+    CHAT_SESSION {
+        string session_id PK
+        int user_id FK
+        text document_text
+        boolean is_indexed
+        timestamp indexed_at
+        int clause_count
+    }
+    
+    CHAT_MESSAGE {
+        int id PK
+        string session_id FK
+        string role
+        text content
+        timestamp created_at
+    }
+    
+    CLAUSE_EMBED {
+        int id PK
+        string session_id FK
+        int clause_id
+        text clause_text
+        vector embedding
+        jsonb risk_cat
+        float severity
+    }
 ```
 
 #### Key Design Decisions
@@ -251,50 +203,24 @@ async def analyze_async(
 
 ### Authentication System
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      AUTHENTICATION FLOW                                     │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Server
 
-   ┌──────────┐                                    ┌──────────┐
-   │  CLIENT  │                                    │  SERVER  │
-   └────┬─────┘                                    └────┬─────┘
-        │                                                │
-        │  1. POST /auth/register                       │
-        │  { username, email, password }                │
-        │───────────────────────────────────────────────►
-        │                                                │
-        │                                          ┌─────┴─────┐
-        │                                          │ Hash      │
-        │                                          │ password  │
-        │                                          │ (bcrypt)  │
-        │                                          └─────┬─────┘
-        │                                                │
-        │  201 Created                                 │
-        │  { message: "Welcome to Jurist AI!" }          │
-        │◄──────────────────────────────────────────────
-        │                                                │
-        │  2. POST /auth/login                          │
-        │  { username (email), password }               │
-        │───────────────────────────────────────────────►
-        │                                                │
-        │                                          ┌─────┴─────┐
-        │                                          │ Verify    │
-        │                                          │ password  │
-        │                                          │ + JWT     │
-        │                                          └─────┬─────┘
-        │                                                │
-        │  200 OK                                       │
-        │  { access_token: "eyJ...", token_type }       │
-        │◄──────────────────────────────────────────────
-        │                                                │
-        │  3. GET /auth/me                              │
-        │  Authorization: Bearer eyJ...                 │
-        │───────────────────────────────────────────────►
-        │                                                │
-        │  200 OK                                       │
-        │  { id, username, email, created_at }          │
-        │◄──────────────────────────────────────────────
+    %% Registration
+    Client->>Server: 1. POST /auth/register {username, email, password}
+    Note over Server: Hash password (bcrypt)
+    Server-->>Client: 201 Created {message: "Welcome"}
+
+    %% Login
+    Client->>Server: 2. POST /auth/login {username, password}
+    Note over Server: Verify password + Generate JWT
+    Server-->>Client: 200 OK {access_token, token_type}
+
+    %% Authenticated Request
+    Client->>Server: 3. GET /auth/me {Authorization: Bearer Token}
+    Server-->>Client: 200 OK {id, username, email, created_at}
 ```
 
 #### JWT + bcrypt Implementation
@@ -332,54 +258,23 @@ async def get_optional_user(token: str | None = Depends(oauth2_scheme)):
 
 ### Text Extraction Pipeline
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    TEXT EXTRACTION PIPELINE                                 │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   ┌────────────────────────────────────────────────────────────────────┐
-   │                     INPUT TYPES                                     │
-   └────────────────────────────────────────────────────────────────────┘
-   
-           │                      │                      │
-           ▼                      ▼                      ▼
-    ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-    │     URL      │      │     PDF      │      │    TEXT     │
-    │  (string)    │      │   (file)     │      │   (string)   │
-    └──────┬───────┘      └──────┬───────┘      └──────┬───────┘
-           │                     │                     │
-           ▼                     ▼                     ▼
-    ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-    │url_extractor │      │pdf_extractor │      │    direct    │
-    │   .py        │      │    .py       │      │   pass-through
-    └──────┬───────┘      └──────┬───────┘      └──────┬───────┘
-           │                     │                     │
-           └─────────────────────┼─────────────────────┘
-                                 │
-                                 ▼
-                    ┌──────────────────────┐
-                    │   text_cleaner.py    │
-                    │                      │
-                    │ • Normalize whitespace│
-                    │ • Split into paragraphs│
-                    │ • Compute statistics  │
-                    └───────────┬────────────┘
-                                │
-                                ▼
-                    ┌──────────────────────┐
-                    │   OUTPUT STRUCTURE   │
-                    │                      │
-                    │ {                    │
-                    │   source_type,       │
-                    │   source,            │
-                    │   raw_text,          │
-                    │   cleaned_text,      │
-                    │   paragraphs[],      │
-                    │   char_count,        │
-                    │   line_count,        │
-                    │   paragraph_count    │
-                    │ }                    │
-                    └──────────────────────┘
+```mermaid
+graph TD
+    subgraph Input Types
+        URL[URL String]
+        PDF[PDF File]
+        TEXT[Raw Text]
+    end
+    
+    URL --> ExtURL[url_extractor.py]
+    PDF --> ExtPDF[pdf_extractor.py]
+    TEXT --> ExtTXT[direct pass-through]
+    
+    ExtURL --> Cleaner[text_cleaner.py<br/>Normalize whitespace<br/>Split paragraphs<br/>Compute stats]
+    ExtPDF --> Cleaner
+    ExtTXT --> Cleaner
+    
+    Cleaner --> Output[{Output Structure<br/>source_type, source, raw_text<br/>cleaned_text, paragraphs<br/>char_count, line_count}]
 ```
 
 #### URL Extraction (`url_extractor.py`)
@@ -439,78 +334,30 @@ Legal documents are long paragraphs containing multiple clauses. Each clause nee
 
 #### Solution: Two-Stage NLP Pipeline
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    NLP PRE-PROCESSING PIPELINE                               │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   EXTRACTED TEXT                                               
-   (paragraphs[])                                               
-         │                                                      
-         ▼                                                      
-┌─────────────────────────────────────────────────────────────┐
-│  STAGE 1: Clause Segmentation (segmenter.py)                │
-│                                                             │
-│  Input: ["Privacy Policy. We collect data..."]               │
-│         ↓                                                    │
-│  ┌────────────────────────────────────────────────────┐     │
-│  │  1. Heading Detection (regex patterns)             │     │
-│  │     - Numbered: "1.2.3", "IV.", "SECTION ONE"      │     │
-│  │     - All caps with <10 words                       │     │
-│  └────────────────────────────────────────────────────┘     │
-│  ┌────────────────────────────────────────────────────┐     │
-│  │  2. Sentence Splitting (spaCy)                      │     │
-│  │     - Uses linguistic rules for boundaries         │     │
-│  └────────────────────────────────────────────────────┘     │
-│  ┌────────────────────────────────────────────────────┐     │
-│  │  3. Clause Merging                                  │     │
-│  │     - Min length: 40 chars                          │     │
-│  │     - Max length: 1200 chars                        │     │
-│  │     - Split on: "however", "additionally", etc.    │     │
-│  └────────────────────────────────────────────────────┘     │
-│                                                             │
-│  Output: [{id: 0, text: "...", section_heading: "..."}, ...]│
-└─────────────────────────────────────────────────────────────┘
-         │                                                      
-         ▼                                                      
-┌─────────────────────────────────────────────────────────────┐
-│  STAGE 2: Feature Extraction (nlp_features.py)               │
-│                                                             │
-│  For each clause, extract:                                  │
-│                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐                 │
-│  │  MODAL VERBS     │  │   NEGATION       │                 │
-│  │                  │  │                  │                 │
-│  │  may, might,     │  │  not, never,     │                 │
-│  │  can, could,    │  │  waive, disclaim │                 │
-│  │  will, reserve  │  │                  │                 │
-│  └────────┬─────────┘  └────────┬─────────┘                 │
-│           │                    │                            │
-│           └──────────┬─────────┘                            │
-│                      ▼                                      │
-│           ┌──────────────────────┐                          │
-│           │    RISK KEYWORDS     │                          │
-│           │                      │                          │
-│           │  50+ regex patterns  │                          │
-│           │  across 5 categories │                          │
-│           └──────────┬───────────┘                          │
-│                      │                                      │
-│                      ▼                                      │
-│           ┌──────────────────────┐                          │
-│           │   RISK SCORING       │                          │
-│           │                      │                          │
-│           │  Keyword match: +1.0 │                          │
-│           │  Has negation: +0.5  │                          │
-│           │  Has modal: +0.5     │                          │
-│           │  Boilerplate: -1.0   │                          │
-│           │                      │                          │
-│           │  Threshold: >= 2.0   │                          │
-│           │  = Send to LLM        │                          │
-│           └──────────────────────┘                          │
-│                                                             │
-│  Output: {modal_verbs: [...], has_negation: bool,           │
-│           triggered_categories: [...], risk_score: float}   │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Stage 1: Clause Segmentation
+        Ext[EXTRACTED TEXT<br/>paragraphs] --> HD[1. Heading Detection<br/>regex patterns]
+        HD --> SS[2. Sentence Splitting<br/>spaCy]
+        SS --> CM[3. Clause Merging<br/>Min 40 chars, Max 1200 chars]
+        CM --> Out1[{Output:<br/>id, text, section_heading}]
+    end
+    
+    Out1 --> Stage2
+    
+    subgraph Stage 2: Feature Extraction
+        Stage2[For each clause] --> MV[MODAL VERBS<br/>may, might, can...]
+        Stage2 --> NEG[NEGATION<br/>not, never, waive...]
+        
+        MV --> RK[RISK KEYWORDS<br/>50+ regex patterns]
+        NEG --> RK
+        
+        RK --> Score[RISK SCORING<br/>Keyword: +1.0<br/>Negation: +0.5<br/>Modal: +0.5<br/>Boilerplate: -1.0]
+        
+        Score --> Threshold{Threshold >= 2.0}
+        Threshold -->|Yes| Send[Send to LLM]
+        Threshold -->|No| Skip[Skip LLM]
+    end
 ```
 
 #### Risk Categories & Keywords
@@ -525,43 +372,17 @@ Legal documents are long paragraphs containing multiple clauses. Each clause nee
 
 #### Why This Hybrid Approach?
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    COST-BENEFIT ANALYSIS                                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-                    ┌─────────────────────┐       ┌─────────────────────┐
-                    │  WITHOUT PRE-FILTER  │       │  WITH PRE-FILTER    │
-                    └──────────┬────────────┘       └──────────┬────────────┘
-                               │                                 │
-                               ▼                                 ▼
-                    ┌─────────────────────┐       ┌─────────────────────┐
-                    │   100% to LLM       │       │   ~25% to LLM       │
-                    │                     │       │                     │
-                    │   Cost: $1.00       │       │   Cost: $0.25       │
-                    │   Time: 100s        │       │   Time: 25s         │
-                    │                     │       │                     │
-                    └─────────────────────┘       └─────────────────────┘
-                               │                                 │
-                               │          ┌─────────────────────┐│
-                               │          │  ADDITIONAL         ││
-                               │          │  BENEFITS           ││
-                               │          │                     ││
-                               │          │ • Better prompts   ││
-                               │          │   (pre-detected    ││
-                               │          │    features)       ││
-                               │          │ • Faster response  ││
-                               │          │ • Cancellable       ││
-                               │          │   jobs              ││
-                               │          └─────────────────────┘│
-                               │                                 │
-                               ▼                                 ▼
-                    ┌─────────────────────────────────────────────────────┐
-                    │                     RESULT                           │
-                    │                                                       │
-                    │   75% SAVINGS in cost and time + better accuracy    │
-                    │                                                       │
-                    └─────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Cost-Benefit Analysis
+        WO[WITHOUT PRE-FILTER] --> WO1[100% to LLM<br/>Cost: $1.00<br/>Time: 100s]
+        
+        W[WITH PRE-FILTER] --> W1[~25% to LLM<br/>Cost: $0.25<br/>Time: 25s]
+        
+        W1 --> Ben[ADDITIONAL BENEFITS<br/>Better prompts<br/>Faster response<br/>Cancellable jobs]
+        
+        Ben --> Result[RESULT<br/>75% SAVINGS in cost and time + better accuracy]
+    end
 ```
 
 ---
@@ -570,57 +391,21 @@ Legal documents are long paragraphs containing multiple clauses. Each clause nee
 
 #### Architecture: Dual Provider System
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    LLM PROVIDER ARCHITECTURE                                 │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-                           ┌─────────────────┐
-                           │  CLASSIFY.CLAUSE│
-                           │     OR          │
-                           │  CLASSIFY.BATCH │
-                           └────────┬────────┘
-                                    │
-                                    ▼
-                    ┌───────────────────────────────────┐
-                    │  CHECK: CEREBRAS OR GROQ KEYS     │
-                    │  Round-Robin between providers    │
-                    └───────────────┬───────────────────┘
-                                    │
-                ┌───────────────────┴───────────────────┐
-                │                                       │
-                ▼ YES                                   ▼ NO (or error)
-    ┌───────────────────────┐   ┌───────────────────────┐   ┌───────────────────────┐
-    │    CEREBRAS API       │   │       GROQ API        │   │    OLLAMA FALLBACK    │
-    │    (Primary 1)        │   │     (Primary 2)       │   │        (Local)        │
-    │                       │   │                       │   │                       │
-    │ • llama3.1-8b         │   │ • llama-3.1-8b-instant│   │ • phi3.5 (classify)   │
-    │ • Fast inference      │   │ • Lightning fast      │   │ • qwen3.5:9b (chat)   │
-    │ • JSON mode           │   │ • JSON mode           │   │ • No API cost         │
-    │ • Low latency         │   │ • High throughput     │   │ • Offline support     │
-    └─────────┬─────────────┘   └─────────┬─────────────┘   └─────────┬─────────────┘
-              │                           │                           │
-              └───────────────────────────┴───────────────────────────┘
-                                          │
-                                          ▼
-    ┌───────────────────────┐
-    │  RESPONSE PARSING    │
-    │                       │
-    │ • Strip markdown     │
-    │ • Extract JSON       │
-    │ • Validate fields    │
-    │ • Normalize output   │
-    └─────────┬─────────────┘
-              │
-              ▼
-    ┌───────────────────────┐
-    │  RETURN RESULT       │
-    │                      │
-    │ { is_risky,          │
-    │   risk_categories,   │
-    │   confidence,        │
-    │   explanation }      │
-    └───────────────────────┘
+```mermaid
+graph TD
+    Input[CLASSIFY.CLAUSE<br/>OR<br/>CLASSIFY.BATCH] --> Check{CHECK: CEREBRAS OR GROQ KEYS<br/>Round-Robin}
+    
+    Check -->|YES| RR{Round Robin}
+    Check -->|NO| Ollama[OLLAMA FALLBACK<br/>Local phi3.5 / qwen3.5:9b<br/>Offline support]
+    
+    RR --> Cerebras[CEREBRAS API<br/>llama3.1-8b<br/>Fast inference]
+    RR --> Groq[GROQ API<br/>llama-3.1-8b-instant<br/>High throughput]
+    
+    Cerebras --> Parse[RESPONSE PARSING<br/>Strip markdown<br/>Extract JSON<br/>Validate fields]
+    Groq --> Parse
+    Ollama --> Parse
+    
+    Parse --> Out[{RETURN RESULT<br/>is_risky, risk_categories<br/>confidence, explanation}]
 ```
 
 #### Cerebras API
@@ -727,168 +512,52 @@ Respond with JSON:
 
 #### End-to-End Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ANALYSIS PIPELINE (FULL)                                 │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   USER INPUT                                                              
-   (URL / PDF / Text)                                                      
-         │                                                                  
-         ▼                                                                  
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 1. EXTRACTION                                                             │
-│                                                                             │
-│ handle_input(input_type, content) → {                                     │
-│   raw_text, cleaned_text, paragraphs[],                                   │
-│   char_count, paragraph_count                                            │
-│ }                                                                         │
-└──────────────────────────────────────────────────────────────────────────┘
-         │                                                                  
-         ▼                                                                  
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 2. SEGMENTATION (spaCy)                                                   │
-│                                                                             │
-│ segment_clauses(paragraphs) → [                                           │
-│   {id: 0, text: "...", section_heading: "..."},                          │
-│   {id: 1, text: "...", ...},                                              │
-│   ...                                                                     │
-│ ]                                                                         │
-│                                                                             │
-│ ~10-50 clauses per document                                               │
-└──────────────────────────────────────────────────────────────────────────┘
-         │                                                                  
-         ▼                                                                  
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 3. NLP FEATURE EXTRACTION                                                 │
-│                                                                             │
-│ For each clause:                                                          │
-│   extract_features(clause_text) → {                                      │
-│     modal_verbs: [...],                                                   │
-│     has_negation: bool,                                                   │
-│     triggered_categories: [...],                                         │
-│     risk_score: float                                                     │
-│   }                                                                       │
-│                                                                             │
-│ Filter: is_likely_risky(features) → risk_score >= 2.0                   │
-│                                                                             │
-│ ~25% pass to LLM, ~75% skipped (low risk)                                │
-└──────────────────────────────────────────────────────────────────────────┘
-         │                                                                  
-         ▼                                                                  
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 4. LLM CLASSIFICATION (Adaptive Batching)                                 │
-│                                                                             │
-│ ┌─────────────────────────────────────────────────────────────────────┐   │
-│ │ START: batch_size = 10                                              │   │
-│ └─────────────────────────────────────────────────────────────────────┘   │
-│                              │                                             │
-│                              ▼                                             │
-│ ┌─────────────────────────────────────────────────────────────────────┐   │
-│ │ SPLIT clauses into batches of batch_size                           │   │
-│ │ e.g., 25 clauses → 3 batches [10, 10, 5]                          │   │
-│ └─────────────────────────────────────────────────────────────────────┘   │
-│                              │                                             │
-│                              ▼                                             │
-│ ┌─────────────────────────────────────────────────────────────────────┐   │
-│ │ PROCESS in parallel (3 ThreadPoolExecutor workers)                 │   │
-│ │                                                                     │   │
-│ │ Worker 1: Batch 0 → LLM → results[0]                               │   │
-│ │ Worker 2: Batch 1 → LLM → results[1]                               │   │
-│ │ Worker 3: Batch 2 → LLM → results[2]                               │   │
-│ └─────────────────────────────────────────────────────────────────────┘   │
-│                              │                                             │
-│        ┌─────────────────────┴─────────────────────┐                     │
-│        │                                          │                     │
-│        ▼                                          ▼                     │
-│ ┌─────────────────────┐               ┌─────────────────────┐           │
-│ │ SUCCESS             │               │ FAILURE (429/err)  │           │
-│ │                     │               │                     │           │
-│ │ batch_size += 1    │               │ batch_size //= 2   │           │
-│ │ (up to MAX 10)     │               │ (down to MIN 3)     │           │
-│ └─────────────────────┘               └─────────────────────┘           │
-│                              │                                             │
-│                              ▼                                             │
-│ ┌─────────────────────────────────────────────────────────────────────┐   │
-│ │ FALLBACK: Per-clause classification if all batches fail            │   │
-│ └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│ Output: [                                                                 │
-│   {id: 0, is_risky: true, risk_categories: [...], confidence: "High"}, │
-│   {id: 1, is_risky: false, ...},                                          │
-│   ...                                                                      │
-│ ]                                                                         │
-└──────────────────────────────────────────────────────────────────────────┘
-         │                                                                  
-         ▼                                                                  
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 5. RISK AGGREGATION                                                       │
-│                                                                             │
-│ compute_overall_risk(risky_clauses, total):                              │
-│   high_count = sum(c.confidence == "High" for c in risky)               │
-│   ratio = len(risky) / total                                             │
-│                                                                             │
-│   if high_count >= 3 or ratio > 0.3:  return "High"                     │
-│   elif high_count >= 1 or ratio > 0.15: return "Medium"                 │
-│   else:                                    return "Low"                 │
-│                                                                             │
-│ Output:                                                                    │
-│ {                                                                          │
-│   source: "...",                                                           │
-│   total_clauses: 47,                                                      │
-│   risky_clause_count: 12,                                                │
-│   skipped_llm_count: 35,                                                 │
-│   overall_risk: "Medium",                                                │
-│   risk_breakdown: {Privacy: 5, Legal: 3, ...},                         │
-│   clauses: [...]                                                          │
-│ }                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    Input[USER INPUT<br/>URL / PDF / Text] --> Ext[1. EXTRACTION<br/>handle_input]
+    
+    Ext --> Seg[2. SEGMENTATION<br/>segment_clauses<br/>~10-50 clauses]
+    
+    Seg --> NLP[3. NLP FEATURE EXTRACTION<br/>extract_features<br/>is_likely_risky >= 2.0]
+    
+    NLP -->|~75% skipped| Agg[5. RISK AGGREGATION]
+    NLP -->|~25% pass| LLM{4. LLM CLASSIFICATION<br/>Adaptive Batching}
+    
+    LLM --> Split[SPLIT clauses into batches of 10]
+    
+    Split --> Worker1[PROCESS in parallel<br/>Worker 1: Batch 0]
+    Split --> Worker2[Worker 2: Batch 1]
+    Split --> WorkerN[Worker N: Batch N]
+    
+    Worker1 --> Success[SUCCESS<br/>batch_size += 1]
+    Worker2 --> Failure[FAILURE 429/err<br/>batch_size //= 2]
+    WorkerN --> Success
+    
+    Failure --> Fallback[FALLBACK: Per-clause if batches fail]
+    Success --> Agg
+    Fallback --> Agg
+    
+    Agg --> Result[{Output:<br/>overall_risk<br/>risk_breakdown<br/>clauses}]
 ```
 
 #### Cancellation Support
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CANCELLATION MECHANISM                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   USER                                              SERVER
-     │                                                 │
-     │  POST /analyze/async                           │
-     │  { input_type, content }                      │
-     │───────────────────────────────────────────────►
-     │                                                 │
-     │                                         Job starts in background
-     │                                                 │
-     │  GET /analyze/status/{job_id}                  │
-     │◄──────────────────────────────────────────────
-     │  { status: "processing" }
-     │                                                 │
-     │                                                 │
-     │  POST /analyze/stop/{job_id}                   │◄── User cancels
-     │───────────────────────────────────────────────►
-     │                                                 │
-     │                         ┌──────────────────────┘
-     │                         │
-     │                         ▼
-     │                  ┌─────────────────┐
-     │                  │ set_cancelled  │
-     │                  │ (job_id)        │
-     │                  └────────┬────────┘
-     │                           │
-     │                           ▼
-     │                  ┌─────────────────┐
-     │                  │ Thread checks   │
-     │                  │ is_cancelled()  │
-     │                  │ before each     │
-     │                  │ LLM call        │
-     │                  └────────┬────────┘
-     │                           │
-     │                           │ YES → Raise Exception
-     │                           │     → Update DB: failed
-     │                           │
-     │  { status: "cancelled" } │
-     │◄──────────────────────────
+```mermaid
+sequenceDiagram
+    participant User
+    participant Server
+    
+    User->>Server: POST /analyze/async {input_type, content}
+    Note right of Server: Job starts in background
+    User->>Server: GET /analyze/status/{job_id}
+    Server-->>User: {status: "processing"}
+    
+    User->>Server: POST /analyze/stop/{job_id}
+    Note right of Server: set_cancelled(job_id)
+    
+    Note right of Server: Thread checks is_cancelled()<br/>before each LLM call
+    Note right of Server: YES -> Raise Exception<br/>Update DB: failed
+    Server-->>User: {status: "cancelled"}
 ```
 
 ---
@@ -899,126 +568,41 @@ Respond with JSON:
 
 The chatbot now uses **Retrieval-Augmented Generation (RAG)** with pgvector for semantic search:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    RAG CHATBOT PIPELINE                                    │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   USER QUESTION + SESSION
-          │
-          ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 1. CHECK INDEXING STATUS                                                  │
-│                                                                             │
-│ ChatSession.is_indexed?                                                   │
-│   ├── YES → Use RAG (retrieve relevant clauses)                           │
-│   └── NO  → Fall back to full document (backward compatible)             │
-└──────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 2. EMBEDDING + RETRIEVAL (if indexed)                                     │
-│                                                                             │
-│ • Embed user query (all-MiniLM-L6-v2, 384 dim)                           │
-│ • Cosine similarity search in pgvector                                    │
-│ • Filter by session_id                                                    │
-│ • Optional: filter by risk category                                       │
-│ • Return top-5 relevant clauses                                           │
-│                                                                             │
-│ clause_embeddings table:                                                  │
-│   - clause_id, clause_text, section_heading                               │
-│   - risk_categories (JSONB), severity_score, is_risky                     │
-│   - embedding (vector(384))                                               │
-└──────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 3. BUILD CONTEXT                                                          │
-│                                                                             │
-│ System prompt includes:                                                   │
-│ • Top 5-8 relevant clauses with clause IDs                                │
-│ • Section headings and risk categories                                    │
-│ • Conversation history (last 6 messages)                                  │
-│                                                                             │
-│ Format:                                                                   │
-│ [Clause 3 | Privacy Risk | Severity: 0.8]                               │
-│ "We may share your data with third parties..."                            │
-└──────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 4. LLM REQUEST (Cerebras → Ollama fallback)                              │
-│                                                                             │
-│ try Cerebras:                                                             │
-│   response = httpx.post(CEREBRAS_API, json={                              │
-│     model: "llama3.1-8b",                                                │
-│     messages: messages,                                                   │
-│     temperature: 0.3,                                                     │
-│     max_completion_tokens: 800                                            │
-│   })                                                                      │
-│ except: fallback to Ollama (qwen3.5:9b)                                   │
-└──────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 5. SAVE + RETURN                                                          │
-│                                                                             │
-│ • Save chat message to history                                            │
-│ • Return: { reply, session_id, rag_enabled, clauses_retrieved }          │
-└──────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    Input[USER QUESTION + SESSION] --> Check[1. CHECK INDEXING STATUS<br/>ChatSession.is_indexed?]
+    
+    Check -->|YES| RAG[2. EMBEDDING + RETRIEVAL<br/>Embed user query<br/>Cosine similarity search in pgvector<br/>Return top-5 relevant clauses]
+    Check -->|NO| Fallback[Fall back to full document]
+    
+    RAG --> Ctx[3. BUILD CONTEXT<br/>Top 5-8 relevant clauses<br/>Section headings and risk categories<br/>Conversation history]
+    Fallback --> LLM[4. LLM REQUEST<br/>try Cerebras<br/>except Ollama]
+    Ctx --> LLM
+    
+    LLM --> Save[5. SAVE + RETURN<br/>Save chat message<br/>Return: reply, session_id, rag_enabled]
 ```
 
 #### Auto-Indexing Flow
 
 When a document is stored for chat, it is automatically indexed in the background:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    AUTO-INDEXING PIPELINE                                  │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   POST /chat/store
-          │
-          ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 1. STORE DOCUMENT                                                         │
-│                                                                             │
-│ • Save to chat_sessions table                                             │
-│ • Set is_indexed = FALSE initially                                        │
-│ • Return immediately to client                                            │
-└──────────────────────────────────────────────────────────────────────────┘
-          │
-          ▼ (background task)
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 2. INDEX IN BACKGROUND                                                    │
-│                                                                             │
-│ • Segment document into clauses (reuse segmenter.py)                      │
-│ • Extract NLP features (reuse nlp_features.py)                            │
-│ • Embed all clauses (Google Gemini Embedding API, batched)                │
-│ • INSERT into clause_embeddings                                           │
-│ • UPDATE chat_sessions SET is_indexed = TRUE                             │
-└──────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    Input[POST /chat/store] --> Store[1. STORE DOCUMENT<br/>Save to chat_sessions<br/>Set is_indexed = FALSE]
+    
+    Store --> Index[2. INDEX IN BACKGROUND<br/>Segment document<br/>Extract NLP features<br/>Embed clauses with Gemini<br/>INSERT into clause_embeddings<br/>UPDATE chat_sessions SET is_indexed = TRUE]
 ```
 
 #### Comparison Feature
 
 New in 2026: Compare two documents side-by-side:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    DOCUMENT COMPARISON                                      │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   POST /chat/compare
-   { session_id_a, session_id_b, question }
-          │
-          ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ • Retrieve top-4 clauses from each document (semantic search)             │
-│ • Build comparison context with clause citations                          │
-│ • LLM compares directly, states which is riskier per category           │
-│ • Return: { reply, doc_a_clauses, doc_b_clauses }                       │
-└──────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    Input[POST /chat/compare<br/>session_id_a, session_id_b, question] --> Retrieve[Retrieve top-4 clauses from each doc]
+    Retrieve --> Build[Build comparison context]
+    Build --> LLM[LLM compares directly]
+    LLM --> Out[{Return: reply, doc_a_clauses, doc_b_clauses}]
 ```
 
 #### Clause Browsing API
@@ -1031,74 +615,14 @@ Users can browse document clauses directly:
 | `GET /chat/{id}/clauses/{cid}` | Get specific clause |
 | `GET /chat/{id}/risks` | Get risk summary by category |
 | `GET /chat/{id}/index/status` | Check indexing progress |
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CHATBOT PIPELINE                                         │
-└─────────────────────────────────────────────────────────────────────────────┘
 
-   USER QUESTION + SESSION
-         │
-         ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 1. LOAD SESSION                                                           │
-│                                                                             │
-│ crud.get_chat_session(session_id) → ChatSession {                         │
-│   document_text, user_id, created_at                                     │
-│ }                                                                         │
-│                                                                             │
-│ If not found → 404 Error                                                   │
-└──────────────────────────────────────────────────────────────────────────┘
-         │
-         ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 2. BUILD MESSAGES                                                          │
-│                                                                             │
-│ SYSTEM_PROMPT = """                                                        │
-│ You are a legal document assistant.                                       │
-│ Answer user questions about this document accurately.                      │
-│ Only answer based on information in the document.                          │
-│ Use plain English that a non-lawyer can understand.                         │
-│                                                                             
-│ DOCUMENT:                                                                  │
-│ {document_text}  ← truncated to 12,000 chars                              │
-│ """                                                                        │
-│                                                                             │
-│ messages = [                                                               │
-│   {"role": "system", "content": SYSTEM_PROMPT},                          │
-│   {"role": "user", "content": "What data do they collect?"},             │
-│   {"role": "assistant", "content": "They collect..."},                   │
-│   {"role": "user", "content": "Can I delete it?"},                       │
-│ ]                                                                         │
-│                                                                             │
-│ (Last 20 messages for context)                                            │
-└──────────────────────────────────────────────────────────────────────────┘
-         │
-         ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 3. LLM REQUEST (Cerebras → Ollama fallback)                              │
-│                                                                             │
-│ Same dual-provider pattern as classifier:                                 │
-│                                                                             │
-│ try Cerebras:                                                              │
-│   response = httpx.post(CEREBRAS_API, json={                              │
-│     model: "llama3.1-8b",                                                 │
-│     messages: messages,                                                  │
-│     temperature: 0.3,                                                     │
-│     max_completion_tokens: 800                                           │
-│   })                                                                      │
-│ except: fallback to Ollama (qwen3.5:9b)                                  │
-└──────────────────────────────────────────────────────────────────────────┘
-         │
-         ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│ 4. SAVE TO HISTORY                                                         │
-│                                                                             │
-│ crud.add_chat_message(session_id, "user", question)                     │
-│ crud.add_chat_message(session_id, "assistant", answer)                  │
-└──────────────────────────────────────────────────────────────────────────┘
-         │
-         ▼
-   RETURN { reply: "...", session_id: "..." }
-
+```mermaid
+graph TD
+    Input[USER QUESTION + SESSION] --> Load[1. LOAD SESSION<br/>crud.get_chat_session]
+    Load --> Build[2. BUILD MESSAGES<br/>SYSTEM_PROMPT with document_text truncated<br/>Append conversation history]
+    Build --> LLM[3. LLM REQUEST<br/>try Cerebras: llama3.1-8b<br/>except Ollama: qwen3.5:9b]
+    LLM --> Save[4. SAVE TO HISTORY<br/>crud.add_chat_message]
+    Save --> Out[{RETURN reply, session_id}]
 ```
 
 
@@ -1108,198 +632,100 @@ Users can browse document clauses directly:
 
 ### Complete User Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    COMPLETE USER WORKFLOW                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-    ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-    │  FRONTEND │     │  FASTAPI │     │  EXTRACT │     │ ANALYSIS │
-    │   (React) │     │  (Uvicorn)│     │  (Text)  │     │  (LLM)   │
-    └─────┬─────┘     └─────┬─────┘     └─────┬─────┘     └─────┬─────┘
-          │                 │                 │                 │
-          │ 1. User enters  │                 │                 │
-          │    URL/PDF/Text │                 │                 │
-          │                 │                 │                 │
-          ├────────────────►│                 │                 │
-          │                 │                 │                 │
-          │                 │ 2. Call /extract │                 │
-          │                 ├────────────────►│                 │
-          │                 │                 │                 │
-          │                 │◄────────────────┤ (extracts text) │
-          │                 │                 │                 │
-          │  Show extracted │ 3. Call /analyze│                 │
-          │    text (preview)│  /async         │                 │
-          │◄────────────────┤◄────────────────►│                 │
-          │                 │                 │                 │
-          │                 │ job_id + status │                 │
-          │◄────────────────┤◄────────────────┤                 │
-          │                 │                 │                 │
-          │ 4. Poll /status │                 │                 │
-          │    every 2s     │                 │                 │
-          ├────────────────►│                 │                 │
-          │                 │                 │                 │
-          │◄────────────────┤ (while status    │                 │
-          │  status: "proc"│  is processing) │                 │
-          │                 │                 │                 │
-          │                 │                 │   LLM processes │
-          │                 │                 │   clauses...   │
-          │                 │                 │                 │
-          │                 │                 │                 │
-          │ 5. GET /status │                 │                 │
-          │◄────────────────│                 │                 │
-          │                 │                 │                 │
-          │ 6. Display      │◄────────────────┤ status: complete │
-          │    results      │◄────────────────┤ result: {...}    │
-          │◄────────────────┤                 │                 │
-          │                 │                 │                 │
-          │                 │                 │                 │
-          ▼                 ▼                 ▼                 ▼
+```mermaid
+sequenceDiagram
+    participant Frontend as FRONTEND (React)
+    participant FastAPI as FASTAPI (Uvicorn)
+    participant Extract as EXTRACT (Text)
+    participant Analysis as ANALYSIS (LLM)
+    
+    Frontend->>FastAPI: 1. User enters URL/PDF/Text
+    FastAPI->>Extract: 2. Call /extract
+    Extract-->>FastAPI: (extracts text)
+    FastAPI-->>Frontend: Show extracted text (preview)
+    
+    Frontend->>FastAPI: 3. Call /analyze/async
+    FastAPI-->>Frontend: job_id + status
+    
+    loop Every 2s
+        Frontend->>FastAPI: 4. Poll /status
+        FastAPI-->>Frontend: status: "processing"
+    end
+    
+    Note right of FastAPI: Analysis pipeline processes clauses...
+    
+    Frontend->>FastAPI: 5. GET /status
+    FastAPI-->>Frontend: 6. status: complete, result: {...}
+    Note left of Frontend: Display results
 ```
 
 ### Authentication Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    AUTHENTICATION WORKFLOW                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-    ┌──────────┐                                    ┌──────────┐
-    │  USER    │                                    │  SYSTEM  │
-    │ (Browser)│                                    │ (Backend)│
-    └────┬─────┘                                    └────┬─────┘
-         │                                               │
-         │ 1. POST /auth/register                        │
-         │    { username, email, password }               │
-         ├───────────────────────────────────────────────►
-         │                                               │
-         │                                        bcrypt.hash(password)
-         │                                        Save to PostgreSQL
-         │                                               │
-         │ 201: "Welcome to Jurist AI!"                  │
-         ◄───────────────────────────────────────────────┤
-         │                                               │
-         │ 2. POST /auth/login                           │
-         │    (form: username=email, password)            │
-         ├───────────────────────────────────────────────►
-         │                                               │
-         │                                        bcrypt.verify(password)
-         │                                        jwt.encode({sub: user_id})
-         │                                               │
-         │ 200: { access_token: "eyJ...", token_type }  │
-         ◄───────────────────────────────────────────────┤
-         │                                               │
-         │ 3. Store token in localStorage                 │
-         │                                               │
-         │ 4. Any protected request:                     │
-         │    GET /auth/me                              │
-         │    Authorization: Bearer eyJ...              │
-         ├──────────────────────────────────────────────►
-         │                                               │
-         │                                        jwt.decode(token)
-         │                                        Get user from DB
-         │                                               │
-         │ 200: { id, username, email, created_at }    │
-         ◄───────────────────────────────────────────────┤
-         │                                               │
-         │ 5. JWT expires after 60 minutes               │
-         │    → 401 Unauthorized → redirect to login    │
-         │                                               │
-         ▼                                               ▼
+```mermaid
+sequenceDiagram
+    participant User as USER (Browser)
+    participant System as SYSTEM (Backend)
+    
+    User->>System: 1. POST /auth/register {username, email, password}
+    Note right of System: bcrypt.hash(password)<br/>Save to PostgreSQL
+    System-->>User: 201: "Welcome to Jurist AI!"
+    
+    User->>System: 2. POST /auth/login (form: username=email, password)
+    Note right of System: bcrypt.verify(password)<br/>jwt.encode({sub: user_id})
+    System-->>User: 200: {access_token: "eyJ...", token_type}
+    
+    Note left of User: 3. Store token in localStorage
+    
+    User->>System: 4. Any protected request: GET /auth/me<br/>Authorization: Bearer eyJ...
+    Note right of System: jwt.decode(token)<br/>Get user from DB
+    System-->>User: 200: {id, username, email, created_at}
+    
+    Note right of System: 5. JWT expires after 60 minutes<br/>→ 401 Unauthorized → redirect to login
 ```
 
 ### Analysis Job Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ASYNC ANALYSIS JOB FLOW                                  │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-    TIME ─────────────────────────────────────────────────────────────────────▶
-
-    0s                    1s                  30s                 60s
-    │                      │                    │                    │
-    │  POST /analyze/async │                    │                    │
-    ├──────────────────────┤                    │                    │
-    │                      │                    │                    │
-    │◄─────────────────────┤                    │                    │
-    │ job_id: "abc-123"    │                    │                    │
-    │ status: "processing"│                    │                    │
-    │                      │                    │                    │
-    │                      │ ┌──────────────────┴──────────────┐
-    │                      │ │ BACKGROUND TASK                │
-    │                      │ │                                 │
-    │                      │ │ 1. handle_input() → text       │
-    │                      │ │ 2. segment_clauses() → clauses│
-    │                      │ │ 3. extract_features() → ...   │
-    │                      │ │ 4. is_likely_risky() filter    │
-    │                      │ │ 5. classify_batch() → LLM      │
-    │                      │ │ 6. Aggregate results           │
-    │                      │ │                                 │
-    │                      │ │         ┌──────────┐            │
-    │                      │ │         │ UPDATE DB│            │
-    │                      │ │         │ complete │            │
-    │                      │ │         └──────────┘            │
-    │                      │ │                                 │
-    ├─ GET /status/abc-123 │ │                    │             │
-    │◄─────────────────────┤ │                    │             │
-    │ status: "processing"│ │                    │             │
-    │                      │ │                    │             │
-    ├─ GET /status/abc-123│ │                    │             │
-    │◄─────────────────────┤ │                    │             │
-    │ status: "processing"│ │                    │             │
-    │                      │ │                    │             │
-    ├─ GET /status/abc-123│ │                    │             │
-    │◄─────────────────────┤ │                    │             │
-    │ status: "complete"   │ │                    │             │
-    │ result: { ... }      │ │                    │             │
-    │                      │ │                    │             │
-    │  DISPLAY RESULTS     │ │                    │             │
-    │◄─────────────────────┤ │                    │             │
-    │                      │ │                    │             │
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as FastAPI Router
+    participant BG as Background Task
+    participant DB as Database
+    
+    Client->>API: POST /analyze/async
+    API-->>Client: job_id: "abc-123", status: "processing"
+    API->>BG: Spawn task
+    
+    note right of BG: 1. handle_input() → text<br/>2. segment_clauses()<br/>3. extract_features()<br/>4. is_likely_risky() filter<br/>5. classify_batch() → LLM<br/>6. Aggregate results
+    
+    loop Polling
+        Client->>API: GET /status/abc-123
+        API-->>Client: status: "processing"
+    end
+    
+    BG->>DB: UPDATE DB (status: complete, results)
+    
+    Client->>API: GET /status/abc-123
+    API-->>Client: status: "complete", result: {...}
+    Note left of Client: DISPLAY RESULTS
 ```
 
 ---
 
 ## Frontend Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         FRONTEND ARCHITECTURE                                │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-                              ┌─────────────────┐
-                              │   REACT 19      │
-                              │   (Components)  │
-                              └────────┬────────┘
-                                       │
-           ┌───────────────────────────┼───────────────────────────┐
-           │                           │                           │
-           ▼                           ▼                           ▼
-    ┌─────────────┐            ┌─────────────┐            ┌─────────────┐
-    │   Analyze   │            │    Chat     │            │   History   │
-    │    Tab      │            │    Tab      │            │    Tab      │
-    │             │            │             │            │             │
-    │ • URL input │            │ • Message   │            │ • Past      │
-    │ • PDF upload│            │   list      │            │   analyses  │
-    │ • Text area │            │ • Input box  │            │ • Results   │
-    │ • Results   │            │ • Typing     │            │             │
-    │   display  │            │   indicator │            │             │
-    └─────────────┘            └─────────────┘            └─────────────┘
-           │                           │                           │
-           └───────────────────────────┼───────────────────────────┘
-                                       │
-                                       ▼
-                              ┌─────────────────┐
-                              │   API LAYER     │
-                              │   (fetch)       │
-                              └────────┬────────┘
-                                       │
-                                       ▼
-                              ┌─────────────────┐
-                              │  FASTAPI BACKEND│
-                              │  (Port 8000)    │
-                              └─────────────────┘
+```mermaid
+graph TD
+    React[REACT 19 Components] --> Tabs
+    
+    subgraph Tabs [Tabbed Interface]
+        Analyze[Analyze Tab<br/>URL input, PDF upload, Text area<br/>Results display]
+        Chat[Chat Tab<br/>Message list, Input box<br/>Typing indicator]
+        History[History Tab<br/>Past analyses, Results]
+    end
+    
+    Tabs --> API[API LAYER<br/>fetch]
+    API --> Backend[FASTAPI BACKEND<br/>Port 8000]
 ```
 
 ### Technology Stack
@@ -1324,70 +750,23 @@ Users can browse document clauses directly:
 
 ## Why This Architecture Works
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ARCHITECTURE STRENGTHS                                    │
-└─────────────────────────────────────────────────────────────────────────────┘
-
- ┌─────────────────────────────────────────────────────────────────────────┐
- │ 1. ASYNC-FIRST DESIGN                                                    │
- │                                                                          │
- │   FastAPI + asyncpg + httpx = Non-blocking I/O                         │
- │                                                                          │
- │   ✓ Handles 1000s of concurrent requests                                │
- │   ✓ No thread blocking on LLM API calls                                 │
- │   ✓ Efficient resource utilization                                     │
- └─────────────────────────────────────────────────────────────────────────┘
-
- ┌─────────────────────────────────────────────────────────────────────────┐
- │ 2. COST-OPTIMIZED NLP                                                   │
- │                                                                          │
- │   spaCy regex filter → Only ~25% of clauses go to LLM                  │
- │                                                                          │
- │   ✓ 75% savings on LLM API costs                                       │
- │   ✓ Faster overall processing                                           │
- │   ✓ Pre-detected features improve LLM accuracy                          │
- └─────────────────────────────────────────────────────────────────────────┘
-
- ┌─────────────────────────────────────────────────────────────────────────┐
- │ 3. RELIABLE LLM INTEGRATION                                             │
- │                                                                          │
- │   Cerebras/Groq round-robin → Ollama (fallback) → Per-clause check      │
- │                                                                          │
- │   ✓ High availability with multi-provider failover                      │
- │   ✓ High throughput via batch processing                                │
- │   ✓ Offline capability / zero cost option via Ollama local fallback     │
- └─────────────────────────────────────────────────────────────────────────┘
-
- ┌─────────────────────────────────────────────────────────────────────────┐
- │ 4. FLEXIBLE DATA STORAGE                                                │
- │                                                                          │
- │   PostgreSQL + JSONB                                                     │
- │                                                                          │
- │   ✓ ACID compliance for transactions                                     │
- │   ✓ JSONB for flexible schema (analysis results)                        │
- │   ✓ Async driver for performance                                        │
- └─────────────────────────────────────────────────────────────────────────┘
-
- ┌─────────────────────────────────────────────────────────────────────────┐
- │ 5. SCALABLE AUTHENTICATION                                              │
- │                                                                          │
- │   JWT + bcrypt                                                           │
- │                                                                          │
- │   ✓ Stateless (no session storage)                                      │
- │   ✓ Password security (bcrypt + SHA256 pre-hash)                       │
- │   ✓ Optional auth (anonymous analysis supported)                        │
- └─────────────────────────────────────────────────────────────────────────┘
-
- ┌─────────────────────────────────────────────────────────────────────────┐
- │ 6. USER EXPERIENCE                                                      │
- │                                                                          │
- │   Async jobs + polling + cancellation                                   │
- │                                                                          │
- │   ✓ No request timeouts                                                  │
- │   ✓ Real-time status updates                                             │
- │   ✓ User can cancel long jobs                                            │
- └─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    classDef strength fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    
+    A[1. ASYNC-FIRST DESIGN<br/>FastAPI + asyncpg + httpx = Non-blocking I/O<br/>✓ Handles 1000s of concurrent requests<br/>✓ No thread blocking on LLM calls<br/>✓ Efficient resource utilization]:::strength
+    
+    B[2. COST-OPTIMIZED NLP<br/>spaCy regex filter → Only ~25% of clauses go to LLM<br/>✓ 75% savings on LLM API costs<br/>✓ Faster overall processing<br/>✓ Pre-detected features improve LLM accuracy]:::strength
+    
+    C[3. RELIABLE LLM INTEGRATION<br/>Cerebras/Groq round-robin → Ollama fallback<br/>✓ High availability with multi-provider failover<br/>✓ High throughput via batch processing<br/>✓ Offline capability option]:::strength
+    
+    D[4. FLEXIBLE DATA STORAGE<br/>PostgreSQL + JSONB<br/>✓ ACID compliance for transactions<br/>✓ JSONB for flexible schema<br/>✓ Async driver for performance]:::strength
+    
+    E[5. SCALABLE AUTHENTICATION<br/>JWT + bcrypt<br/>✓ Stateless<br/>✓ Password security<br/>✓ Optional auth supported]:::strength
+    
+    F[6. USER EXPERIENCE<br/>Async jobs + polling + cancellation<br/>✓ No request timeouts<br/>✓ Real-time status updates<br/>✓ User can cancel long jobs]:::strength
+    
+    A & B & C & D & E & F
 ```
 
 ---
