@@ -3,9 +3,11 @@
 <p align="center">
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
   <img src="https://img.shields.io/badge/spaCy-09A3FF?style=for-the-badge&logo=spacy&logoColor=white" alt="spaCy">
-  <img src="https://img.shields.io/badge/LLMs-Cerebras-orange?style=for-the-badge" alt="LLM">
-  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/LLMs-Cerebras_+_Groq-orange?style=for-the-badge" alt="LLM">
+  <img src="https://img.shields.io/badge/Gemini_Embeddings-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini">
+  <img src="https://img.shields.io/badge/PostgreSQL_+_pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React">
+  <img src="https://img.shields.io/badge/Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white" alt="Railway">
 </p>
 
 ---
@@ -36,14 +38,14 @@
 ### Key Capabilities
 
 - **Multi-format extraction** — URL, raw text, PDF upload
-- **NLP pre-filtering** — spaCy-based risk signal detection
-- **LLM risk classification** — Cerebras API (Llama 3.1 8B) with Ollama local fallback
+- **NLP pre-filtering** — spaCy-based risk signal detection before LLM calls
+- **LLM risk classification** — Cerebras + Groq round-robin (Llama 3.1 8B) with Ollama local fallback
 - **5 risk categories** — Privacy, Legal, User Rights, Security, Financial
 - **Batched + parallel processing** — 5-10 clauses/batch, 3 concurrent workers
 - **Async analysis** — Instant extraction, LLM runs in background
-- **Document chatbot** — Interactive Q&A on extracted documents
-- **RAG-powered chat** — Semantic similarity search with clause citations
-- **Document comparison** — Compare two policies side-by-side
+- **RAG-powered chat** — Gemini embedding + pgvector semantic search with clause citations
+- **Document comparison** — Side-by-side RAG-retrieval across two policies
+- **Production-deployed** — Railway (Docker) with PostgreSQL + pgvector
 
 ---
 
@@ -74,25 +76,32 @@
 │   EXTRACTION       │      │     ANALYSIS        │      │      CHAT          │
 │   PIPELINE         │      │     PIPELINE        │      │    PIPELINE        │
 │                    │      │                     │      │                    │
-│ • URL (Beautiful   │      │ • NLP Pre-filter    │      │ • RAG retrieval    │
-│   Soup + lxml)    │      │ • Clause Segment    │      │ • Session mgmt     │
+│ • URL (Beautiful   │      │ • NLP Pre-filter    │      │ • Gemini embed     │
+│   Soup + lxml)    │      │ • Clause Segment    │      │ • pgvector search  │
 │ • PDF (pdfplumber)│      │ • LLM Classification │      │ • Context building │
-│ • Text (direct)   │      │ • Risk Aggregation   │      │ • LLM Chat          │
+│ • Text (direct)   │      │ • Risk Aggregation   │      │ • LLM Chat (RAG)   │
 └─────────┬─────────┘      └──────────┬────────────┘      └─────────┬─────────┘
           │                           │                           │
-          │                           │                           │
           ▼                           ▼                           ▼
-┌─────────────────────┐      ┌─────────────────────┐      ┌─────────────────────┐
-│  POSTGRESQL         │      │    CEREBRAS API     │      │    OLLAMA          │
-│  DATABASE           │      │    (Llama 3.1 8B)   │      │    (Local LLM)      │
-│  + pgvector         │      │                     │      │                     │
-│                     │      │ • Primary LLM       │      │ • Fallback LLM      │
-│ • Users             │      │ • Fast inference    │      │ • Offline support   │
-│ • Analyses          │      │ • JSON mode         │      │ • Privacy           │
-│ • Chat Sessions     │      └─────────────────────┘      └─────────────────────┘
-│ • Clause Embeddings │
-│   (vector search)  │
+┌─────────────────────┐      ┌─────────────────────────────────────────────────┐
+│  POSTGRESQL         │      │           LLM PROVIDERS (Round-Robin)           │
+│  DATABASE           │      │                                                 │
+│  + pgvector         │      │  ┌────────────┐  ┌────────────┐  ┌───────────┐  │
+│                     │      │  │  CEREBRAS  │  │   GROQ     │  │  OLLAMA   │  │
+│ • Users             │      │  │ llama3.1   │  │ llama-3.1  │  │ phi3.5 /  │  │
+│ • Analyses          │      │  │ -8b        │  │ -8b-instant│  │ qwen3.5   │  │
+│ • Chat Sessions     │      │  │ (Primary)  │  │ (Secondary)│  │ (Fallback)│  │
+│ • Clause Embeddings │      │  └────────────┘  └────────────┘  └───────────┘  │
+│   (vector search)  │      └─────────────────────────────────────────────────┘
 └─────────────────────┘
+                              ┌─────────────────────┐
+            ┌─────────────────│   GEMINI EMBED API  │
+            │                 │  gemini-embedding-001│
+            │                 │  (384 dim vectors)  │
+            │                 └─────────────────────┘
+            │ Used by RAG indexing + retrieval
+            ▼
+  clause_embeddings table (pgvector cosine search)
 ```
 
 ---
@@ -574,26 +583,26 @@ Legal documents are long paragraphs containing multiple clauses. Each clause nee
                                     │
                                     ▼
                     ┌───────────────────────────────────┐
-                    │   CHECK: CEREBRAS_API_KEY        │
-                    │   os.environ.get("CEREBRAS_API_KEY")
+                    │  CHECK: CEREBRAS OR GROQ KEYS     │
+                    │  Round-Robin between providers    │
                     └───────────────┬───────────────────┘
                                     │
                 ┌───────────────────┴───────────────────┐
                 │                                       │
                 ▼ YES                                   ▼ NO (or error)
-    ┌───────────────────────┐               ┌───────────────────────┐
-    │   CEREPRAS API       │               │    OLLAMA FALLBACK   │
-    │   (Primary)          │               │    (Local)           │
-    │                      │               │                      │
-    │ • llama3.1-8b        │               │ • phi3.5 (classify)  │
-    │ • Fast inference     │               │ • qwen3.5:9b (chat)  │
-    │ • JSON mode          │               │ • No API cost        │
-    │ • Low latency        │               │ • Offline support    │
-    └─────────┬───────────┘               └─────────┬───────────┘
-              │                                       │
-              │  ┌─────────────────────────────────────┘
-              │  │
-              ▼  ▼
+    ┌───────────────────────┐   ┌───────────────────────┐   ┌───────────────────────┐
+    │    CEREBRAS API       │   │       GROQ API        │   │    OLLAMA FALLBACK    │
+    │    (Primary 1)        │   │     (Primary 2)       │   │        (Local)        │
+    │                       │   │                       │   │                       │
+    │ • llama3.1-8b         │   │ • llama-3.1-8b-instant│   │ • phi3.5 (classify)   │
+    │ • Fast inference      │   │ • Lightning fast      │   │ • qwen3.5:9b (chat)   │
+    │ • JSON mode           │   │ • JSON mode           │   │ • No API cost         │
+    │ • Low latency         │   │ • High throughput     │   │ • Offline support     │
+    └─────────┬─────────────┘   └─────────┬─────────────┘   └─────────┬─────────────┘
+              │                           │                           │
+              └───────────────────────────┴───────────────────────────┘
+                                          │
+                                          ▼
     ┌───────────────────────┐
     │  RESPONSE PARSING    │
     │                       │
@@ -985,7 +994,7 @@ When a document is stored for chat, it is automatically indexed in the backgroun
 │                                                                             │
 │ • Segment document into clauses (reuse segmenter.py)                      │
 │ • Extract NLP features (reuse nlp_features.py)                            │
-│ • Embed all clauses (sentence-transformers batch)                         │
+│ • Embed all clauses (Google Gemini Embedding API, batched)                │
 │ • INSERT into clause_embeddings                                           │
 │ • UPDATE chat_sessions SET is_indexed = TRUE                             │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -1092,41 +1101,6 @@ Users can browse document clauses directly:
 
 ```
 
-#### Why No Vector DB / RAG?
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    CONTEXT WINDOW STRATEGY                                 │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-   Alternative: Vector DB + RAG                        │
-   ─────────────────────────────────                  │
-   1. Split document into chunks                     │
-   2. Embed each chunk (OpenAI Embeddings)            │
-   3. Store in Pinecone/Chroma                         │
-   4. On query: embed question → similarity search    │
-   5. Retrieve top-k chunks → inject into prompt      │
-                                                          │
-   Your approach: Full document in context             │
-   ─────────────────────────────────                   │
-   1. Truncate document to 12,000 chars                │
-   2. Inject directly into system prompt              │
-   3. Send entire context to LLM                      │
-                                                          │
-   WHY THIS WORKS:                                      │
-   ───────────────                                      │
-   • Llama 3.1 8B has 8K-32K context window           │
-   • Most ToS documents are < 50K chars               │
-   • Full document = no retrieval errors              │
-   • Simpler architecture (no embeddings, no vector DB)│
-   • Cheaper (no embedding API calls)                  │
-                                                          │
-   TRADE-OFF:                                           │
-   ──────────                                           │
-   • Won't work for very long documents (>50K)        │
-   • Could miss distant relevant sections             │
-   • But acceptable for typical ToS (5-20K)           │
-```
 
 ---
 
@@ -1378,11 +1352,11 @@ Users can browse document clauses directly:
  ┌─────────────────────────────────────────────────────────────────────────┐
  │ 3. RELIABLE LLM INTEGRATION                                             │
  │                                                                          │
- │   Cerebras (primary) → Ollama (fallback) → Per-clause (last resort)   │
+ │   Cerebras/Groq round-robin → Ollama (fallback) → Per-clause check      │
  │                                                                          │
- │   ✓ Production reliability (no single point of failure)                │
- │   ✓ Offline capability                                                   │
- │   ✓ Zero API cost option for development                               │
+ │   ✓ High availability with multi-provider failover                      │
+ │   ✓ High throughput via batch processing                                │
+ │   ✓ Offline capability / zero cost option via Ollama local fallback     │
  └─────────────────────────────────────────────────────────────────────────┘
 
  ┌─────────────────────────────────────────────────────────────────────────┐
@@ -1424,17 +1398,17 @@ Users can browse document clauses directly:
 |-------|------------|-----|
 | **Web Framework** | FastAPI + Uvicorn | High-performance async API |
 | **Database** | PostgreSQL + SQLAlchemy async + pgvector | Robust + scalable + vector search |
-| **Vector Search** | pgvector + sentence-transformers | Semantic similarity, CPU-friendly |
+| **Embeddings** | Google Gemini API (gemini-embedding-001) | State-of-the-art semantic representations |
 | **Auth** | JWT + bcrypt | Stateless + secure |
 | **NLP** | spaCy (en_core_web_sm) | Sentence segmentation, linguistic features |
-| **LLM (Primary)** | Cerebras API (Llama 3.1 8B) | Fast inference, JSON mode |
+| **LLM (Primary)** | Cerebras + Groq APIs (Llama 3.1 8B) | Fast inference, JSON mode, round-robin load balancing |
 | **LLM (Fallback)** | Ollama (phi3.5, qwen3.5) | Local, offline capable |
-| **URL Extraction** | BeautifulSoup4 + lxml | Robust HTML parsing |
-| **PDF Extraction** | pdfplumber | Pure Python PDF parsing |
-| **Frontend** | React 19 + Vite | Modern component-based UI |
+| **URL / PDF Extraction**| BeautifulSoup4 + lxml / pdfplumber | Robust HTML and Pure Python PDF parsing |
+| **Frontend** | React 19 + Vite + Framer Motion | Modern, dynamic component-based UI |
+| **Deployment** | Railway (Docker) | Managed production environment |
 
 ---
 
 <p align="center">
-  <strong>Built with FastAPI • spaCy • Cerebras • PostgreSQL • React</strong>
+  <strong>Built with FastAPI • spaCy • Cerebras • Groq • pgvector • React • Railway</strong>
 </p>
