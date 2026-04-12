@@ -58,13 +58,14 @@ def embed_text(text: str) -> list[float]:
     return result.embeddings[0].values
 
 
-def embed_batch(texts: list[str], batch_size: int = 32) -> list[list[float]]:
+def embed_batch(texts: list[str], batch_size: int = 20) -> list[list[float]]:
     """
     Embed multiple strings at once via Gemini API.
+    Uses small batches + delays to stay under free tier rate limits.
 
     Args:
         texts: List of text strings to embed
-        batch_size: Batch size for processing (default 32)
+        batch_size: Batch size for processing (default 20, keeps under 100 RPM)
 
     Returns:
         List of embedding lists (each 384 floats)
@@ -72,20 +73,38 @@ def embed_batch(texts: list[str], batch_size: int = 32) -> list[list[float]]:
     if not texts:
         return []
 
+    import time
+
     client = _get_client()
     all_embeddings = []
+    max_retries = 3
 
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
-        result = client.models.embed_content(
-            model=EMBEDDING_MODEL,
-            contents=batch,
-            config=types.EmbedContentConfig(
-                task_type="RETRIEVAL_DOCUMENT",
-                output_dimensionality=EMBEDDING_DIM,
-            ),
-        )
-        all_embeddings.extend([e.values for e in result.embeddings])
+
+        for attempt in range(max_retries):
+            try:
+                result = client.models.embed_content(
+                    model=EMBEDDING_MODEL,
+                    contents=batch,
+                    config=types.EmbedContentConfig(
+                        task_type="RETRIEVAL_DOCUMENT",
+                        output_dimensionality=EMBEDDING_DIM,
+                    ),
+                )
+                all_embeddings.extend([e.values for e in result.embeddings])
+                break
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    wait = 16 * (attempt + 1)
+                    logger.warning(f"Rate limited, waiting {wait}s (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait)
+                else:
+                    raise
+
+        # Small delay between batches to avoid hitting rate limit
+        if i + batch_size < len(texts):
+            time.sleep(2)
 
     return all_embeddings
 
