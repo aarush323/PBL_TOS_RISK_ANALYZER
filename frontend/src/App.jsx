@@ -9,6 +9,26 @@ import TypingDots from './components/TypingDots.jsx';
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
+// Retry wrapper for cold-start resilience (free-tier Render/Railway sleep after inactivity)
+const fetchWithRetry = async (url, options, retries = 3, delayMs = 3000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err) {
+      console.warn(`Fetch attempt ${attempt}/${retries} failed:`, err.message);
+      if (attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+};
+
+// Parse markdown once, safely
+const parseMarkdown = (content) => {
+  try { return marked.parse(content || ''); }
+  catch { return content || ''; }
+};
+
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('tos_token'));
   const [user, setUser] = useState(null);
@@ -32,11 +52,12 @@ export default function App() {
 
   const [sessionId, setSessionId] = useState(null);
   const [chatMessages, setChatMessages] = useState([
-    { role: 'bot', content: 'Hello. I am the Digital Jurist Assistant. Extract a document first, and I can help you navigate the findings!' }
+    { role: 'bot', content: 'Hello. I am the Digital Jurist Assistant. Extract a document first, and I can help you navigate the findings!', html: '<p>Hello. I am the Digital Jurist Assistant. Extract a document first, and I can help you navigate the findings!</p>' }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isChatTyping, setIsChatTyping] = useState(false);
-  const chatBoxRef = useRef(null);
+  const chatBoxRefResults = useRef(null);
+  const chatBoxRefFull = useRef(null);
 
   const [toasts, setToasts] = useState([]);
   const [historyItems, setHistoryItems] = useState([]);
@@ -289,7 +310,7 @@ export default function App() {
         const fallbackText = data.source || 'Loaded from saved analysis.';
         await initChatSession(fallbackText, data.job_id);
         setChatMessages([
-          { role: 'bot', content: 'Chat is now enabled for this analysis. Ask a follow-up question about any clause.' }
+          { role: 'bot', content: 'Chat is now enabled for this analysis. Ask a follow-up question about any clause.', html: '<p>Chat is now enabled for this analysis. Ask a follow-up question about any clause.</p>' }
         ]);
       } else {
         setSessionId(data.job_id);
@@ -338,7 +359,8 @@ export default function App() {
 
         if (data.result.clauses && data.result.clauses.some(c => c.is_risky)) {
           const count = data.result.clauses.filter(c => c.is_risky).length;
-          setChatMessages(prev => [...prev, { role: 'bot', content: `I've analyzed the document and found ${count} flagged clauses. The overarching risk profile is **${data.result.overall_risk}**. How can I assist you?` }]);
+          const msgText = `I've analyzed the document and found ${count} flagged clauses. The overarching risk profile is **${data.result.overall_risk}**. How can I assist you?`;
+          setChatMessages(prev => [...prev, { role: 'bot', content: msgText, html: parseMarkdown(msgText) }]);
         }
       } else if (data.status === 'failed') {
         setIsProcessing(false);
@@ -474,7 +496,7 @@ export default function App() {
 
   const sendChat = async () => {
     const msg = chatInput.trim();
-    if (!msg || !sessionId) return;
+    if (!msg || !sessionId || isChatTyping) return;
 
     setChatInput('');
     const newChat = [...chatMessages, { role: 'user', content: msg }];
@@ -482,7 +504,7 @@ export default function App() {
     setIsChatTyping(true);
 
     try {
-      const res = await fetch(`${API}/chat`, {
+      const res = await fetchWithRetry(`${API}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -490,23 +512,33 @@ export default function App() {
         },
         body: JSON.stringify({ session_id: sessionId, message: msg, history: [] })
       });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server error (${res.status})`);
+      }
+
       const data = await res.json();
 
       if (data.comparison_result && data.structured) {
         setComparisonData(data.structured);
-        setChatMessages([...newChat, { role: 'bot', content: data.reply + "\n\n💡 I've loaded the comparison details. Switch to the Compare view for the full side-by-side analysis!" }]);
+        const replyText = (data.reply || '') + "\n\n💡 I've loaded the comparison details. Switch to the Compare view for the full side-by-side analysis!";
+        setChatMessages([...newChat, { role: 'bot', content: replyText, html: parseMarkdown(replyText) }]);
         addToast('Comparison complete! Check the Compare page for details.');
       } else if (data.comparison_needed) {
-        setChatMessages([...newChat, { role: 'bot', content: data.reply }]);
+        setChatMessages([...newChat, { role: 'bot', content: data.reply || '', html: parseMarkdown(data.reply || '') }]);
         if (data.comparison_options) {
           setShowCompareSelector(true);
         }
       } else {
-        setChatMessages([...newChat, { role: 'bot', content: data.reply }]);
+        setChatMessages([...newChat, { role: 'bot', content: data.reply || '', html: parseMarkdown(data.reply || '') }]);
       }
     } catch (err) {
       console.error(err);
-      setChatMessages([...newChat, { role: 'bot', content: "Sorry, I couldn't connect." }]);
+      const errMsg = err.message && err.message !== 'Failed to fetch'
+        ? `Sorry, something went wrong: ${err.message}`
+        : "Sorry, I couldn't connect. The server may be waking up — please try again in a few seconds.";
+      setChatMessages([...newChat, { role: 'bot', content: errMsg, html: parseMarkdown(errMsg) }]);
     } finally {
       setIsChatTyping(false);
     }
@@ -514,7 +546,7 @@ export default function App() {
 
   const performComparison = async (sessionIdA, sessionIdB) => {
     try {
-      const res = await fetch(`${API}/chat/compare`, {
+      const res = await fetchWithRetry(`${API}/chat/compare`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -527,6 +559,12 @@ export default function App() {
           history: []
         })
       });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Comparison failed (${res.status})`);
+      }
+
       const data = await res.json();
 
       if (data.structured) {
@@ -538,7 +576,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      addToast('Failed to compare documents', true);
+      addToast(err.message || 'Failed to compare documents', true);
     } finally {
       setIsComparing(false);
     }
@@ -570,13 +608,13 @@ export default function App() {
       '**Why this matters:** This can reduce your control, increase liability exposure, or create unexpected obligations.'
     ].filter(Boolean).join('\n\n');
 
-    setChatMessages(prev => [...prev, { role: 'bot', content: chatDetail }]);
+    setChatMessages(prev => [...prev, { role: 'bot', content: chatDetail, html: parseMarkdown(chatDetail) }]);
   };
 
   useEffect(() => {
-    if (chatBoxRef.current) {
-      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
-    }
+    [chatBoxRefResults, chatBoxRefFull].forEach(ref => {
+      if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
+    });
   }, [chatMessages]);
 
   const calculateScore = () => {
@@ -1114,11 +1152,11 @@ export default function App() {
                       </button>
                     </div>
 
-                    <div className="chat-messages" ref={chatBoxRef}>
+                    <div className="chat-messages" ref={chatBoxRefResults}>
                       {chatMessages.map((msg, i) => (
                         <div className={`msg ${msg.role}`} key={i}>
                           <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14} /> : (user?.email?.[0].toUpperCase() || 'U')}</div>
-                          <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
+                          <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? (msg.html || parseMarkdown(msg.content)) : msg.content)}></div>
                         </div>
                       ))}
                       {isChatTyping && (
@@ -1147,7 +1185,7 @@ export default function App() {
                           placeholder="Ask about specific clauses or risks..."
                           value={chatInput}
                           onChange={e => setChatInput(e.target.value)}
-                          onKeyPress={e => e.key === 'Enter' && sendChat()}
+                          onKeyDown={e => e.key === 'Enter' && sendChat()}
                         />
                         <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()}>
                           <ChevronRight size={18} />
@@ -1495,11 +1533,11 @@ export default function App() {
                   )}
                 </div>
 
-                <div className="chat-messages" ref={chatBoxRef}>
+                <div className="chat-messages" ref={chatBoxRefFull}>
                   {chatMessages.map((msg, i) => (
                     <div className={`msg ${msg.role}`} key={i}>
                       <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14} /> : (user?.email?.[0].toUpperCase() || 'U')}</div>
-                      <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? marked.parse(msg.content) : msg.content)}></div>
+                      <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? (msg.html || parseMarkdown(msg.content)) : msg.content)}></div>
                     </div>
                   ))}
                   {isChatTyping && (
@@ -1532,7 +1570,7 @@ export default function App() {
                       placeholder="Ask about specific clauses or risks..."
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
-                      onKeyPress={e => e.key === 'Enter' && sendChat()}
+                      onKeyDown={e => e.key === 'Enter' && sendChat()}
                     />
                     <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()}>
                       <ChevronRight size={18} />

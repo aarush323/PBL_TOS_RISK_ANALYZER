@@ -1,0 +1,30 @@
+# Railway Deployment — Multi-Service Setup
+#
+# This project has two Railway services from the same repo:
+#
+# ┌──────────────────────────────────────────────────────────┐
+# │ Service: tos-backend                                      │
+# │ Root Directory: /backend                                  │
+# │ Config: backend/railway.toml                              │
+# │ Build: Dockerfile                                         │
+# │                                                           │
+# │ Required env vars (set in Railway dashboard):             │
+# │   DATABASE_URL          (Railway Postgres plugin)         │
+# │   SECRET_KEY            (generate a random string)        │
+# │   ACCESS_TOKEN_EXPIRE_MINUTES = 60                        │
+# │   CEREBRAS_API_KEY                                        │
+# │   GEMINI_API_KEY                                          │
+# │   ENVIRONMENT           = production                      │
+# │   FRONTEND_URL          = https://<frontend>.up.railway.app │
+# │   CORS_ORIGINS          = https://<frontend>.up.railway.app │
+# └──────────────────────────────────────────────────────────┘
+#
+# ┌──────────────────────────────────────────────────────────┐
+# │ Service: tos-frontend                                     │
+# │ Root Directory: /frontend                                 │
+# │ Config: frontend/railway.toml                             │
+# │ Build: Dockerfile                                         │
+# │                                                           │
+# │ Required env vars (set in Railway dashboard):             │
+# │   VITE_API_URL          = https://<backend>.up.railway.app │
+# └──────────────────────────────────────────────────────────┘
