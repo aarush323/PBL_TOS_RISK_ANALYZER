@@ -102,9 +102,9 @@ def embed_batch(texts: list[str], batch_size: int = 20) -> list[list[float]]:
                 else:
                     raise
 
-        # Small delay between batches to avoid hitting rate limit
+        # Space batches ~13s apart to stay under 100 items/min limit
         if i + batch_size < len(texts):
-            time.sleep(2)
+            time.sleep(13)
 
     return all_embeddings
 
