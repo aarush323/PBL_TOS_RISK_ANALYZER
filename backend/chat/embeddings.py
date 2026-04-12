@@ -1,37 +1,38 @@
 """
-Embedding service using sentence-transformers.
-Model: all-MiniLM-L6-v2 (384 dimensions, CPU-friendly, fast)
+Embedding service using Google Gemini text-embedding-004 API.
+Configured to output 384 dimensions to match existing DB schema.
 """
 
 import logging
-from functools import lru_cache
-from typing import Optional
+import os
+
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
-_model = None
-_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+_configured = False
+EMBEDDING_MODEL = "models/text-embedding-004"
+EMBEDDING_DIM = 384
 
 
-def _load_model():
-    global _model
-    if _model is None:
-        try:
-            from sentence_transformers import SentenceTransformer
-
-            logger.info(f"Loading embedding model: {_model_name}")
-            _model = SentenceTransformer(_model_name)
-            logger.info("Embedding model loaded successfully")
-        except ImportError:
-            logger.error(
-                "sentence-transformers not installed. Run: pip install sentence-transformers"
+def _ensure_configured():
+    global _configured
+    if not _configured:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "GEMINI_API_KEY environment variable is not set. "
+                "Get one from https://aistudio.google.com/app/apikey"
             )
-            raise
-    return _model
+        genai.configure(api_key=api_key)
+        _configured = True
+        logger.info(f"Gemini embedding configured: {EMBEDDING_MODEL} (dim={EMBEDDING_DIM})")
 
 
 def get_model():
-    return _load_model()
+    """Kept for backward compatibility. Returns the model name string."""
+    _ensure_configured()
+    return EMBEDDING_MODEL
 
 
 def embed_text(text: str) -> list[float]:
@@ -42,16 +43,21 @@ def embed_text(text: str) -> list[float]:
         text: Single text string to embed
 
     Returns:
-        List of 384 float values (normalized)
+        List of 384 float values
     """
-    model = get_model()
-    embedding = model.encode(text, normalize_embeddings=True)
-    return embedding.tolist()
+    _ensure_configured()
+    result = genai.embed_content(
+        model=EMBEDDING_MODEL,
+        content=text,
+        task_type="retrieval_document",
+        output_dimensionality=EMBEDDING_DIM,
+    )
+    return result["embedding"]
 
 
 def embed_batch(texts: list[str], batch_size: int = 32) -> list[list[float]]:
     """
-    Embed multiple strings at once. More efficient than looping.
+    Embed multiple strings at once via Gemini API.
 
     Args:
         texts: List of text strings to embed
@@ -63,14 +69,20 @@ def embed_batch(texts: list[str], batch_size: int = 32) -> list[list[float]]:
     if not texts:
         return []
 
-    model = get_model()
-    embeddings = model.encode(
-        texts,
-        normalize_embeddings=True,
-        batch_size=batch_size,
-        show_progress_bar=False,
-    )
-    return embeddings.tolist()
+    _ensure_configured()
+    all_embeddings = []
+
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        result = genai.embed_content(
+            model=EMBEDDING_MODEL,
+            content=batch,
+            task_type="retrieval_document",
+            output_dimensionality=EMBEDDING_DIM,
+        )
+        all_embeddings.extend(result["embedding"])
+
+    return all_embeddings
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
