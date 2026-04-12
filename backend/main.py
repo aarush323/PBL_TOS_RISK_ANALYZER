@@ -1008,16 +1008,7 @@ async def compare_documents(
             status_code=404, detail=f"Session {body.session_id_b} not found"
         )
 
-    if not session_a.is_indexed:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Session {body.session_id_a} is not indexed. Please wait for indexing to complete.",
-        )
-    if not session_b.is_indexed:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Session {body.session_id_b} is not indexed. Please wait for indexing to complete.",
-        )
+
 
     try:
         user_id = current_user.id if current_user else None
