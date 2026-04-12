@@ -1,6 +1,5 @@
 # ToS Risk Analyzer - Technical Documentation
 
-<p align="center">
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![spaCy](https://img.shields.io/badge/spaCy_NLP-09A3FF?style=for-the-badge&logo=spacy&logoColor=white)](https://spacy.io)
 [![RAG](https://img.shields.io/badge/RAG-FF6B35?style=for-the-badge&logo=ai&logoColor=white)]()
@@ -8,7 +7,6 @@
 [![NeonDB](https://img.shields.io/badge/NeonDB-00E599?style=for-the-badge&logo=neon&logoColor=white)](https://neon.tech)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 [![Railway](https://img.shields.io/badge/Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://railway.app)
-</p>
 
 ---
 
