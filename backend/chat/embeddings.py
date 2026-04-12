@@ -1,37 +1,38 @@
 """
-Embedding service using Google Gemini text-embedding-004 API.
-Configured to output 384 dimensions to match existing DB schema.
+Embedding service using Google Gemini Embedding API.
+Model: gemini-embedding-001 (384 dimensions via output_dimensionality).
 """
 
 import logging
 import os
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-_configured = False
-EMBEDDING_MODEL = "models/text-embedding-004"
+_client = None
+EMBEDDING_MODEL = "gemini-embedding-001"
 EMBEDDING_DIM = 384
 
 
-def _ensure_configured():
-    global _configured
-    if not _configured:
+def _get_client():
+    global _client
+    if _client is None:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise RuntimeError(
                 "GEMINI_API_KEY environment variable is not set. "
                 "Get one from https://aistudio.google.com/app/apikey"
             )
-        genai.configure(api_key=api_key)
-        _configured = True
+        _client = genai.Client(api_key=api_key)
         logger.info(f"Gemini embedding configured: {EMBEDDING_MODEL} (dim={EMBEDDING_DIM})")
+    return _client
 
 
 def get_model():
     """Kept for backward compatibility. Returns the model name string."""
-    _ensure_configured()
+    _get_client()
     return EMBEDDING_MODEL
 
 
@@ -45,14 +46,16 @@ def embed_text(text: str) -> list[float]:
     Returns:
         List of 384 float values
     """
-    _ensure_configured()
-    result = genai.embed_content(
+    client = _get_client()
+    result = client.models.embed_content(
         model=EMBEDDING_MODEL,
-        content=text,
-        task_type="retrieval_document",
-        output_dimensionality=EMBEDDING_DIM,
+        contents=text,
+        config=types.EmbedContentConfig(
+            task_type="RETRIEVAL_DOCUMENT",
+            output_dimensionality=EMBEDDING_DIM,
+        ),
     )
-    return result["embedding"]
+    return result.embeddings[0].values
 
 
 def embed_batch(texts: list[str], batch_size: int = 32) -> list[list[float]]:
@@ -69,18 +72,20 @@ def embed_batch(texts: list[str], batch_size: int = 32) -> list[list[float]]:
     if not texts:
         return []
 
-    _ensure_configured()
+    client = _get_client()
     all_embeddings = []
 
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
-        result = genai.embed_content(
+        result = client.models.embed_content(
             model=EMBEDDING_MODEL,
-            content=batch,
-            task_type="retrieval_document",
-            output_dimensionality=EMBEDDING_DIM,
+            contents=batch,
+            config=types.EmbedContentConfig(
+                task_type="RETRIEVAL_DOCUMENT",
+                output_dimensionality=EMBEDDING_DIM,
+            ),
         )
-        all_embeddings.extend(result["embedding"])
+        all_embeddings.extend([e.values for e in result.embeddings])
 
     return all_embeddings
 

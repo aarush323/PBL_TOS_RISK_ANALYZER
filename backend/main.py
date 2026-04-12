@@ -742,11 +742,7 @@ async def _handle_comparison(
             "comparison_needed": True,
         }
 
-    if not session_a.is_indexed or not session_b.is_indexed:
-        return {
-            "reply": "One of the documents isn't indexed yet. Please wait for indexing to complete.",
-            "comparison_needed": True,
-        }
+
 
     try:
         result = await compare_service.run(session_id_a, session_id_b, user_id, db)
