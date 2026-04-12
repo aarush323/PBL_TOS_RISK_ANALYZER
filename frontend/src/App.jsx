@@ -313,12 +313,20 @@ export default function App() {
     }
   };
 
+  const pollRetryCount = useRef(0);
+
   const pollAnalysisResults = async (jobId) => {
     try {
       const res = await fetch(`${API}/analyze/status/${jobId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}`);
+      }
+
       const data = await res.json();
+      pollRetryCount.current = 0;
 
       if (data.status === 'complete') {
         setAnalysisResult(data.result);
@@ -336,12 +344,20 @@ export default function App() {
         setIsProcessing(false);
         addToast('Analysis failed: ' + data.error, true);
       } else {
-        setTimeout(() => pollAnalysisResults(jobId), 2000);
+        setTimeout(() => pollAnalysisResults(jobId), 3000);
       }
     } catch (err) {
-      console.error(err);
-      setIsProcessing(false);
-      addToast('Failed to poll analysis', true);
+      console.warn(`Poll attempt ${pollRetryCount.current + 1} failed:`, err.message);
+      pollRetryCount.current += 1;
+
+      if (pollRetryCount.current >= 15) {
+        setIsProcessing(false);
+        addToast('Analysis timed out. Please check history later.', true);
+        pollRetryCount.current = 0;
+      } else {
+        const delay = Math.min(5000, 2000 + pollRetryCount.current * 500);
+        setTimeout(() => pollAnalysisResults(jobId), delay);
+      }
     }
   };
 
@@ -833,10 +849,10 @@ export default function App() {
         </div>
 
         <div className="sidebar-footer">
-          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => { setActiveView('chat'); setIsMobileNavOpen(false); }}><BrainCircuit size={18}/> <span>Chat</span></a>
-          <a className={`nav-item ${activeView === 'compare' ? 'active' : ''}`} onClick={() => { setActiveView('compare'); setIsMobileNavOpen(false); }}><Scale size={18}/> <span>Compare</span></a>
-          <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => { setActiveView('settings'); setIsMobileNavOpen(false); }}><SettingsIcon size={18}/> <span>Settings</span></a>
-          <a className="nav-item" onClick={logout}><HelpCircle size={18}/> <span>Sign Out</span></a>
+          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => { setActiveView('chat'); setIsMobileNavOpen(false); }}><BrainCircuit size={18} /> <span>Chat</span></a>
+          <a className={`nav-item ${activeView === 'compare' ? 'active' : ''}`} onClick={() => { setActiveView('compare'); setIsMobileNavOpen(false); }}><Scale size={18} /> <span>Compare</span></a>
+          <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => { setActiveView('settings'); setIsMobileNavOpen(false); }}><SettingsIcon size={18} /> <span>Settings</span></a>
+          <a className="nav-item" onClick={logout}><HelpCircle size={18} /> <span>Sign Out</span></a>
 
           <div className="user-profile">
             <div className="user-avatar">{user?.email?.[0].toUpperCase() || 'U'}</div>
@@ -989,7 +1005,7 @@ export default function App() {
                       )}
                     </div>
                   </div>
-                  <button className="chat-sugg-btn" onClick={() => { setShowCompareSelector(true); setActiveView('compare'); }} style={{alignSelf: 'center', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                  <button className="chat-sugg-btn" onClick={() => { setShowCompareSelector(true); setActiveView('compare'); }} style={{ alignSelf: 'center', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Scale size={14} /> Compare with...
                   </button>
                 </div>
@@ -1000,26 +1016,26 @@ export default function App() {
                       <div className="score-info">
                         <h2>Aggregate Risk Score</h2>
                         <p>Overall risk profile based on identified clauses within the provided document.</p>
-                        <div style={{display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
                           <span style={{
                             background: analysisResult?.overall_risk === 'High' ? 'rgba(255,85,85,0.15)' : (analysisResult?.overall_risk === 'Medium' ? 'rgba(255,200,0,0.15)' : 'rgba(0,200,100,0.15)'),
                             color: analysisResult?.overall_risk === 'High' ? 'var(--error)' : (analysisResult?.overall_risk === 'Medium' ? 'var(--warning)' : 'var(--success)'),
                             padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase'
                           }}>{analysisResult?.overall_risk || 'Unknown'} Risk</span>
-                          <span style={{background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600}}>
+                          <span style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
                             {analysisResult?.risky_clause_count ?? 0} / {analysisResult?.total_clauses ?? 0} Clauses
                           </span>
                         </div>
                         {analysisResult?.risk_breakdown && (
-                          <div style={{marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
+                          <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                             {Object.entries(analysisResult.risk_breakdown).filter(([_, count]) => count > 0).map(([cat, count]) => (
-                              <span key={cat} style={{background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '3px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: 500}}>
+                              <span key={cat} style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '3px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: 500 }}>
                                 {cat}: {count}
                               </span>
                             ))}
                           </div>
                         )}
-                        <div style={{marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)'}}>
+                        <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>
                           Severity: {analysisResult?.total_severity_score?.toFixed(1) || '0.0'} | Avg: {analysisResult?.avg_severity_score?.toFixed(2) || '0.00'}
                         </div>
                       </div>
@@ -1200,16 +1216,16 @@ export default function App() {
                 </div>
 
                 {showCompareSelector ? (
-                  <div className="input-card" style={{maxWidth: '800px'}}>
-                    <h3 style={{marginBottom: '16px'}}>Select Two Documents to Compare</h3>
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px'}}>
+                  <div className="input-card" style={{ maxWidth: '800px' }}>
+                    <h3 style={{ marginBottom: '16px' }}>Select Two Documents to Compare</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                       <div>
-                        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)'}}>Document A</label>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Document A</label>
                         <select
                           className="chat-input-field"
                           value={compareDocA || ''}
                           onChange={(e) => setCompareDocA(e.target.value)}
-                          style={{width: '100%', padding: '12px'}}
+                          style={{ width: '100%', padding: '12px' }}
                         >
                           <option value="">Select a document...</option>
                           {historyItems.filter(h => h.has_result).map(item => {
@@ -1231,12 +1247,12 @@ export default function App() {
                         </select>
                       </div>
                       <div>
-                        <label style={{display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)'}}>Document B</label>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Document B</label>
                         <select
                           className="chat-input-field"
                           value={compareDocB || ''}
                           onChange={(e) => setCompareDocB(e.target.value)}
-                          style={{width: '100%', padding: '12px'}}
+                          style={{ width: '100%', padding: '12px' }}
                         >
                           <option value="">Select a document...</option>
                           {historyItems.filter(h => h.has_result && h.job_id !== compareDocA).map(item => {
@@ -1258,7 +1274,7 @@ export default function App() {
                         </select>
                       </div>
                     </div>
-                    <div style={{display: 'flex', gap: '12px', marginTop: '20px'}}>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                       <button className="action-btn" onClick={() => {
                         if (compareDocA && compareDocB) {
                           setIsComparing(true);
@@ -1267,27 +1283,27 @@ export default function App() {
                       }} disabled={!compareDocA || !compareDocB || isComparing}>
                         {isComparing ? 'Comparing...' : 'Compare Documents'}
                       </button>
-                      <button className="action-btn" onClick={() => { setShowCompareSelector(false); }} style={{background: 'var(--surface-2)', borderColor: 'var(--border)'}}>
+                      <button className="action-btn" onClick={() => { setShowCompareSelector(false); }} style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}>
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{maxWidth: '1000px'}}>
-                    <div style={{display: 'flex', gap: '12px', marginBottom: '24px'}}>
+                  <div style={{ maxWidth: '1000px' }}>
+                    <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
                       <button className="action-btn" onClick={() => setShowCompareSelector(true)}>
                         <Plus size={16} /> Select Documents
                       </button>
                       {historyItems.length < 2 && (
-                        <span style={{color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center'}}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center' }}>
                           Need at least 2 analyzed documents to compare
                         </span>
                       )}
                     </div>
 
                     {comparisonData ? (
-                      <div className="comparison-results" style={{paddingBottom: '40px'}}>
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px'}}>
+                      <div className="comparison-results" style={{ paddingBottom: '40px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                           {[
                             { doc: comparisonData.doc_a, label: comparisonData.doc_a?.label, side: 'a' },
                             { doc: comparisonData.doc_b, label: comparisonData.doc_b?.label, side: 'b' }
@@ -1310,10 +1326,10 @@ export default function App() {
                                 flexDirection: 'column',
                                 gap: '12px'
                               }}>
-                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                   <div>
-                                    <div style={{fontSize: '22px', fontWeight: 600, color: 'var(--text)', lineHeight: 1.2}}>{domain}</div>
-                                    <div style={{fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px'}}>{label}</div>
+                                    <div style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>{domain}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>{label}</div>
                                   </div>
                                   <span style={{
                                     fontSize: '11px', fontWeight: 500, color: riskColor,
@@ -1321,13 +1337,13 @@ export default function App() {
                                     textTransform: 'uppercase', letterSpacing: '0.05em'
                                   }}>{risk} Risk</span>
                                 </div>
-                                <div style={{marginTop: '8px'}}>
-                                  <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px'}}>
+                                <div style={{ marginTop: '8px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>
                                     <span>{clauses} of {total} clauses flagged</span>
                                     <span>score {score}</span>
                                   </div>
-                                  <div style={{height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden'}}>
-                                    <div style={{height: '100%', width: `${score}%`, background: riskColor, borderRadius: '3px', transition: 'width 0.3s ease'}} />
+                                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${score}%`, background: riskColor, borderRadius: '3px', transition: 'width 0.3s ease' }} />
                                   </div>
                                 </div>
                               </div>
@@ -1335,15 +1351,15 @@ export default function App() {
                           })}
                         </div>
 
-                        <div style={{background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', marginBottom: '24px', overflowX: 'auto'}}>
-                          <h3 style={{fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '16px', letterSpacing: '0.02em'}}>Category Comparison</h3>
-                          <table style={{width: '100%', borderCollapse: 'collapse', minWidth: '500px'}}>
+                        <div style={{ background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', marginBottom: '24px', overflowX: 'auto' }}>
+                          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '16px', letterSpacing: '0.02em' }}>Category Comparison</h3>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
                             <thead>
-                              <tr style={{borderBottom: '1px solid rgba(255,255,255,0.08)'}}>
-                                <th style={{textAlign: 'left', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500}}>Category</th>
-                                <th style={{textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500}}>Doc A</th>
-                                <th style={{textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500}}>Winner</th>
-                                <th style={{textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500}}>Doc B</th>
+                              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                <th style={{ textAlign: 'left', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Category</th>
+                                <th style={{ textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Doc A</th>
+                                <th style={{ textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Winner</th>
+                                <th style={{ textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Doc B</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1357,27 +1373,27 @@ export default function App() {
                                 const bSummary = cat.clause_b_summary ? (cat.clause_b_summary.length > 80 ? cat.clause_b_summary.slice(0, 80) + '...' : cat.clause_b_summary) : '';
 
                                 return (
-                                  <tr key={idx} style={{borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent'}}>
-                                    <td style={{padding: '16px', verticalAlign: 'top'}}>
-                                      <div style={{fontWeight: 600, fontSize: '13px', color: 'var(--text)'}}>{cat.category}</div>
+                                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
+                                    <td style={{ padding: '16px', verticalAlign: 'top' }}>
+                                      <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text)' }}>{cat.category}</div>
                                       {cat.key_difference && (
-                                        <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                           {cat.key_difference}
                                         </div>
                                       )}
                                     </td>
-                                    <td style={{padding: '16px', textAlign: 'center', verticalAlign: 'top'}}>
-                                      <div style={{fontSize: '20px', fontWeight: 600, color: cat.winner === 'a' ? 'var(--error)' : 'var(--text)'}}>{cat.doc_a_risk_count || 0}</div>
-                                      <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>avg {aSev.toFixed(1)}</div>
-                                      {aSummary && <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic'}}>{aSummary}</div>}
+                                    <td style={{ padding: '16px', textAlign: 'center', verticalAlign: 'top' }}>
+                                      <div style={{ fontSize: '20px', fontWeight: 600, color: cat.winner === 'a' ? 'var(--error)' : 'var(--text)' }}>{cat.doc_a_risk_count || 0}</div>
+                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>avg {aSev.toFixed(1)}</div>
+                                      {aSummary && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic' }}>{aSummary}</div>}
                                     </td>
-                                    <td style={{padding: '16px', textAlign: 'center', verticalAlign: 'middle'}}>
-                                      <span style={{fontSize: '12px', color: winnerColor, fontWeight: 500}}>{winnerDot} {winnerText}</span>
+                                    <td style={{ padding: '16px', textAlign: 'center', verticalAlign: 'middle' }}>
+                                      <span style={{ fontSize: '12px', color: winnerColor, fontWeight: 500 }}>{winnerDot} {winnerText}</span>
                                     </td>
-                                    <td style={{padding: '16px', textAlign: 'center', verticalAlign: 'top'}}>
-                                      <div style={{fontSize: '20px', fontWeight: 600, color: cat.winner === 'b' ? 'var(--error)' : 'var(--text)'}}>{cat.doc_b_risk_count || 0}</div>
-                                      <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>avg {bSev.toFixed(1)}</div>
-                                      {bSummary && <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic'}}>{bSummary}</div>}
+                                    <td style={{ padding: '16px', textAlign: 'center', verticalAlign: 'top' }}>
+                                      <div style={{ fontSize: '20px', fontWeight: 600, color: cat.winner === 'b' ? 'var(--error)' : 'var(--text)' }}>{cat.doc_b_risk_count || 0}</div>
+                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>avg {bSev.toFixed(1)}</div>
+                                      {bSummary && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic' }}>{bSummary}</div>}
                                     </td>
                                   </tr>
                                 );
@@ -1404,45 +1420,45 @@ export default function App() {
                             summaryLine = `Both documents have similar overall risk profiles across categories.`;
                           }
                           return (
-                            <div style={{background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', textAlign: 'center'}}>
-                              <h3 style={{fontSize: '20px', fontWeight: 600, color: 'var(--text)', marginBottom: '20px'}}>
+                            <div style={{ background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', textAlign: 'center' }}>
+                              <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text)', marginBottom: '20px' }}>
                                 {comparisonData.verdict || 'Analysis Complete'}
                               </h3>
-                              <div style={{display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '20px'}}>
-                                <div style={{textAlign: 'center'}}>
-                                  <div style={{fontSize: '28px', fontWeight: 700, color: 'var(--error)'}}>{wonA}</div>
-                                  <div style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px'}}>A Won</div>
+                              <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '20px' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--error)' }}>{wonA}</div>
+                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>A Won</div>
                                 </div>
-                                <div style={{textAlign: 'center'}}>
-                                  <div style={{fontSize: '28px', fontWeight: 700, color: 'var(--text-muted)'}}>{tied}</div>
-                                  <div style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px'}}>Tied</div>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-muted)' }}>{tied}</div>
+                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>Tied</div>
                                 </div>
-                                <div style={{textAlign: 'center'}}>
-                                  <div style={{fontSize: '28px', fontWeight: 700, color: 'var(--success)'}}>{wonB}</div>
-                                  <div style={{fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px'}}>B Won</div>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--success)' }}>{wonB}</div>
+                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>B Won</div>
                                 </div>
                               </div>
                               {mostDangerous && (
-                                <div style={{fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px'}}>
-                                  Most dangerous category: <span style={{color: 'var(--accent)', fontWeight: 600}}>{mostDangerous.category}</span>
+                                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                                  Most dangerous category: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{mostDangerous.category}</span>
                                 </div>
                               )}
-                              <div style={{fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.5}}>
+                              <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.5 }}>
                                 {summaryLine}
                               </div>
                             </div>
                           );
                         })()}
 
-                        <div style={{marginTop: '24px', display: 'flex', justifyContent: 'center'}}>
+                        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
                           <button className="action-btn" onClick={() => { setShowCompareSelector(true); setComparisonData(null); }}>
                             Compare New Documents
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div style={{padding: '60px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: '12px'}}>
-                        <Scale size={48} style={{opacity: 0.3, marginBottom: '16px'}} />
+                      <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: '12px' }}>
+                        <Scale size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
                         <p>Select two documents above to see a detailed comparison</p>
                       </div>
                     )}
