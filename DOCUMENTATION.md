@@ -272,7 +272,7 @@ graph TD
     ExtPDF --> Cleaner
     ExtTXT --> Cleaner
     
-    Cleaner --> Output[{Output Structure<br/>source_type, source, raw_text<br/>cleaned_text, paragraphs<br/>char_count, line_count}]
+    Cleaner --> Output[Output Structure<br/>source_type, source, raw_text<br/>cleaned_text, paragraphs<br/>char_count, line_count]
 ```
 
 #### URL Extraction (`url_extractor.py`)
@@ -338,7 +338,7 @@ graph TD
         Ext[EXTRACTED TEXT<br/>paragraphs] --> HD[1. Heading Detection<br/>regex patterns]
         HD --> SS[2. Sentence Splitting<br/>spaCy]
         SS --> CM[3. Clause Merging<br/>Min 40 chars, Max 1200 chars]
-        CM --> Out1[{Output:<br/>id, text, section_heading}]
+        CM --> Out1[Output:<br/>id, text, section_heading]
     end
     
     Out1 --> Stage2
@@ -403,7 +403,7 @@ graph TD
     Groq --> Parse
     Ollama --> Parse
     
-    Parse --> Out[{RETURN RESULT<br/>is_risky, risk_categories<br/>confidence, explanation}]
+    Parse --> Out[RETURN RESULT<br/>is_risky, risk_categories<br/>confidence, explanation]
 ```
 
 #### Cerebras API
@@ -535,7 +535,7 @@ graph TD
     Success --> Agg
     Fallback --> Agg
     
-    Agg --> Result[{Output:<br/>overall_risk<br/>risk_breakdown<br/>clauses}]
+    Agg --> Result[Output:<br/>overall_risk<br/>risk_breakdown<br/>clauses]
 ```
 
 #### Cancellation Support
@@ -600,7 +600,7 @@ graph TD
     Input[POST /chat/compare<br/>session_id_a, session_id_b, question] --> Retrieve[Retrieve top-4 clauses from each doc]
     Retrieve --> Build[Build comparison context]
     Build --> LLM[LLM compares directly]
-    LLM --> Out[{Return: reply, doc_a_clauses, doc_b_clauses}]
+    LLM --> Out[Return: reply, doc_a_clauses, doc_b_clauses]
 ```
 
 #### Clause Browsing API
@@ -620,7 +620,7 @@ graph TD
     Load --> Build[2. BUILD MESSAGES<br/>SYSTEM_PROMPT with document_text truncated<br/>Append conversation history]
     Build --> LLM[3. LLM REQUEST<br/>try Cerebras: llama3.1-8b<br/>except Ollama: qwen3.5:9b]
     LLM --> Save[4. SAVE TO HISTORY<br/>crud.add_chat_message]
-    Save --> Out[{RETURN reply, session_id}]
+    Save --> Out[RETURN reply, session_id]
 ```
 
 
