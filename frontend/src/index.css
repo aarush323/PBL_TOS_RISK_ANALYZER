@@ -317,18 +317,18 @@ body {
 
 /* ─── Light Mode Variable Overrides ─── */
 [data-theme="light"] {
-  --color-surface:       #f8f9fb;
+  --color-surface:       #fafafa;
   --color-surface-1:     #ffffff;
-  --color-surface-2:     #f0f1f4;
-  --color-surface-3:     #e4e6eb;
-  --color-surface-glass: rgba(255, 255, 255, 0.75);
+  --color-surface-2:    #f3f4f6;
+  --color-surface-3:    #e5e7eb;
+  --color-surface-glass: rgba(255, 255, 255, 0.85);
 
-  --color-primary:       #0062d6;
-  --color-primary-hover: #004baa;
+  --color-primary:       #635BFF;
+  --color-primary-hover: #4F46E5;
 
-  --color-text:          #1a1a2e;
-  --color-text-muted:    #5a5a72;
-  --color-text-subtle:   #8e8ea0;
+  --color-text:          #0F172A;
+  --color-text-muted:    #475569;
+  --color-text-subtle:   #64748B;
 
   --color-success:       #16a34a;
   --color-warning:       #d97706;
@@ -337,9 +337,9 @@ body {
 
 /* ─── Glass card — light override ─── */
 [data-theme="light"] .glass-card {
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* ─── Auth card — light override ─── */
@@ -380,8 +380,15 @@ body {
 
 /* ─── Selection color — light ─── */
 [data-theme="light"] ::selection {
-  background: rgba(0, 98, 214, 0.2);
+  background: rgba(99, 91, 255, 0.2);
   color: var(--color-text);
+}
+
+/* ─── Glass card enhancements for light */
+[data-theme="light"] .glass-card {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 /* ─── Global Tailwind Color Overrides for Light Mode ─── */

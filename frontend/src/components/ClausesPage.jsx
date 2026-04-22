@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, AlertTriangle, Shield, Lock, Eye, DollarSign, UserCheck, Scale, MessageSquare } from 'lucide-react';
+import { Filter, AlertTriangle, Shield, Lock, Eye, DollarSign, UserCheck, Scale, MessageSquare, Check } from 'lucide-react';
 import { useTheme } from './ThemeProvider.jsx';
 
 export default function ClausesPage({
@@ -90,7 +90,8 @@ export default function ClausesPage({
   };
 
   const renderSeverityBar = () => {
-    const data = clauses.map(c => ({
+    const allClauses = analysisResult?.clauses || [];
+    const data = allClauses.map(c => ({
       position: c.position_weight || 50,
       severity: c.severity_score || 
         (c.confidence === 'High' ? 3 : c.confidence === 'Medium' ? 2 : 1),

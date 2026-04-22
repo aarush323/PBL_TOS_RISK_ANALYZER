@@ -16,22 +16,24 @@ export default function OverviewPage({
   isVerdictLoading
 }) {
   const { theme } = useTheme();
-  const score = calculateScore();
+  const score = typeof calculateScore === 'function' ? calculateScore() : 0;
   const totalClauses = analysisResult?.total_clauses || 0;
   const riskyClauses = analysisResult?.risky_clause_count || 0;
-  const nlpCleared = totalClauses - riskyClauses;
+  const nlpCleared = Math.max(0, totalClauses - riskyClauses);
   const avgSeverity = analysisResult?.avg_severity_score || 0;
   const totalRiskScore = analysisResult?.total_severity_score || 0;
-  const overallRisk = analysisResult?.overall_risk || 'N/A';
+  const overallRisk = analysisResult?.overall_risk || 'Low';
 
   // Fix: Convert risk_breakdown from dict to array for rendering
   const breakdownArray = React.useMemo(() => {
     if (!analysisResult?.risk_breakdown) return [];
     // If it's already an array (old format), return as is (wrapped). 
     // If it's a dict (new backend format), convert it.
-    if (Array.isArray(analysisResult.risk_breakdown)) return analysisResult.risk_breakdown;
+    if (Array.isArray(analysisResult.risk_breakdown)) {
+      return [...analysisResult.risk_breakdown].sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0));
+    }
     return Object.entries(analysisResult.risk_breakdown)
-      .map(([category, count]) => ({ category, count }))
+      .map(([category, count]) => ({ category, count: Number(count) || 0 }))
       .sort((a, b) => b.count - a.count);
   }, [analysisResult]);
 
@@ -60,33 +62,6 @@ export default function OverviewPage({
     });
     return checks;
   }, [breakdownArray]);
-
-  // Feature 2: Severity Distribution Histogram
-  const severityDistribution = React.useMemo(() => {
-    if (!Array.isArray(analysisResult?.clauses)) return [];
-    
-    const bins = [
-      { label: 'Minor',    range: '0–2',   color: '#22c55e', count: 0 },
-      { label: 'Moderate', range: '2–5',   color: '#f59e0b', count: 0 },
-      { label: 'Serious',  range: '5–8',   color: '#f97316', count: 0 },
-      { label: 'Critical', range: '8–12', color: '#ef4444', count: 0 },
-      { label: 'Fatal',    range: '12+',  color: '#dc2626', count: 0 },
-    ];
-
-    analysisResult.clauses.forEach(clause => {
-      if (!clause.is_risky) return;
-      const sev = clause.severity_score || 0;
-      if (sev <= 2)       bins[0].count++;
-      else if (sev <= 5)  bins[1].count++;
-      else if (sev <= 8)  bins[2].count++;
-      else if (sev <= 12) bins[3].count++;
-      else                bins[4].count++;
-    });
-
-    return bins;
-  }, [analysisResult]);
-
-  const maxBinCount = Math.max(...severityDistribution.map(b => b.count), 1);
 
   // Feature 3: NLP vs Deep AI Transparency
   const analysisTransparency = React.useMemo(() => {
@@ -126,18 +101,18 @@ export default function OverviewPage({
     const gridStroke = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
     const textFill = isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)';
     const axisStroke = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
-    const maxCount = Math.max(...breakdownArray.map(c => c.count), 1);
+    const maxCount = Math.max(...(breakdownArray.map(c => Number(c.count) || 0) || []), 1);
     const categories = ['Legal', 'Privacy', 'Security', 'Financial', 'User'];
 
     const points = categories.map((label, i) => {
-      const breakdown = breakdownArray.find(b => b.category.toLowerCase().includes(label.toLowerCase()));
-      const val = breakdown ? breakdown.count : 0;
+      const breakdown = breakdownArray.find(b => b.category?.toLowerCase().includes(label.toLowerCase()));
+      const val = Number(breakdown?.count) || 0;
       const angle = (i * 72 - 90) * (Math.PI / 180);
-      const radius = (val / maxCount) * 80;
-      return `${100 + radius * Math.cos(angle)},${100 + radius * Math.sin(angle)}`;
+      const radius = (val / maxCount) * 92;
+      return `${(100 + radius * Math.cos(angle)).toFixed(2)},${(100 + radius * Math.sin(angle)).toFixed(2)}`;
     }).join(' ');
 
-    const gridLines = [25, 50, 75, 100].map(radius => {
+    const gridLines = [20, 40, 60, 80, 100].map(radius => {
       return Array.from({ length: 5 }).map((_, i) => {
         const angle = (i * 72 - 90) * (Math.PI / 180);
         return `${100 + radius * Math.cos(angle)},${100 + radius * Math.sin(angle)}`;
@@ -152,16 +127,16 @@ export default function OverviewPage({
         {categories.map((_, i) => {
           const angle = (i * 72 - 90) * (Math.PI / 180);
           return (
-            <line key={i} x1="100" y1="100" x2={100 + 95 * Math.cos(angle)} y2={100 + 95 * Math.sin(angle)} stroke={axisStroke} strokeWidth="0.5" />
+            <line key={i} x1="100" y1="100" x2={100 + 100 * Math.cos(angle)} y2={100 + 100 * Math.sin(angle)} stroke={axisStroke} strokeWidth="0.5" />
           );
         })}
-        <polygon points={points} fill="rgba(0, 122, 255, 0.2)" stroke="#007AFF" strokeWidth="2" className="transition-all duration-700" />
+        <polygon points={points} fill="rgba(0, 122, 255, 0.25)" stroke="#007AFF" strokeWidth="2.5" className="transition-all duration-700" />
         {categories.map((label, i) => {
           const breakdown = breakdownArray.find(b => b.category.toLowerCase().includes(label.toLowerCase()));
           const val = breakdown ? breakdown.count : 0;
           const angle = (i * 72 - 90) * (Math.PI / 180);
-          const radius = (val / maxCount) * 80;
-          return <circle key={i} cx={100 + radius * Math.cos(angle)} cy={100 + radius * Math.sin(angle)} r="3" fill="#007AFF" />;
+          const radius = (val / maxCount) * 92;
+          return <circle key={i} cx={100 + radius * Math.cos(angle)} cy={100 + radius * Math.sin(angle)} r="3.5" fill="#007AFF" />;
         })}
       </svg>
     );
@@ -204,29 +179,26 @@ export default function OverviewPage({
 
       {/* Feature 1: AI Narrative Verdict */}
       {(narrativeVerdict || isVerdictLoading) && (
-        <div className="glass-card p-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-[#007AFF]/5 to-emerald-500/5 pointer-events-none" />
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-[#007AFF] flex items-center justify-center">
-                <Zap size={14} className="text-white" />
-              </div>
-              <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
-                AI Verdict
-              </span>
+        <div className="relative overflow-hidden bg-white/5 border-l-4 border-[#007AFF] rounded-r-lg p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-[#007AFF] flex items-center justify-center">
+              <Zap size={14} className="text-white" />
             </div>
-            {isVerdictLoading ? (
-              <div className="space-y-2">
-                <div className="h-4 bg-white/5 rounded animate-pulse w-full" />
-                <div className="h-4 bg-white/5 rounded animate-pulse w-3/4" />
-                <div className="h-4 bg-white/5 rounded animate-pulse w-5/6" />
-              </div>
-            ) : (
-              <p className="text-base text-white/80 leading-relaxed italic">
-                "{narrativeVerdict}"
-              </p>
-            )}
+            <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+              AI Verdict
+            </span>
           </div>
+          {isVerdictLoading ? (
+            <div className="space-y-2">
+              <div className="h-4 bg-white/5 rounded animate-pulse w-full" />
+              <div className="h-4 bg-white/5 rounded animate-pulse w-3/4" />
+              <div className="h-4 bg-white/5 rounded animate-pulse w-5/6" />
+            </div>
+          ) : (
+            <p className="text-base text-white/90 leading-relaxed">
+              "{narrativeVerdict}"
+            </p>
+          )}
         </div>
       )}
 
@@ -293,61 +265,34 @@ export default function OverviewPage({
 
       <div className="grid grid-cols-4 gap-6">
         {[
-          { label: 'Total Clauses', value: totalClauses, icon: FileText, color: 'text-blue-400' },
-          { label: 'Risky Clauses', value: riskyClauses, icon: AlertTriangle, color: 'text-red-400' },
-          { label: 'NLP Cleared', value: nlpCleared, icon: Check, color: 'text-green-400' },
-          { label: 'Risk Ratio', value: `${((riskyClauses / (totalClauses || 1)) * 100).toFixed(1)}%`, icon: Target, color: 'text-purple-400' },
+          { label: 'Total Clauses', value: totalClauses, icon: FileText, color: 'text-blue-400', bg: 'bg-blue-400/5' },
+          { label: 'Risky Clauses', value: riskyClauses, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-400/5' },
+          { label: 'NLP Cleared', value: nlpCleared, icon: Check, color: 'text-green-400', bg: 'bg-green-400/5' },
+          { label: 'Risk Ratio', value: `${((riskyClauses / (totalClauses || 1)) * 100).toFixed(1)}%`, icon: Target, color: 'text-purple-400', bg: 'bg-purple-400/5' },
         ].map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <div key={i} className="glass-card p-6 hover:border-white/20 transition-all">
-              <div className="flex items-center gap-2 mb-3">
-                <Icon size={16} className={stat.color} />
-                <span className="text-sm text-white/50 uppercase">{stat.label}</span>
+            <div key={i} className={`glass-card p-8 hover:border-white/20 transition-all group relative overflow-hidden`}>
+              <div className={`absolute top-0 right-0 w-24 h-24 ${stat.bg} blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:opacity-100 opacity-50 transition-opacity`} />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`p-2 rounded-lg ${stat.bg}`}>
+                    <Icon size={18} className={stat.color} />
+                  </div>
+                  <span className="text-xs font-bold text-white/40 uppercase tracking-widest">{stat.label}</span>
+                </div>
+                <div className="text-4xl font-black text-white tracking-tight">{stat.value}</div>
               </div>
-              <div className="text-3xl font-bold text-white">{stat.value}</div>
             </div>
           );
         })}
       </div>
 
-      {/* Feature 2 + 3: Severity Histogram + Transparency Row */}
+      {/* Feature Row: Transparency + Analysis Depth */}
       <div className="grid grid-cols-2 gap-6">
-        {/* Severity Distribution Histogram */}
-        <div className="glass-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp size={16} className="text-amber-400" />
-              <span className="text-sm text-white/50 uppercase">Severity Distribution</span>
-            </div>
-            <span className="text-lg font-bold text-white">
-              avg {avgSeverity.toFixed(1)}
-            </span>
-          </div>
-          <div className="flex items-end gap-2 h-24">
-            {severityDistribution.map((bin, j) => (
-              <div key={j} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] text-white/50 font-medium">
-                  {bin.count > 0 ? bin.count : ''}
-                </span>
-                <div
-                  className="w-full rounded-t-md transition-all duration-700"
-                  style={{
-                    height: `${bin.count > 0 ? Math.max(8, (bin.count / maxBinCount) * 100) : 4}%`,
-                    backgroundColor: bin.count > 0 ? bin.color : (theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)'),
-                  }}
-                />
-                <span className="text-[9px] text-white/40 uppercase leading-none text-center">
-                  {bin.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Analysis Transparency Card */}
         {analysisTransparency && (
-          <div className="glass-card p-6">
+          <div className="glass-card p-6 flex flex-col justify-between">
             <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
               <Zap size={18} className="text-emerald-400" />
               How We Analyzed
@@ -364,13 +309,13 @@ export default function OverviewPage({
               </div>
 
               <div className="flex gap-3">
-                <div className="flex-1">
+                <div className="flex-1 p-3">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-2 h-2 rounded-full bg-emerald-400" />
                     <span className="text-xs text-white/60">Fast NLP Filter</span>
                   </div>
-                  <div className="h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center">
-                    <span className="text-lg font-bold text-emerald-400">
+                  <div className="h-14 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-xl font-bold text-emerald-400">
                       {analysisTransparency.nlpFiltered}
                     </span>
                     <span className="text-xs text-emerald-400/60 ml-1.5">
@@ -378,17 +323,17 @@ export default function OverviewPage({
                     </span>
                   </div>
                   <p className="text-[10px] text-white/40 mt-1 leading-tight">
-                    Cleared by keyword & pattern analysis — no AI cost
+                    Cleared by keyword analysis — no AI cost
                   </p>
                 </div>
 
-                <div className="flex-1">
+                <div className="flex-1 p-3">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-2 h-2 rounded-full bg-[#007AFF]" />
                     <span className="text-xs text-white/60">Deep AI (Cerebras)</span>
                   </div>
-                  <div className="h-10 bg-[#007AFF]/10 border border-[#007AFF]/20 rounded-lg flex items-center justify-center">
-                    <span className="text-lg font-bold text-[#007AFF]">
+                  <div className="h-14 bg-[#007AFF]/10 border border-[#007AFF]/20 rounded-lg flex items-center justify-center">
+                    <span className="text-xl font-bold text-[#007AFF]">
                       {analysisTransparency.deepAnalyzed}
                     </span>
                     <span className="text-xs text-[#007AFF]/60 ml-1.5">
@@ -396,7 +341,7 @@ export default function OverviewPage({
                     </span>
                   </div>
                   <p className="text-[10px] text-white/40 mt-1 leading-tight">
-                    Full LLM risk assessment with contextual reasoning
+                    Full LLM assessment with reasoning
                   </p>
                 </div>
               </div>
@@ -418,9 +363,49 @@ export default function OverviewPage({
             </div>
           </div>
         )}
+
+        {/* Analysis Depth Card */}
+        <div className="glass-card p-6 flex flex-col justify-between">
+          <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+            <BrainCircuit size={18} className="text-[#007AFF]" />
+            Analysis Depth
+          </h3>
+          <div className="flex items-center gap-6 py-2">
+            <div className="relative w-24 h-24">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                <circle cx="50" cy="50" r="40" fill="none" stroke={theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'} strokeWidth="10" />
+                <circle
+                  cx="50" cy="50" r="40" fill="none" stroke="#007AFF" strokeWidth="10"
+                  strokeDasharray={`${((totalClauses - (analysisResult?.skipped_llm_count || 0)) / (totalClauses || 1)) * 251.2} 251.2`}
+                  strokeLinecap="round"
+                  className="transition-all duration-700"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">
+                  {Math.round(((totalClauses - (analysisResult?.skipped_llm_count || 0)) / (totalClauses || 1)) * 100)}
+                </span>
+              </div>
+            </div>
+            <div className="flex-1 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-white/60">AI-Analyzed</span>
+                <span className="text-white font-medium">{totalClauses - (analysisResult?.skipped_llm_count || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-white/60">NLP-Filtered</span>
+                <span className="text-white font-medium">{analysisResult?.skipped_llm_count || 0}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-white/60">Scanned</span>
+                <span className="text-green-400 font-medium">100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* NEW: Risk Profile + Analysis Depth Cards */}
+      {/* Secondary Row: Risk Profile + Factor Cards */}
       <div className="grid grid-cols-2 gap-6">
         {/* Risk Profile Card */}
         <div className="glass-card p-6">
@@ -469,85 +454,6 @@ export default function OverviewPage({
           )}
         </div>
 
-        {/* Analysis Depth Card */}
-        <div className="glass-card p-6">
-          <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-            <BrainCircuit size={18} className="text-[#007AFF]" />
-            Analysis Depth
-          </h3>
-          <div className="flex items-center gap-6">
-            <div className="relative w-24 h-24">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                <circle cx="50" cy="50" r="40" fill="none" stroke={theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'} strokeWidth="10" />
-                <circle
-                  cx="50" cy="50" r="40" fill="none" stroke="#007AFF" strokeWidth="10"
-                  strokeDasharray={`${((totalClauses - (analysisResult?.skipped_llm_count || 0)) / (totalClauses || 1)) * 251.2} 251.2`}
-                  strokeLinecap="round"
-                  className="transition-all duration-700"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold text-white">
-                  {Math.round(((totalClauses - (analysisResult?.skipped_llm_count || 0)) / (totalClauses || 1)) * 100)}
-                </span>
-              </div>
-            </div>
-            <div className="flex-1 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-white/60">AI-Analyzed</span>
-                <span className="text-white font-medium">{totalClauses - (analysisResult?.skipped_llm_count || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-white/60">NLP-Filtered</span>
-                <span className="text-white font-medium">{analysisResult?.skipped_llm_count || 0}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-white/60">Confidence</span>
-                <span className="text-green-400 font-medium">High</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        {/* Risk Breakdown Radar - Larger */}
-        <div className="glass-card p-6">
-          <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-            <Activity size={18} className="text-[#007AFF]" />
-            Risk Breakdown
-          </h3>
-          <div className="aspect-square max-w-[360px] mx-auto">
-            {renderRadarChart()}
-          </div>
-          <div className="flex flex-wrap justify-center gap-4 mt-4">
-            {['legal', 'privacy', 'security', 'financial', 'user'].map((key, i) => {
-              const cat = [{
-                key: 'legal', label: 'Legal'
-              }, {
-                key: 'privacy', label: 'Privacy'
-              }, {
-                key: 'security', label: 'Security'
-              }, {
-                key: 'financial', label: 'Financial'
-              }, {
-                key: 'user', label: 'User Rights'
-              }][i];
-              return (
-                <div key={i} className="flex items-center gap-2 text-xs">
-                  <span className={`w-2 h-2 rounded-full ${key === 'legal' ? 'bg-red-500' :
-                    key === 'privacy' ? 'bg-amber-500' :
-                      key === 'security' ? 'bg-blue-500' :
-                        key === 'financial' ? 'bg-yellow-500' :
-                          'bg-gray-500'
-                    }`} />
-                  <span className="text-white/60">{cat.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Top Risk Factors - Sexy Cards */}
         <div className="glass-card p-6">
           <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
@@ -579,17 +485,55 @@ export default function OverviewPage({
         </div>
       </div>
 
+      {/* Final Row: Radar Chart */}
+      <div className="glass-card p-6">
+        <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-6 flex items-center gap-2">
+          <Activity size={14} className="text-[#007AFF]" />
+          Risk Breakdown Matrix
+        </h3>
+        <div className="flex items-center gap-16">
+          <div className="flex-[1.5] max-w-[500px]">
+            {renderRadarChart()}
+          </div>
+          <div className="flex-1 grid grid-cols-2 gap-4">
+            {['legal', 'privacy', 'security', 'financial', 'user'].map((key, i) => {
+              const cat = [{
+                key: 'legal', label: 'Legal'
+              }, {
+                key: 'privacy', label: 'Privacy'
+              }, {
+                key: 'security', label: 'Security'
+              }, {
+                key: 'financial', label: 'Financial'
+              }, {
+                key: 'user', label: 'User Rights'
+              }][i];
+              return (
+                <div key={i} className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
+                  <span className={`w-3 h-3 rounded-full ${key === 'legal' ? 'bg-red-500' :
+                    key === 'privacy' ? 'bg-amber-500' :
+                      key === 'security' ? 'bg-blue-500' :
+                        key === 'financial' ? 'bg-yellow-500' :
+                          'bg-gray-500'
+                    }`} />
+                  <span className="text-sm text-white/80 font-medium">{cat.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         {/* Compact Health Checklist */}
         <div className="flex items-center gap-2">
           {healthCheckItems.slice(0, 5).map((item, i) => (
             <div
               key={i}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border ${
-                item.passed
-                  ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border ${item.passed
+                ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                }`}
             >
               {item.passed ? <Check size={12} /> : <AlertTriangle size={12} />}
               <span>{item.name}</span>

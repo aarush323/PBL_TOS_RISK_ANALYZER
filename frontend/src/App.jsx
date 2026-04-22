@@ -603,11 +603,7 @@ export default function App() {
     if (!targetSessionId || !token) return;
     setIsVerdictLoading(true);
     try {
-      const prompt = `In exactly 3 sentences, give a plain-English verdict of this document's risk profile. 
-Sentence 1: Overall safety assessment (safe/moderate/dangerous). 
-Sentence 2: The single most critical risk and why it matters. 
-Sentence 3: Your recommendation (sign as-is / negotiate changes / avoid).
-Do NOT use bullet points, just 3 flowing sentences.`;
+      const prompt = `Write 3 to 4 sentences about this document's legal risk profile. Focus on what's actually in the document — specific patterns that stand out, how severe the risks are, and what action makes sense. Be direct and factual, not formulaic.`;
 
       const res = await fetchWithRetry(`${API}/chat`, {
         method: 'POST',
