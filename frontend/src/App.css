@@ -1,32 +1,21 @@
-/* App-level overrides and additional component styles */
+/* App-level overrides - styling now primarily handled by Tailwind utilities */
 
-/* Enhance focus states for accessibility */
 button:focus-visible,
 input:focus-visible,
 a:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-/* Ensure proper vertical rhythm for main sections */
-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-/* Fix text selection styling for better readability */
 ::selection {
-  background: rgba(34, 211, 238, 0.25);
-  color: var(--text-heading);
+  background: rgba(0, 122, 255, 0.25);
+  color: var(--color-text);
 }
 
-/* Smooth scrolling for better UX */
 html {
   scroll-behavior: smooth;
 }
 
-/* Ensure form elements inherit font properly */
 button,
 input,
 textarea,
@@ -35,40 +24,6 @@ select {
   font-size: inherit;
 }
 
-/* Fix button cursor consistency */
 button {
   cursor: pointer;
-}
-
-/* Enhance link visibility */
-a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-/* Modal/dialog improvements */
-input:read-only,
-textarea:read-only {
-  background: var(--surface-2);
-  cursor: not-allowed;
-}
-
-/* Ensure proper spacing for first-child elements */
-p:first-child,
-h1:first-child,
-h2:first-child,
-h3:first-child {
-  margin-top: 0;
-}
-
-/* Last-child margin reset */
-p:last-child,
-h1:last-child,
-h2:last-child,
-h3:last-child {
-  margin-bottom: 0;
 }

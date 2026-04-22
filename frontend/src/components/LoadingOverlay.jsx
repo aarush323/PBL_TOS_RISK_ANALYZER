@@ -1,5 +1,4 @@
 import React from 'react';
-// eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function LoadingOverlay({ show, title = 'Processing', detail = 'Analyzing your document…' }) {
@@ -7,25 +6,23 @@ export default function LoadingOverlay({ show, title = 'Processing', detail = 'A
     <AnimatePresence>
       {show ? (
         <motion.div
-          className="loading-overlay"
-          role="status"
-          aria-live="polite"
-          aria-label={title}
+          className="fixed inset-0 z-[900] flex items-center justify-center pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at center, rgba(0,122,255,0.06) 0%, transparent 60%)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { duration: 0.18, ease: 'easeOut' } }}
           exit={{ opacity: 0, transition: { duration: 0.16, ease: 'easeIn' } }}
         >
           <motion.div
-            className="loading-overlay-card"
+            className="glass-card p-6 w-full max-w-md mx-4"
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.22, ease: 'easeOut' } }}
             exit={{ opacity: 0, y: 8, scale: 0.985, transition: { duration: 0.14, ease: 'easeIn' } }}
           >
-            <div className="loading-overlay-title">{title}</div>
-            <div className="loading-overlay-detail">{detail}</div>
-            <div className="loading-overlay-bar" aria-hidden="true">
+            <div className="text-sm font-bold text-white mb-1">{title}</div>
+            <div className="text-xs text-white/60 mb-4">{detail}</div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden" aria-hidden="true">
               <motion.div
-                className="loading-overlay-barFill"
+                className="h-full w-1/2 bg-gradient-to-r from-[#007AFF] to-[#3395FF] rounded-full"
                 initial={{ x: '-60%' }}
                 animate={{ x: '60%' }}
                 transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity }}

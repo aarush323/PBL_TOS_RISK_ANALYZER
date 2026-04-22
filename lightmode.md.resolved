@@ -1,0 +1,441 @@
+# 🌗 Light Mode — Implementation Guide
+
+> **Goal**: Add a polished, premium light mode to Jurist AI **without breaking a single existing feature**.  
+> Dark mode stays the default. Light mode is opt-in via a sexy toggle.
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph LR
+  A["ThemeProvider (React Context)"] -->|data-theme attr| B["<html> element"]
+  B -->|CSS variable swap| C["index.css :root / [data-theme=light]"]
+  C --> D["All components inherit automatically"]
+  A -->|persist| E["localStorage"]
+  A -->|detect| F["prefers-color-scheme"]
+```
+
+The strategy is **zero-breakage by design**: every color in the app already flows through CSS custom properties defined in [index.css](file:///home/aarush_linux/projects/PBL/frontend/src/index.css). We duplicate those variables under a `[data-theme="light"]` selector with light values — components that consume them flip automatically.
+
+---
+
+## Phase 1 — CSS Variable Light Palette
+
+> [!IMPORTANT]
+> This is the **only file that defines colors app-wide**. Get this right and 60% of the work is done.
+
+#### [MODIFY] [index.css](file:///home/aarush_linux/projects/PBL/frontend/src/index.css)
+
+Add a `[data-theme="light"]` block **after** the existing `@theme` block. The existing dark values stay untouched.
+
+```css
+/* ─── Light Mode Variable Overrides ─── */
+[data-theme="light"] {
+  --color-surface:       #f8f9fb;
+  --color-surface-1:     #ffffff;
+  --color-surface-2:     #f0f1f4;
+  --color-surface-3:     #e4e6eb;
+  --color-surface-glass: rgba(255, 255, 255, 0.75);
+
+  --color-primary:       #0062d6;
+  --color-primary-hover: #004baa;
+
+  --color-text:          #1a1a2e;
+  --color-text-muted:    #5a5a72;
+  --color-text-subtle:   #8e8ea0;
+
+  --color-success:       #16a34a;
+  --color-warning:       #d97706;
+  --color-error:         #dc2626;
+}
+```
+
+Also update the dependent utility classes that reference raw RGBA in the same file:
+
+```css
+/* ─── Glass card — light override ─── */
+[data-theme="light"] .glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ─── Auth card — light override ─── */
+[data-theme="light"] .auth-card {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* ─── Auth input — light override ─── */
+[data-theme="light"] .auth-input {
+  background: var(--color-surface-2);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: var(--color-text);
+}
+
+/* ─── Toast — light override ─── */
+[data-theme="light"] .toast {
+  background: var(--color-surface-1);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  color: var(--color-text);
+}
+
+/* ─── Scrollbar — light override ─── */
+[data-theme="light"] ::-webkit-scrollbar-track { background: var(--color-surface-2); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: #c4c4cc; }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #9e9eab; }
+
+/* ─── Auth overlay glow — tone down for light ─── */
+[data-theme="light"] .auth-overlay::before {
+  background: radial-gradient(ellipse at center, rgba(0, 98, 214, 0.08) 0%, transparent 50%);
+}
+
+/* ─── Radial glow — light ─── */
+[data-theme="light"] .radial-gradient-glow {
+  background: radial-gradient(ellipse at center, rgba(0, 98, 214, 0.07) 0%, transparent 70%);
+}
+```
+
+---
+
+## Phase 2 — ThemeProvider Context
+
+#### [NEW] [ThemeProvider.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/ThemeProvider.jsx)
+
+```jsx
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+const ThemeContext = createContext({ theme: 'dark', toggle: () => {} });
+
+export function useTheme() { return useContext(ThemeContext); }
+
+export default function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState(() => {
+    // 1. Check localStorage
+    const stored = localStorage.getItem('jurist-theme');
+    if (stored) return stored;
+    // 2. Fall back to system preference
+    if (window.matchMedia?.('(prefers-color-scheme: light)').matches) return 'light';
+    return 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('jurist-theme', theme);
+  }, [theme]);
+
+  // Listen for system preference changes
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = (e) => {
+      if (!localStorage.getItem('jurist-theme')) {
+        setTheme(e.matches ? 'light' : 'dark');
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const toggle = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggle }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+```
+
+#### [MODIFY] [main.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/main.jsx)
+
+Wrap `<App />` with `<ThemeProvider>`:
+
+```diff
++import ThemeProvider from './components/ThemeProvider.jsx';
+
+ createRoot(document.getElementById('root')).render(
+   <StrictMode>
+-    <App />
++    <ThemeProvider>
++      <App />
++    </ThemeProvider>
+   </StrictMode>
+ );
+```
+
+---
+
+## Phase 3 — Theme Toggle Button (The Sexy Part ✨)
+
+#### [MODIFY] [Sidebar.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/Sidebar.jsx)
+
+Add a smooth, animated toggle near the bottom of the sidebar, above the user card:
+
+```jsx
+import { useTheme } from './ThemeProvider.jsx';
+import { Sun, Moon } from 'lucide-react';
+
+// Inside the component:
+const { theme, toggle } = useTheme();
+
+// Add this JSX before the user card div:
+<button
+  onClick={toggle}
+  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg
+             text-white/60 hover:text-white hover:bg-white/5
+             transition-all group"
+  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+>
+  <div className="relative w-[18px] h-[18px]">
+    <Sun  size={18} className={`absolute inset-0 transition-all duration-300
+          ${theme === 'light' ? 'opacity-100 rotate-0' : 'opacity-0 -rotate-90'}`} />
+    <Moon size={18} className={`absolute inset-0 transition-all duration-300
+          ${theme === 'dark'  ? 'opacity-100 rotate-0' : 'opacity-0 rotate-90'}`} />
+  </div>
+  <span className="text-sm font-medium">
+    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+  </span>
+</button>
+```
+
+---
+
+## Phase 4 — Component-by-Component Tailwind Migration
+
+> [!NOTE]
+> The hardest part. Every Tailwind class that says `text-white`, `bg-white/X`, `bg-[#0a0a0a]`, or `border-white/X` needs a **semantic replacement** so it responds to the theme. Below is the mapping and the files to touch.
+
+### Color Mapping Cheat Sheet
+
+| Dark (current)          | Light equivalent               | Tailwind strategy                          |
+|-------------------------|--------------------------------|--------------------------------------------|
+| `text-white`            | `text-[var(--color-text)]`     | Replace with `text-text` (custom utility)  |
+| `text-white/80`         | darker muted text              | Replace with `text-text-muted` or opacity  |
+| `text-white/60`         | medium muted text              | Replace with `text-text-muted`             |
+| `text-white/50`         | lighter muted                  | Replace with `text-text-subtle`            |
+| `text-white/40`         | very muted                     | Replace with `text-text-subtle`            |
+| `bg-[#0a0a0a]`          | `bg-[var(--color-surface-1)]`  | Replace with `bg-surface-1`               |
+| `bg-white/5`            | subtle bg lift                 | Replace with `bg-surface-2`               |
+| `bg-white/10`           | hover bg                       | Replace with `bg-surface-3`               |
+| `border-white/10`       | light border                   | Replace with `border-surface-3`           |
+| `border-white/5`        | faint border                   | Replace with `border-surface-3/50`        |
+
+> [!TIP]
+> Because the CSS variables are already registered in `@theme {}`, Tailwind v4 auto-generates utility classes like `bg-surface`, `text-text`, `border-surface-3` etc. No extra config needed.
+
+### Files to Update
+
+Each file below uses hardcoded white/dark references. Here's **exactly what** to search-and-replace:
+
+---
+
+#### [MODIFY] [Sidebar.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/Sidebar.jsx)
+
+| Find | Replace |
+|------|---------|
+| `bg-[#0a0a0a]` | `bg-surface-1` |
+| `border-white/10` | `border-surface-3` |
+| `text-white` (exact) | `text-text` |
+| `text-white/50` | `text-text-subtle` |
+| `text-white/40` | `text-text-subtle` |
+| `text-white/60` | `text-text-muted` |
+| `bg-white/5` | `bg-surface-2` |
+| `hover:text-white` | `hover:text-text` |
+| `hover:bg-white/5` | `hover:bg-surface-2` |
+
+---
+
+#### [MODIFY] [Header.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/Header.jsx)
+
+| Find | Replace |
+|------|---------|
+| `bg-[#0a0a0a]/80` | `bg-surface-1/80` |
+| `border-white/10` | `border-surface-3` |
+| `text-white` | `text-text` |
+| `text-white/60` | `text-text-muted` |
+| `text-white/40` | `text-text-subtle` |
+| `text-white/80` | `text-text-muted` |
+| `bg-white/5` | `bg-surface-2` |
+| `bg-white/10` | `bg-surface-3` |
+| `hover:text-white` | `hover:text-text` |
+| `hover:bg-white/10` | `hover:bg-surface-3` |
+| `placeholder-white/40` | `placeholder-text-subtle` |
+| `bg-[#0a0a0a]` (dropdown) | `bg-surface-1` |
+
+---
+
+#### [MODIFY] [OverviewPage.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/OverviewPage.jsx)
+
+| Find | Replace |
+|------|---------|
+| `text-white` (headings/values) | `text-text` |
+| `text-white/80` | `text-text-muted` |
+| `text-white/60` | `text-text-muted` |
+| `text-white/50` | `text-text-subtle` |
+| `text-white/40` | `text-text-subtle` |
+| `text-white/90` | `text-text` |
+| `bg-white/5` | `bg-surface-2` |
+| `bg-white/10` | `bg-surface-3` |
+| `border-white/10` | `border-surface-3` |
+| `border-white/20` | `border-surface-3` |
+| `hover:border-white/20` | `hover:border-surface-3` |
+| `rgba(255,255,255,0.05)` (in radar SVG) | Use a theme-aware variable or conditional |
+| `rgba(255,255,255,0.1)` (in SVG strokes) | Use a theme-aware variable or conditional |
+
+> [!WARNING]
+> The radar chart SVG in [renderRadarChart()](file:///home/aarush_linux/projects/PBL/frontend/src/components/OverviewPage.jsx#73-114) uses **inline** `rgba(255,255,255,...)` for grid lines/strokes. These will need a conditional based on `useTheme()` — e.g. `theme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)'`.
+
+---
+
+#### [MODIFY] [ClausesPage.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/ClausesPage.jsx)
+
+Same pattern: replace all `text-white*`, `bg-white/*`, `border-white/*` with semantic utilities.
+
+---
+
+#### [MODIFY] [ChatPopup.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/ChatPopup.jsx)
+
+Same pattern — plus the chat bubble backgrounds need light variants.
+
+---
+
+#### [MODIFY] [ComparePage.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/ComparePage.jsx)
+
+Same pattern.
+
+---
+
+#### [MODIFY] [ReportsPage.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/ReportsPage.jsx)
+
+Same pattern.
+
+---
+
+#### [MODIFY] [EmptyState.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/EmptyState.jsx)
+
+Same pattern.
+
+---
+
+#### [MODIFY] [ErrorBoundary.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/ErrorBoundary.jsx)
+
+Same pattern.
+
+---
+
+#### [MODIFY] [LoadingOverlay.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/LoadingOverlay.jsx)
+
+Same pattern — the overlay background should become `rgba(248,249,251,0.9)` in light mode.
+
+---
+
+#### [MODIFY] [App.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/App.jsx)
+
+Same pattern for any inline `text-white*` / `bg-white/*` / `border-white/*` classes.
+
+---
+
+#### [MODIFY] [App.css](file:///home/aarush_linux/projects/PBL/frontend/src/App.css)
+
+```css
+/* ─── Selection color — light ─── */
+[data-theme="light"] ::selection {
+  background: rgba(0, 98, 214, 0.2);
+  color: var(--color-text);
+}
+```
+
+---
+
+## Phase 5 — SVG & Inline Style Fixes
+
+Some SVG elements (radar chart, gauge arcs) use hardcoded `rgba(255,255,255,...)` in JSX. These need a conditional:
+
+```jsx
+// At top of component:
+import { useTheme } from './ThemeProvider.jsx';
+const { theme } = useTheme();
+
+// Usage:
+const gridColor = theme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
+const axisColor = theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
+```
+
+Components affected:
+- **OverviewPage.jsx** — radar chart grid lines & gauge arc background
+- **App.jsx** — any inline style references
+
+---
+
+## Execution Order (Safe Rollout)
+
+| Step | What | Risk |
+|------|------|------|
+| 1 | Add CSS light variables to [index.css](file:///home/aarush_linux/projects/PBL/frontend/src/index.css) | ✅ Zero — additive only, no selector touches existing code |
+| 2 | Create `ThemeProvider.jsx` | ✅ Zero — new file |
+| 3 | Wrap App in `ThemeProvider` in [main.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/main.jsx) | ✅ Near-zero — one-line wrapper, defaults to `dark` |
+| 4 | Add toggle button to [Sidebar.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/Sidebar.jsx) | ✅ Low — new button, no existing UI changes |
+| 5 | Migrate Tailwind classes in components (one by one) | ⚠️ Medium — visual regressions possible, test each |
+| 6 | Fix inline SVG colors in [OverviewPage.jsx](file:///home/aarush_linux/projects/PBL/frontend/src/components/OverviewPage.jsx) | ⚠️ Medium — visual only |
+| 7 | Update [App.css](file:///home/aarush_linux/projects/PBL/frontend/src/App.css) selection color | ✅ Zero |
+
+> [!TIP]
+> **Steps 1–4 can ship independently** — they add the toggle but the dark theme still looks exactly the same because the semantic utilities aren't swapped yet. This gives you a safe checkpoint.
+
+---
+
+## Verification Plan
+
+### Browser Testing
+1. Run `npm run dev` from `/home/aarush_linux/projects/PBL/frontend`
+2. Open the app in browser
+3. Verify dark mode looks **identical** to current production
+4. Click the theme toggle in the sidebar
+5. Verify light mode renders correctly across all pages:
+   - Overview / Executive Summary
+   - Clauses list
+   - Compare page
+   - Reports page
+   - Settings
+   - Auth screens (login/register)
+   - Chat popup
+   - Loading overlay
+   - Empty state
+6. Toggle back to dark — verify nothing changed
+7. Refresh the page — verify theme persists (localStorage)
+8. Clear localStorage, set OS to light mode — verify auto-detection
+
+### Visual Regression Spots to Watch
+- Radar chart SVG grid lines visible in both modes
+- Gauge arc backgrounds have good contrast in light mode  
+- Glass card readability (text contrast ratios meet WCAG AA)
+- Risk pills (`critical/moderate/low`) still pop on light backgrounds
+- Auth overlay glow effect isn't too bright in light mode
+- Scrollbar colors appropriate for light mode
+
+---
+
+## Light Theme Color Palette Preview
+
+| Token              | Dark                | Light               |
+|--------------------|---------------------|----------------------|
+| `surface`          | `#050505`           | `#f8f9fb`            |
+| `surface-1`        | `#0a0a0a`           | `#ffffff`            |
+| `surface-2`        | `#141414`           | `#f0f1f4`            |
+| `surface-3`        | `#1a1a1a`           | `#e4e6eb`            |
+| `surface-glass`    | `rgba(10,10,10,0.7)`| `rgba(255,255,255,0.75)` |
+| `primary`          | `#007AFF`           | `#0062d6`            |
+| `primary-hover`    | `#3395ff`           | `#004baa`            |
+| `text`             | `#f5f5f5`           | `#1a1a2e`            |
+| `text-muted`       | `#a1a1a1`           | `#5a5a72`            |
+| `text-subtle`      | `#6b6b6b`           | `#8e8ea0`            |
+| `success`          | `#22c55e`           | `#16a34a`            |
+| `warning`          | `#f59e0b`           | `#d97706`            |
+| `error`            | `#ef4444`           | `#dc2626`            |
+
+---
+
+> [!CAUTION]
+> **Do NOT change the `@theme {}` block values** — those are the dark-mode defaults that flow into Tailwind's utility generation. Only add *new* `[data-theme="light"]` selectors.

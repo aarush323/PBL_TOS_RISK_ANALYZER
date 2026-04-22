@@ -1,11 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle, History, Plus, BrainCircuit, Activity, ChevronRight, Zap, Maximize2, Minimize2, Menu, X } from 'lucide-react';
+import {
+  FileText, Link, Upload, Scale, Bell, Settings as SettingsIcon, HelpCircle,
+  Plus, Activity, Zap, X
+} from 'lucide-react';
 import { marked } from 'marked';
 // eslint-disable-next-line no-unused-vars
 import { AnimatePresence, motion } from 'framer-motion';
 import LoadingOverlay from './components/LoadingOverlay.jsx';
-import SkeletonList from './components/SkeletonList.jsx';
 import TypingDots from './components/TypingDots.jsx';
+import Sidebar from './components/Sidebar.jsx';
+import Header from './components/Header.jsx';
+import OverviewPage from './components/OverviewPage.jsx';
+import ClausesPage from './components/ClausesPage.jsx';
+import ComparePage from './components/ComparePage.jsx';
+import ReportsPage from './components/ReportsPage.jsx';
+import ChatPopup from './components/ChatPopup.jsx';
+import EmptyState from './components/EmptyState.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
@@ -56,13 +67,15 @@ export default function App() {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isChatTyping, setIsChatTyping] = useState(false);
-  const chatBoxRefResults = useRef(null);
-  const chatBoxRefFull = useRef(null);
+  const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
 
   const [toasts, setToasts] = useState([]);
   const [historyItems, setHistoryItems] = useState([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState(null);
+  const [isHistoryItemLoading, setIsHistoryItemLoading] = useState(false);
+  const [narrativeVerdict, setNarrativeVerdict] = useState(null);
+  const [isVerdictLoading, setIsVerdictLoading] = useState(false);
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('jurist_settings');
@@ -71,76 +84,14 @@ export default function App() {
       return { autoOpenResults: true, compactRiskCards: false };
     }
   });
-  const [sidebarWidth, setSidebarWidth] = useState(260);
-  const [resultsSplit, setResultsSplit] = useState(64);
-  const [chatPanelHeight, setChatPanelHeight] = useState(140);
 
-  const [comparisonData, setComparisonData] = useState(null);
   const [showCompareSelector, setShowCompareSelector] = useState(false);
   const [compareDocA, setCompareDocA] = useState(null);
   const [compareDocB, setCompareDocB] = useState(null);
   const [isComparing, setIsComparing] = useState(false);
-
-  const isDesktop = () => window.innerWidth > 1024;
-
-  const startSidebarResize = (e) => {
-    if (!isDesktop()) return;
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = sidebarWidth;
-
-    const onMove = (moveEvent) => {
-      const next = startWidth + (moveEvent.clientX - startX);
-      setSidebarWidth(Math.max(220, Math.min(420, next)));
-    };
-
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  };
-
-  const startResultsResize = (e) => {
-    if (!isDesktop()) return;
-    e.preventDefault();
-    const rect = e.currentTarget.parentElement.getBoundingClientRect();
-
-    const onMove = (moveEvent) => {
-      const percentage = ((moveEvent.clientX - rect.left) / rect.width) * 100;
-      setResultsSplit(Math.max(40, Math.min(75, percentage)));
-    };
-
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  };
-
-  const startChatResize = (e) => {
-    if (!isDesktop()) return;
-    e.preventDefault();
-    const startY = e.clientY;
-    const startHeight = chatPanelHeight;
-
-    const onMove = (moveEvent) => {
-      const next = startHeight - (moveEvent.clientY - startY);
-      setChatPanelHeight(Math.max(110, Math.min(260, next)));
-    };
-
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  };
+  const [comparisonData, setComparisonData] = useState(null);
+  const [compareHistory, setCompareHistory] = useState([]);
+  const [isCompareHistoryLoading, setIsCompareHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -155,6 +106,7 @@ export default function App() {
   useEffect(() => {
     if (token) {
       loadHistory();
+      loadCompareHistory();
     }
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -269,6 +221,35 @@ export default function App() {
     }
   };
 
+  const loadCompareHistory = async () => {
+    setIsCompareHistoryLoading(true);
+    try {
+      const res = await fetch(`${API}/compare/history`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCompareHistory(data.compares || []);
+      }
+    } catch (err) { console.error(err); }
+    finally { setIsCompareHistoryLoading(false); }
+  };
+
+  const openCompareHistory = async (compareId) => {
+    try {
+      const res = await fetch(`${API}/compare/${compareId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.result) {
+          setComparisonData(data.result);
+          setActiveView('compare');
+        }
+      }
+    } catch (err) { addToast('Failed to load comparison', true); }
+  };
+
   const loadChatHistory = async (targetSessionId) => {
     try {
       const res = await fetch(`${API}/chat/${targetSessionId}/history`, {
@@ -292,6 +273,7 @@ export default function App() {
   };
 
   const openHistoryAnalysis = async (jobId) => {
+    setIsHistoryItemLoading(true);
     try {
       const res = await fetch(`${API}/analyses/${jobId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -328,9 +310,12 @@ export default function App() {
       setAnalysisJobId(data.job_id);
       setAnalysisResult(data.result);
       setSelectedHistoryId(data.job_id);
-      setActiveView('results');
+      setActiveView('overview');
+      fetchNarrativeVerdict(data.job_id);
     } catch {
       addToast('Could not open selected history item', true);
+    } finally {
+      setIsHistoryItemLoading(false);
     }
   };
 
@@ -354,8 +339,10 @@ export default function App() {
         setIsProcessing(false);
         loadHistory();
         if (settings.autoOpenResults) {
-          setActiveView('results');
+          setActiveView('overview');
         }
+
+        fetchNarrativeVerdict(jobId);
 
         if (data.result.clauses && data.result.clauses.some(c => c.is_risky)) {
           const count = data.result.clauses.filter(c => c.is_risky).length;
@@ -411,6 +398,7 @@ export default function App() {
     }
 
     setIsProcessing(true);
+    setNarrativeVerdict(null);
 
     try {
       let analyzeType = inputMode;
@@ -611,59 +599,64 @@ export default function App() {
     setChatMessages(prev => [...prev, { role: 'bot', content: chatDetail, html: parseMarkdown(chatDetail) }]);
   };
 
-  useEffect(() => {
-    [chatBoxRefResults, chatBoxRefFull].forEach(ref => {
-      if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
-    });
-  }, [chatMessages]);
+  const fetchNarrativeVerdict = async (targetSessionId) => {
+    if (!targetSessionId || !token) return;
+    setIsVerdictLoading(true);
+    try {
+      const prompt = `In exactly 3 sentences, give a plain-English verdict of this document's risk profile. 
+Sentence 1: Overall safety assessment (safe/moderate/dangerous). 
+Sentence 2: The single most critical risk and why it matters. 
+Sentence 3: Your recommendation (sign as-is / negotiate changes / avoid).
+Do NOT use bullet points, just 3 flowing sentences.`;
+
+      const res = await fetchWithRetry(`${API}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ session_id: targetSessionId, message: prompt, history: [] })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNarrativeVerdict(data.reply || null);
+      }
+    } catch (err) {
+      console.error('Verdict fetch failed:', err);
+    } finally {
+      setIsVerdictLoading(false);
+    }
+  };
 
   const calculateScore = () => {
     if (!analysisResult) return 100;
-
-    const totalSeverity = analysisResult.total_severity_score || 0;
-    const avgSeverity = analysisResult.avg_severity_score || 0;
     const riskyCount = analysisResult.risky_clause_count || 0;
     const totalCount = analysisResult.total_clauses || 1;
-    const overallRisk = analysisResult.overall_risk || 'Low';
-
     if (riskyCount === 0) return 100;
+
+    const avgSeverity = analysisResult.avg_severity_score || 
+                     ((analysisResult.total_severity_score || 0) / (riskyCount || 1));
+    const overallRisk = analysisResult.overall_risk || 'Low';
 
     let score = 100;
 
-    if (totalSeverity <= 2) {
-      score = 95;
-    } else if (totalSeverity <= 5) {
-      score = 90 - ((totalSeverity - 2) * 6.67);
-    } else if (totalSeverity <= 10) {
-      score = 80 - ((totalSeverity - 5) * 4);
-    } else if (totalSeverity <= 20) {
-      score = 60 - ((totalSeverity - 10) * 3);
-    } else if (totalSeverity <= 40) {
-      score = 40 - ((totalSeverity - 20) * 1.5);
-    } else {
-      score = Math.max(10, 25 - ((totalSeverity - 40) * 0.5));
-    }
+    if (avgSeverity <= 1) score = 95;
+    else if (avgSeverity <= 2) score = 90 - ((avgSeverity - 1) * 5);
+    else if (avgSeverity <= 3) score = 85 - ((avgSeverity - 2) * 5);
+    else if (avgSeverity <= 5) score = 75 - ((avgSeverity - 3) * 5);
+    else if (avgSeverity <= 8) score = 60 - ((avgSeverity - 5) * 3);
+    else if (avgSeverity <= 12) score = 45 - ((avgSeverity - 8) * 3);
+    else score = Math.max(10, 30 - ((avgSeverity - 12) * 2));
 
-    if (overallRisk === 'High') {
-      score = Math.max(10, score - 15);
-    } else if (overallRisk === 'Medium') {
-      score = Math.max(20, score - 8);
-    }
+    if (overallRisk === 'High') score = Math.max(15, score - 12);
+    else if (overallRisk === 'Medium') score = Math.max(25, score - 6);
 
     const riskyRatio = riskyCount / totalCount;
-    if (riskyRatio > 0.5) {
-      score = Math.max(10, score - 15);
-    } else if (riskyRatio > 0.3) {
-      score = Math.max(20, score - 8);
-    } else if (riskyRatio > 0.15) {
-      score = Math.max(30, score - 3);
-    }
+    if (riskyRatio > 0.5) score = Math.max(15, score - 12);
+    else if (riskyRatio > 0.3) score = Math.max(25, score - 6);
+    else if (riskyRatio > 0.15) score = Math.max(35, score - 3);
 
     return Math.floor(Math.max(10, Math.min(100, score)));
-  };
-
-  const renderFauxHTML = (htmlString) => {
-    return { __html: htmlString };
   };
 
   const viewMotion = {
@@ -731,862 +724,458 @@ export default function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className="min-h-screen bg-[#050505]">
       <LoadingOverlay
-        show={isProcessing}
-        title="Processing"
-        detail="Extracting and analyzing clauses. You can press STOP anytime."
+        show={isProcessing || isHistoryItemLoading}
+        title={isProcessing ? "Processing" : "Loading Analysis"}
+        detail={isProcessing ? "Extracting and analyzing clauses. You can press STOP anytime." : "Retrieving analysis data from Jurist AI cloud..."}
       />
 
       <AnimatePresence>
         {showSourcePopup && (
           <motion.div
-            className="popup-overlay"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowSourcePopup(false)}
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <motion.div
-              className="popup-content"
+              className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 max-w-2xl w-full mx-4"
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              style={{
-                background: 'var(--surface, #1e1e2e)',
-                padding: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '0' : '24px',
-                borderRadius: '12px',
-                maxWidth: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '1200px' : '600px',
-                width: '90%',
-                height: (sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url' ? '90vh' : 'auto',
-                maxHeight: '90vh',
-                display: 'flex',
-                flexDirection: 'column',
-                border: '1px solid var(--border)',
-                overflow: 'hidden',
-                position: 'relative'
-              }}
             >
-              {((sourceInfo.type === 'pdf' && sourceInfo.blobUrl) || sourceInfo.type === 'url') && (
-                <button
-                  onClick={() => setShowSourcePopup(false)}
-                  style={{ position: 'absolute', top: '12px', right: '12px', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}
-                >
-                  &times;
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-white">Source Content</h3>
+                <button onClick={() => setShowSourcePopup(false)} className="text-white/60 hover:text-white">
+                  <X size={20} />
                 </button>
-              )}
-
-              {sourceInfo.type === 'pdf' ? (
-                sourceInfo.blobUrl ? (
-                  <iframe src={sourceInfo.blobUrl} width="100%" height="100%" style={{ flex: 1, border: 'none', background: '#fff' }} title="PDF Preview" />
-                ) : (
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
-                    <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source Content</h3>
-                    <FileText size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                    <p style={{ color: 'var(--text-body)' }}><strong>{sourceInfo.value}</strong></p>
-                    <p style={{ fontSize: '13px', marginTop: '12px', maxWidth: '400px', lineHeight: 1.5 }}>
-                      The original PDF file is not available for historical analyses. It is only stored locally during your active upload session.
-                    </p>
-                    <div style={{ marginTop: '24px', textAlign: 'center', width: '100%' }}>
-                      <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
-                    </div>
-                  </div>
-                )
-              ) : sourceInfo.type === 'url' ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source URL</h3>
-                  <Link size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                  <p style={{ color: 'var(--text-body)', wordBreak: 'break-all', maxWidth: '80%' }}>
-                    <strong><a href={sourceInfo.value} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>{sourceInfo.value}</a></strong>
-                  </p>
-                  <p style={{ fontSize: '13px', marginTop: '12px', maxWidth: '400px', lineHeight: 1.5 }}>
-                    For security and performance reasons, live web pages are not loaded in an iframe preview. Click the link above to open it in a new tab.
-                  </p>
-                  <div style={{ marginTop: '24px', textAlign: 'center', width: '100%' }}>
-                    <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxHeight: 'calc(90vh - 48px)' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-heading)' }}>Source Content</h3>
-                  <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-body)', fontSize: '14px', lineHeight: 1.5, overflowY: 'auto', flex: 1, padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    {sourceInfo.value || 'No content loaded.'}
-                  </div>
-                  <div style={{ marginTop: '24px', textAlign: 'right' }}>
-                    <button className="nav-btn primary" onClick={() => setShowSourcePopup(false)} style={{ padding: '8px 16px', background: 'var(--primary)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#fff' }}>Close</button>
-                  </div>
-                </div>
-              )}
+              </div>
+              <div className="bg-black/20 p-4 rounded-lg text-sm text-white/60 font-mono max-h-96 overflow-y-auto">
+                {sourceInfo.value || 'No content loaded.'}
+              </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Mobile Top Header */}
-      <div className="mobile-top-header">
-        <div className="brand" style={{ margin: 0 }}>
-          <div className="brand-icon"><Scale size={18} /></div>
-          <span className="brand-title" style={{ fontSize: '18px', fontWeight: 700, marginLeft: '8px' }}>Jurist AI</span>
-        </div>
-        <button className="mobile-menu-btn" onClick={() => setIsMobileNavOpen(true)}>
-          <Menu size={24} />
-        </button>
-      </div>
+      <Sidebar
+        activeView={activeView}
+        onNavigate={(view) => {
+          if (view === 'overview') {
+            if (analysisResult) {
+              setActiveView('overview');
+            } else {
+              setActiveView('dashboard');
+            }
+          } else {
+            setActiveView(view);
+          }
+        }}
+        user={user}
+        onLogout={logout}
+        historyItems={historyItems}
+        onOpenHistory={openHistoryAnalysis}
+        isHistoryLoading={isHistoryLoading}
+        selectedHistoryId={selectedHistoryId}
+        onNewAnalysis={() => {
+          setActiveView('dashboard');
+          setSelectedHistoryId(null);
+        }}
+      />
 
-      {isMobileNavOpen && (
-        <div className="mobile-overlay" onClick={() => setIsMobileNavOpen(false)} />
-      )}
+      <div className="ml-64 flex flex-col min-h-screen">
+        <Header
+          activeView={activeView}
+          analysisResult={analysisResult}
+          onNavigate={(view) => {
+            if (['overview', 'clauses', 'reports'].includes(view) && !analysisResult) {
+              setActiveView('dashboard');
+              addToast('Please select or run an analysis first.', true);
+            } else {
+              setActiveView(view);
+            }
+          }}
+          onNewAnalysis={() => {
+            setActiveView('dashboard');
+            setSelectedHistoryId(null);
+          }}
+        />
 
-      <aside className={`sidebar ${isMobileNavOpen ? 'open' : ''}`} style={{ width: isDesktop() ? `${sidebarWidth}px` : '100%' }}>
-        <button className="mobile-close-btn" onClick={() => setIsMobileNavOpen(false)}>
-          <X size={24} />
-        </button>
-        <div className="brand">
-          <div className="brand-icon"><Scale size={18} /></div>
-          <div className="brand-text">
-            <span className="brand-title">Jurist AI</span>
-            <span className="brand-subtitle">TERMS RISK REVIEW</span>
-          </div>
-        </div>
-
-        <button className="nav-btn primary" onClick={() => { setActiveView('dashboard'); setSelectedHistoryId(null); setIsMobileNavOpen(false); }}>
-          <Plus size={16} /> <span>New Analysis</span>
-        </button>
-
-        <div className="sidebar-history">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px 8px 8px' }}>
-            <div className="sidebar-section-title">
-              <History size={14} /> Recent Analyses
-            </div>
-            <button className="chat-sugg-btn" type="button" onClick={loadHistory}>Refresh</button>
-          </div>
-
-          <div className="history-list">
-            {isHistoryLoading ? (
-              <SkeletonList rows={5} />
-            ) : historyItems.length === 0 ? (
-              <div style={{ padding: '8px 10px', fontSize: '12px', color: 'var(--text-muted)' }}>No history yet</div>
-            ) : (
-              historyItems.slice(0, 8).map((item) => (
-                <button
-                  key={item.job_id}
-                  type="button"
-                  className={`history-item ${selectedHistoryId === item.job_id ? 'active' : ''}`}
-                  onClick={() => { openHistoryAnalysis(item.job_id); setIsMobileNavOpen(false); }}
+        <main className="flex-1 overflow-y-auto">
+          <ErrorBoundary>
+            <AnimatePresence mode="wait">
+              {activeView === 'dashboard' && (
+                <motion.section
+                  key="view-dashboard"
+                  initial={viewMotion.initial}
+                  animate={viewMotion.animate}
+                  exit={viewMotion.exit}
+                  className="p-6"
                 >
-                  <span className="history-item-main">
-                    {item.source_type?.toUpperCase() || 'SRC'} | {(item.overall_risk || 'N/A')}
-                  </span>
-                  <span className="history-item-sub">#{item.job_id.slice(0, 4)}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+                  <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-white mb-3">Welcome, {user?.email?.split('@')[0] || 'User'}.</h1>
+                    <p className="text-white/60 max-w-xl">Ready to deconstruct legal complexity? Initiate a new risk assessment by pasting your legal document, uploading a file, or providing a URL.</p>
+                  </div>
 
-        <div className="sidebar-footer">
-          <a className={`nav-item ${activeView === 'chat' ? 'active' : ''}`} onClick={() => { setActiveView('chat'); setIsMobileNavOpen(false); }}><BrainCircuit size={18} /> <span>Chat</span></a>
-          <a className={`nav-item ${activeView === 'compare' ? 'active' : ''}`} onClick={() => { setActiveView('compare'); setIsMobileNavOpen(false); }}><Scale size={18} /> <span>Compare</span></a>
-          <a className={`nav-item ${activeView === 'settings' ? 'active' : ''}`} onClick={() => { setActiveView('settings'); setIsMobileNavOpen(false); }}><SettingsIcon size={18} /> <span>Settings</span></a>
-          <a className="nav-item" onClick={logout}><HelpCircle size={18} /> <span>Sign Out</span></a>
-
-          <div className="user-profile">
-            <div className="user-avatar">{user?.email?.[0].toUpperCase() || 'U'}</div>
-            <div className="user-info">
-              <span className="user-name">{user?.username || user?.email || 'Authenticated User'}</span>
-              <span className="user-plan">Enterprise Plan</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-      <div className="resizer vertical" onMouseDown={startSidebarResize} />
-
-      <div className="main-wrapper">
-        <header className="topbar">
-          <div className="topbar-nav"></div>
-          <div className="topbar-actions">
-            <Bell size={18} style={{ cursor: 'pointer' }} />
-            <span style={{ fontSize: '14px', cursor: 'pointer', color: 'var(--primary)' }} onClick={logout}>Sign Out</span>
-          </div>
-        </header>
-
-        <main className="content-area">
-          <AnimatePresence mode="wait">
-            {activeView === 'dashboard' && (
-              <motion.section
-                key="view-dashboard"
-                className="view-section active"
-                initial={viewMotion.initial}
-                animate={viewMotion.animate}
-                exit={viewMotion.exit}
-              >
-                <div className="hero">
-                  <h1>Welcome, {user?.email?.split('@')[0] || 'User'}.</h1>
-                  <p>Ready to deconstruct legal complexity? Initiate a new risk assessment by pasting your legal document, uploading a file, or providing a URL. Our AI provides deep structural analysis in seconds.</p>
-                </div>
-
-                <div className="input-container">
-                  <div className="input-main">
-                    <div className="tabs">
-                      <button className={`tab-btn ${inputMode === 'upload' ? 'active' : ''}`} onClick={() => setInputMode('upload')}>Upload File</button>
-                      <button className={`tab-btn ${inputMode === 'url' ? 'active' : ''}`} onClick={() => setInputMode('url')}>Provide Link</button>
-                      <button className={`tab-btn ${inputMode === 'text' ? 'active' : ''}`} onClick={() => setInputMode('text')}>Paste Text</button>
-                    </div>
-
-                    <div className="input-card">
-                      <div className="input-card-header">
-                        <span className="input-label">
-                          {inputMode === 'url' && 'TARGET RESOURCE URL'}
-                          {inputMode === 'text' && 'DOCUMENT INPUT BUFFER'}
-                          {inputMode === 'upload' && 'LOCAL FILE INGESTION'}
-                        </span>
-                        <span className="inline-chip">FORMAT: AUTO</span>
-                      </div>
-
-                      {inputMode === 'url' && (
-                        <div>
-                          <div className="url-input-wrapper">
-                            <Link className="link-icon" size={16} />
-                            <input type="url" className="url-input" placeholder="https://legal.enterprise.com/terms-of-service" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', fontSize: '13px', color: 'var(--primary)' }}>
-                            <input type="checkbox" defaultChecked style={{ accentColor: 'var(--primary)' }} /> Secure SSL Encrypted Crawl ✓
-                          </div>
-                        </div>
-                      )}
-
-                      {inputMode === 'text' && (
-                        <textarea className="text-input" placeholder="Paste your Terms of Service or Privacy Policy text here..." value={textInput} onChange={e => setTextInput(e.target.value)} />
-                      )}
-
-                      {inputMode === 'upload' && (
-                        <div className="upload-zone" onClick={() => fileInputRef.current?.click()}>
-                          <input type="file" ref={fileInputRef} accept=".pdf" onChange={e => setUploadedFile(e.target.files[0])} style={{ display: 'none' }} />
-                          <FileText className="upload-icon" />
-                          <div className="upload-title">{uploadedFile ? uploadedFile.name : 'Drag & drop legal documents here'}</div>
-                          <div className="upload-desc">Support for PDF files. Up to 50MB per analysis.</div>
-                          <button className="upload-btn" type="button">{uploadedFile ? 'Change File' : 'Select Files from Device'}</button>
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
-                        <button className="action-btn" onClick={startAnalysis} disabled={isProcessing} style={{ flex: 1, minWidth: '200px' }}>
-                          {isProcessing ? <div className="loader" style={{ display: 'block' }} /> : <Zap size={18} />}
-                          {isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}
-                        </button>
-                        {isProcessing && (
-                          <button className="action-btn" onClick={stopAnalysis} style={{ background: 'var(--error)', borderColor: 'var(--error)', minWidth: '100px' }}>
-                            STOP
+                  <div className="flex gap-6">
+                    <div className="flex-1">
+                      <div className="flex gap-2 mb-6">
+                        {['upload', 'url', 'text'].map(mode => (
+                          <button
+                            key={mode}
+                            onClick={() => setInputMode(mode)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${inputMode === mode
+                              ? 'bg-[#007AFF]/20 text-[#007AFF] border border-[#007AFF]'
+                              : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
+                              }`}
+                          >
+                            {mode === 'upload' ? 'Upload File' : mode === 'url' ? 'Provide Link' : 'Paste Text'}
                           </button>
-                        )}
-                      </div>
-
-                      <div className="supported-list">
-                        <span className="supported-title">Supported:</span>
-                        <span className="inline-chip">🌐 HTML 5</span>
-                        <span className="inline-chip">📄 Dynamic PDF</span>
-                        <span className="inline-chip">{'<>'} JSON Webhooks</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="input-side">
-                    <div className="info-card">
-                      <div className="info-icon"><Activity size={18} /></div>
-                      <h3 className="info-title">How To Get Better Results</h3>
-                      <p className="info-desc">Use complete policy text when possible. Short excerpts may miss context and produce weaker risk explanations.</p>
-                      <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                        • Prefer full ToS or Privacy Policy documents<br />
-                        • Use PDF upload for long legal agreements<br />
-                        • Open each flagged clause in chat for examples
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.section>
-            )}
-
-            {activeView === 'results' && (
-              <motion.section
-                key="view-results"
-                className="view-section active"
-                initial={viewMotion.initial}
-                animate={viewMotion.animate}
-                exit={viewMotion.exit}
-              >
-                <div className="hero hero-compact hero-row">
-                  <div>
-                    <h1 className="section-title">Analysis Results</h1>
-                    <div className="source-badge">
-                      {sourceInfo.type === 'url' ? (
-                        <span className="source-link source-url" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
-                          <Link size={14} />
-                          <span className="source-link-text">{sourceInfo.value}</span>
-                        </span>
-                      ) : sourceInfo.type === 'pdf' ? (
-                        <span className="source-link source-pdf" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
-                          <FileText size={14} />
-                          <span className="source-link-text">{sourceInfo.value || 'Uploaded PDF'}</span>
-                        </span>
-                      ) : sourceInfo.type === 'text' ? (
-                        <span className="source-link source-text" onClick={() => setShowSourcePopup(true)} style={{ cursor: 'pointer' }}>
-                          <FileText size={14} />
-                          <span className="source-link-text">Pasted Text</span>
-                        </span>
-                      ) : (
-                        <span className="source-link source-text">
-                          <FileText size={14} />
-                          <span className="source-link-text">No document loaded</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button className="chat-sugg-btn" onClick={() => { setShowCompareSelector(true); setActiveView('compare'); }} style={{ alignSelf: 'center', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Scale size={14} /> Compare with...
-                  </button>
-                </div>
-
-                <div className="results-layout">
-                  <div className="results-main" style={{ width: isDesktop() ? `${resultsSplit}%` : '100%' }}>
-                    <div className="score-card">
-                      <div className="score-info">
-                        <h2>Aggregate Risk Score</h2>
-                        <p>Overall risk profile based on identified clauses within the provided document.</p>
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-                          <span style={{
-                            background: analysisResult?.overall_risk === 'High' ? 'rgba(255,85,85,0.15)' : (analysisResult?.overall_risk === 'Medium' ? 'rgba(255,200,0,0.15)' : 'rgba(0,200,100,0.15)'),
-                            color: analysisResult?.overall_risk === 'High' ? 'var(--error)' : (analysisResult?.overall_risk === 'Medium' ? 'var(--warning)' : 'var(--success)'),
-                            padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase'
-                          }}>{analysisResult?.overall_risk || 'Unknown'} Risk</span>
-                          <span style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
-                            {analysisResult?.risky_clause_count ?? 0} / {analysisResult?.total_clauses ?? 0} Clauses
-                          </span>
-                        </div>
-                        {analysisResult?.risk_breakdown && (
-                          <div style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            {Object.entries(analysisResult.risk_breakdown).filter(([_, count]) => count > 0).map(([cat, count]) => (
-                              <span key={cat} style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', padding: '3px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: 500 }}>
-                                {cat}: {count}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                          Severity: {analysisResult?.total_severity_score?.toFixed(1) || '0.0'} | Avg: {analysisResult?.avg_severity_score?.toFixed(2) || '0.00'}
-                        </div>
-                      </div>
-                      <div className="score-circle">
-                        <svg viewBox="0 0 100 100" width="100" height="100">
-                          <circle className="bg" cx="50" cy="50" r="40" pathLength="100"></circle>
-                          <circle className="progress" cx="50" cy="50" r="40" pathLength="100" style={{
-                            strokeDashoffset: 100 - calculateScore(),
-                            strokeLinecap: calculateScore() === 100 ? 'butt' : 'round',
-                            stroke: calculateScore() < 50 ? 'var(--error)' : (calculateScore() < 75 ? 'var(--warning)' : 'var(--success)')
-                          }}></circle>
-                        </svg>
-                        <span className="score-value">{calculateScore()}</span>
-                        <span className="score-label">SCORE</span>
-                      </div>
-                    </div>
-
-                    <h3 style={{ fontSize: '16px', marginBottom: '16px', color: 'var(--text-heading)' }}>Identified Risk Vectors</h3>
-                    <div className="risk-cards">
-                      {(!analysisResult || !analysisResult.clauses || analysisResult.clauses.length === 0) ? (
-                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                          No analysis data yet. Run an analysis from the dashboard.
-                        </div>
-                      ) : (
-                        analysisResult.clauses.filter(c => c.is_risky).slice(0, 10).map((c, idx) => {
-                          const cat = c.risk_categories && c.risk_categories.length > 0 ? c.risk_categories[0] : 'General';
-                          const conf = c.confidence || 'Medium';
-                          const cssClass = conf === 'High' ? 'high' : (conf === 'Medium' ? 'medium' : 'low');
-
-                          return (
-                            <div className={`risk-card ${cssClass}`} key={idx} style={{ padding: settings.compactRiskCards ? '14px' : '20px' }}>
-                              <div className="risk-header">
-                                <div className="risk-title-wrapper">
-                                  <div className="risk-icon"><Scale size={16} /></div>
-                                  <div>
-                                    <div className="risk-title">{cat}</div>
-                                    <div className="risk-section">Clause #{idx + 1}</div>
-                                  </div>
-                                </div>
-                                <span className="risk-badge">{conf} RISK</span>
-                              </div>
-                              <div className="risk-desc">{c.explanation || c.text}</div>
-                              <div className="risk-action-row">
-                                <button
-                                  type="button"
-                                  className="chat-sugg-btn"
-                                  onClick={() => explainRiskInChat(c, idx)}
-                                >
-                                  Explain In Chat
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="resizer vertical inner" onMouseDown={startResultsResize} />
-                  <div className="results-side" style={{ width: isDesktop() ? `${100 - resultsSplit}%` : '100%' }}>
-                    <div className="chat-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div className="chat-logo"><BrainCircuit size={18} /></div>
-                        <div className="chat-title">
-                          <h3>Digital Jurist Assistant</h3>
-                          <p>Document Q&A</p>
-                        </div>
-                      </div>
-                      <button
-                        className="chat-sugg-btn"
-                        onClick={() => setActiveView('chat')}
-                        title="Expand to Full Chat"
-                        style={{ padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <Maximize2 size={16} />
-                      </button>
-                    </div>
-
-                    <div className="chat-messages" ref={chatBoxRefResults}>
-                      {chatMessages.map((msg, i) => (
-                        <div className={`msg ${msg.role}`} key={i}>
-                          <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14} /> : (user?.email?.[0].toUpperCase() || 'U')}</div>
-                          <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? (msg.html || parseMarkdown(msg.content)) : msg.content)}></div>
-                        </div>
-                      ))}
-                      {isChatTyping && (
-                        <div className="msg bot">
-                          <div className="msg-avatar"><BrainCircuit size={14} /></div>
-                          <div className="msg-bubble"><TypingDots /></div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="resizer horizontal" onMouseDown={startChatResize} />
-                    <div className="chat-input" style={{
-                      opacity: sessionId ? 1 : 0.5,
-                      pointerEvents: sessionId ? 'all' : 'none',
-                      height: isDesktop() ? `${chatPanelHeight}px` : 'auto'
-                    }}>
-                      <div className="chat-suggestions">
-                        {['Summarize risks', 'Is there an opt-out?', 'Data collection terms?'].map(sugg => (
-                          <div key={sugg} className="chat-sugg-btn" onClick={() => setChatInput(sugg)}>{sugg}</div>
                         ))}
                       </div>
-                      <div className="chat-form">
-                        <input
-                          type="text"
-                          className="chat-input-field"
-                          placeholder="Ask about specific clauses or risks..."
-                          value={chatInput}
-                          onChange={e => setChatInput(e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && sendChat()}
-                        />
-                        <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()}>
-                          <ChevronRight size={18} />
-                        </button>
+
+                      <div className="glass-card p-6">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-xs text-[#007AFF] uppercase tracking-wider font-semibold">
+                            {inputMode === 'url' && 'TARGET RESOURCE URL'}
+                            {inputMode === 'text' && 'DOCUMENT INPUT BUFFER'}
+                            {inputMode === 'upload' && 'LOCAL FILE INGESTION'}
+                          </span>
+                          <span className="text-xs text-white/50">FORMAT: AUTO</span>
+                        </div>
+
+                        {inputMode === 'url' && (
+                          <div className="mb-4">
+                            <div className="relative">
+                              <Link className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={16} />
+                              <input
+                                type="url"
+                                className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-[#007AFF]/50"
+                                placeholder="https://legal.enterprise.com/terms-of-service"
+                                value={urlInput}
+                                onChange={e => setUrlInput(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {inputMode === 'text' && (
+                          <textarea
+                            className="w-full h-48 p-4 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-[#007AFF]/50 mb-4"
+                            placeholder="Paste your Terms of Service or Privacy Policy text here..."
+                            value={textInput}
+                            onChange={e => setTextInput(e.target.value)}
+                          />
+                        )}
+
+                        {inputMode === 'upload' && (
+                          <div
+                            className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center mb-4 cursor-pointer hover:border-[#007AFF]/50 transition-all"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <input type="file" ref={fileInputRef} accept=".pdf" onChange={e => setUploadedFile(e.target.files[0])} className="hidden" />
+                            <FileText className="mx-auto text-[#007AFF] mb-3" size={32} />
+                            <p className="text-white font-medium mb-1">
+                              {uploadedFile ? uploadedFile.name : 'Drag & drop legal documents here'}
+                            </p>
+                            <p className="text-xs text-white/50">Support for PDF files. Up to 50MB per analysis.</p>
+                          </div>
+                        )}
+
+                        <div className="flex gap-3">
+                          <button
+                            className="flex-1 flex items-center justify-center gap-2 py-4 rounded-lg bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white font-semibold hover:shadow-lg hover:shadow-[#007AFF]/30 transition-all disabled:opacity-50"
+                            onClick={startAnalysis}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? (
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <Zap size={18} />
+                            )}
+                            <span>{isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}</span>
+                          </button>
+                          {isProcessing && (
+                            <button
+                              className="px-6 py-4 rounded-lg bg-red-500/20 text-red-500 border border-red-500/30 font-semibold hover:bg-red-500/30 transition-all"
+                              onClick={stopAnalysis}
+                            >
+                              STOP
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-80">
+                      <div className="glass-card p-6">
+                        <div className="w-9 h-9 rounded-lg bg-[#007AFF]/20 flex items-center justify-center mb-4">
+                          <Activity size={18} className="text-[#007AFF]" />
+                        </div>
+                        <h3 className="text-white font-semibold mb-2">How To Get Better Results</h3>
+                        <p className="text-sm text-white/60 mb-4">Use complete policy text when possible. Short excerpts may miss context.</p>
+                        <ul className="text-xs text-white/50 space-y-2">
+                          <li>• Prefer full ToS or Privacy Policy documents</li>
+                          <li>• Use PDF upload for long legal agreements</li>
+                          <li>• Open each flagged clause in chat for examples</li>
+                        </ul>
                       </div>
                     </div>
                   </div>
-                </div>
-              </motion.section>
-            )}
+                </motion.section>
+              )}
 
-            {activeView === 'settings' && (
-              <motion.section
-                key="view-settings"
-                className="view-section active"
-                initial={viewMotion.initial}
-                animate={viewMotion.animate}
-                exit={viewMotion.exit}
-              >
-                <div className="hero hero-compact">
-                  <h1 className="section-title">Settings</h1>
-                  <p>Customize behavior for analysis and results views.</p>
-                </div>
-
-                <div className="input-card" style={{ maxWidth: '720px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <div>
-                      <div className="risk-title">Auto-open Results After Analysis</div>
-                      <div className="risk-section">Switch to Risk Analysis view automatically when processing completes.</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.autoOpenResults}
-                      onChange={(e) => setSettings(prev => ({ ...prev, autoOpenResults: e.target.checked }))}
-                      style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }}
+              {activeView === 'overview' && (
+                <motion.section
+                  key="view-overview"
+                  initial={viewMotion.initial}
+                  animate={viewMotion.animate}
+                  exit={viewMotion.exit}
+                >
+                  {analysisResult ? (
+                    <OverviewPage
+                      analysisResult={analysisResult}
+                      sourceInfo={sourceInfo}
+                      onNavigate={setActiveView}
+                      calculateScore={calculateScore}
+                      historyItems={historyItems}
+                      narrativeVerdict={narrativeVerdict}
+                      isVerdictLoading={isVerdictLoading}
                     />
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div className="risk-title">Compact Risk Cards</div>
-                      <div className="risk-section">Reduce spacing in risk cards for denser reading.</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.compactRiskCards}
-                      onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
-                      style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }}
+                  ) : (
+                    <EmptyState
+                      view="overview"
+                      onNewAnalysis={() => {
+                        setActiveView('dashboard');
+                        setSelectedHistoryId(null);
+                      }}
                     />
+                  )}
+                </motion.section>
+              )}
+
+              {activeView === 'clauses' && (
+                <motion.section
+                  key="view-clauses"
+                  initial={viewMotion.initial}
+                  animate={viewMotion.animate}
+                  exit={viewMotion.exit}
+                  className="h-full"
+                >
+                  {analysisResult ? (
+                    <ClausesPage
+                      analysisResult={analysisResult}
+                      sourceInfo={sourceInfo}
+                      onExplainRiskInChat={explainRiskInChat}
+                      onToggleChat={() => setIsChatPopupOpen(true)}
+                    />
+                  ) : (
+                    <EmptyState
+                      view="clauses"
+                      onNewAnalysis={() => {
+                        setActiveView('dashboard');
+                        setSelectedHistoryId(null);
+                      }}
+                    />
+                  )}
+                </motion.section>
+              )}
+
+              {activeView === 'reports' && (
+                <motion.section
+                  key="view-reports"
+                  initial={viewMotion.initial}
+                  animate={viewMotion.animate}
+                  exit={viewMotion.exit}
+                  className="p-6"
+                >
+                  <ReportsPage
+                    analysisResult={analysisResult}
+                    sourceInfo={sourceInfo}
+                    calculateScore={calculateScore}
+                  />
+                </motion.section>
+              )}
+
+              {activeView === 'settings' && (
+                <motion.section
+                  key="view-settings"
+                  initial={viewMotion.initial}
+                  animate={viewMotion.animate}
+                  exit={viewMotion.exit}
+                  className="p-6"
+                >
+                  <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-white">Settings</h1>
+                    <p className="text-white/60">Customize behavior for analysis and results views.</p>
                   </div>
-                </div>
-              </motion.section>
-            )}
 
-            {activeView === 'compare' && (
-              <motion.section
-                key="view-compare"
-                className="view-section active"
-                initial={viewMotion.initial}
-                animate={viewMotion.animate}
-                exit={viewMotion.exit}
-              >
-                <div className="hero hero-compact">
-                  <h1 className="section-title">Document Comparison</h1>
-                  <p>Compare risk profiles between two analyzed documents side-by-side.</p>
-                </div>
-
-                {showCompareSelector ? (
-                  <div className="input-card" style={{ maxWidth: '800px' }}>
-                    <h3 style={{ marginBottom: '16px' }}>Select Two Documents to Compare</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                  <div className="glass-card p-6 max-w-xl">
+                    <div className="flex justify-between items-center py-4 border-b border-white/10">
                       <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Document A</label>
-                        <select
-                          className="chat-input-field"
-                          value={compareDocA || ''}
-                          onChange={(e) => setCompareDocA(e.target.value)}
-                          style={{ width: '100%', padding: '12px' }}
-                        >
-                          <option value="">Select a document...</option>
-                          {historyItems.filter(h => h.has_result).map(item => {
-                            let displayName = item.source;
-                            if (item.source_type === 'url') {
-                              try {
-                                const url = new URL(item.source);
-                                displayName = url.hostname;
-                              } catch (e) {
-                                displayName = item.source;
-                              }
-                            }
-                            return (
-                              <option key={item.job_id} value={item.job_id}>
-                                {displayName} ({item.overall_risk})
-                              </option>
-                            );
-                          })}
-                        </select>
+                        <p className="text-white font-medium">Auto-open Results After Analysis</p>
+                        <p className="text-xs text-white/50">Switch to Risk Analysis view automatically when processing completes.</p>
                       </div>
+                      <input
+                        type="checkbox"
+                        checked={settings.autoOpenResults}
+                        onChange={(e) => setSettings(prev => ({ ...prev, autoOpenResults: e.target.checked }))}
+                        className="w-5 h-5 accent-[#007AFF]"
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center py-4">
                       <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Document B</label>
-                        <select
-                          className="chat-input-field"
-                          value={compareDocB || ''}
-                          onChange={(e) => setCompareDocB(e.target.value)}
-                          style={{ width: '100%', padding: '12px' }}
-                        >
-                          <option value="">Select a document...</option>
-                          {historyItems.filter(h => h.has_result && h.job_id !== compareDocA).map(item => {
-                            let displayName = item.source;
-                            if (item.source_type === 'url') {
-                              try {
-                                const url = new URL(item.source);
-                                displayName = url.hostname;
-                              } catch (e) {
-                                displayName = item.source;
-                              }
-                            }
-                            return (
-                              <option key={item.job_id} value={item.job_id}>
-                                {displayName} ({item.overall_risk})
-                              </option>
-                            );
-                          })}
-                        </select>
+                        <p className="text-white font-medium">Compact Risk Cards</p>
+                        <p className="text-xs text-white/50">Reduce spacing in risk cards for denser reading.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={settings.compactRiskCards}
+                        onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
+                        className="w-5 h-5 accent-[#007AFF]"
+                      />
+                    </div>
+                  </div>
+                </motion.section>
+              )}
+
+              {activeView === 'compare' && (
+                <motion.section
+                  key="view-compare"
+                  initial={viewMotion.initial}
+                  animate={viewMotion.animate}
+                  exit={viewMotion.exit}
+                  className="p-6"
+                >
+                  <ComparePage
+                    comparisonData={comparisonData}
+                    historyItems={historyItems}
+                    isComparing={isComparing}
+                    compareHistory={compareHistory}
+                    onOpenCompareHistory={openCompareHistory}
+                    onSelectDocuments={() => setShowCompareSelector(true)}
+                    onNewComparison={() => {
+                      setComparisonData(null);
+                      setCompareDocA(null);
+                      setCompareDocB(null);
+                      setShowCompareSelector(true);
+                    }}
+                    onDiscussInChat={() => setIsChatPopupOpen(true)}
+                    calculateScore={calculateScore}
+                  />
+                </motion.section>
+              )}
+
+            </AnimatePresence>
+
+            {showCompareSelector && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] flex items-center justify-center p-4">
+                <motion.div
+                  className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-white">Select Documents to Compare</h3>
+                    <button onClick={() => setShowCompareSelector(false)} className="text-white/60 hover:text-white">
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white mb-2">Document A</h4>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {historyItems.map((item) => (
+                          <button
+                            key={item.job_id}
+                            onClick={() => setCompareDocA(item)}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${compareDocA?.job_id === item.job_id
+                              ? 'bg-[#007AFF]/20 text-white'
+                              : 'text-white/60 hover:text-white hover:bg-white/5'
+                              }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full ${item.overall_risk === 'High' ? 'bg-red-500' : item.overall_risk === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                            <span className="truncate">{item.source_label || item.source}</span>
+                            <span className="text-xs text-white/50">{item.overall_risk} risk</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                      <button className="action-btn" onClick={() => {
+                    <div>
+                      <h4 className="text-sm font-semibold text-white mb-2">Document B</h4>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {historyItems.map((item) => (
+                          <button
+                            key={item.job_id}
+                            onClick={() => setCompareDocB(item)}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${compareDocB?.job_id === item.job_id
+                              ? 'bg-[#007AFF]/20 text-white'
+                              : 'text-white/60 hover:text-white hover:bg-white/5'
+                              }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full ${item.overall_risk === 'High' ? 'bg-red-500' : item.overall_risk === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                            <span className="truncate">{item.source_label || item.source}</span>
+                            <span className="text-xs text-white/50">{item.overall_risk} risk</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => setShowCompareSelector(false)}
+                      className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white/80 hover:bg-white/10"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
                         if (compareDocA && compareDocB) {
                           setIsComparing(true);
-                          performComparison(compareDocA, compareDocB);
+                          setShowCompareSelector(false);
+                          setComparisonData(null);
+                          performComparison(compareDocA.job_id, compareDocB.job_id);
                         }
-                      }} disabled={!compareDocA || !compareDocB || isComparing}>
-                        {isComparing ? 'Comparing...' : 'Compare Documents'}
-                      </button>
-                      <button className="action-btn" onClick={() => { setShowCompareSelector(false); }} style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}>
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ maxWidth: '1000px' }}>
-                    <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-                      <button className="action-btn" onClick={() => setShowCompareSelector(true)}>
-                        <Plus size={16} /> Select Documents
-                      </button>
-                      {historyItems.length < 2 && (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center' }}>
-                          Need at least 2 analyzed documents to compare
-                        </span>
-                      )}
-                    </div>
-
-                    {comparisonData ? (
-                      <div className="comparison-results" style={{ paddingBottom: '40px' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-                          {[
-                            { doc: comparisonData.doc_a, label: comparisonData.doc_a?.label, side: 'a' },
-                            { doc: comparisonData.doc_b, label: comparisonData.doc_b?.label, side: 'b' }
-                          ].map(({ doc, label, side }) => {
-                            const risk = doc?.risk || 'Unknown';
-                            const riskColor = risk === 'High' ? 'var(--error)' : risk === 'Medium' ? 'var(--warning)' : 'var(--success)';
-                            const score = doc?.score || 50;
-                            const clauses = doc?.risky_clause_count || 0;
-                            const total = doc?.total_clauses || 0;
-                            const domain = label ? label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document';
-
-                            return (
-                              <div key={side} style={{
-                                background: 'var(--surface-2)',
-                                borderRadius: '8px',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                borderLeft: `3px solid ${riskColor}`,
-                                padding: '20px 24px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '12px'
-                              }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                  <div>
-                                    <div style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 }}>{domain}</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '280px' }}>{label}</div>
-                                  </div>
-                                  <span style={{
-                                    fontSize: '11px', fontWeight: 500, color: riskColor,
-                                    background: `${riskColor}15`, padding: '4px 10px', borderRadius: '4px',
-                                    textTransform: 'uppercase', letterSpacing: '0.05em'
-                                  }}>{risk} Risk</span>
-                                </div>
-                                <div style={{ marginTop: '8px' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                                    <span>{clauses} of {total} clauses flagged</span>
-                                    <span>score {score}</span>
-                                  </div>
-                                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${score}%`, background: riskColor, borderRadius: '3px', transition: 'width 0.3s ease' }} />
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        <div style={{ background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', marginBottom: '24px', overflowX: 'auto' }}>
-                          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '16px', letterSpacing: '0.02em' }}>Category Comparison</h3>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '500px' }}>
-                            <thead>
-                              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                <th style={{ textAlign: 'left', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Category</th>
-                                <th style={{ textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Doc A</th>
-                                <th style={{ textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Winner</th>
-                                <th style={{ textAlign: 'center', padding: '12px 16px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 }}>Doc B</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {comparisonData.categories?.map((cat, idx) => {
-                                const aSev = cat.doc_a_avg_severity || 0;
-                                const bSev = cat.doc_b_avg_severity || 0;
-                                const winnerColor = cat.winner === 'a' ? 'var(--error)' : cat.winner === 'b' ? 'var(--success)' : 'var(--text-muted)';
-                                const winnerDot = cat.winner === 'tie' ? '⚪' : '🔴';
-                                const winnerText = cat.winner === 'a' ? 'A Riskier' : cat.winner === 'b' ? 'B Riskier' : 'Tie';
-                                const aSummary = cat.clause_a_summary ? (cat.clause_a_summary.length > 80 ? cat.clause_a_summary.slice(0, 80) + '...' : cat.clause_a_summary) : '';
-                                const bSummary = cat.clause_b_summary ? (cat.clause_b_summary.length > 80 ? cat.clause_b_summary.slice(0, 80) + '...' : cat.clause_b_summary) : '';
-
-                                return (
-                                  <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: idx % 2 === 1 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
-                                    <td style={{ padding: '16px', verticalAlign: 'top' }}>
-                                      <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text)' }}>{cat.category}</div>
-                                      {cat.key_difference && (
-                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                          {cat.key_difference}
-                                        </div>
-                                      )}
-                                    </td>
-                                    <td style={{ padding: '16px', textAlign: 'center', verticalAlign: 'top' }}>
-                                      <div style={{ fontSize: '20px', fontWeight: 600, color: cat.winner === 'a' ? 'var(--error)' : 'var(--text)' }}>{cat.doc_a_risk_count || 0}</div>
-                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>avg {aSev.toFixed(1)}</div>
-                                      {aSummary && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic' }}>{aSummary}</div>}
-                                    </td>
-                                    <td style={{ padding: '16px', textAlign: 'center', verticalAlign: 'middle' }}>
-                                      <span style={{ fontSize: '12px', color: winnerColor, fontWeight: 500 }}>{winnerDot} {winnerText}</span>
-                                    </td>
-                                    <td style={{ padding: '16px', textAlign: 'center', verticalAlign: 'top' }}>
-                                      <div style={{ fontSize: '20px', fontWeight: 600, color: cat.winner === 'b' ? 'var(--error)' : 'var(--text)' }}>{cat.doc_b_risk_count || 0}</div>
-                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>avg {bSev.toFixed(1)}</div>
-                                      {bSummary && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic' }}>{bSummary}</div>}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {(() => {
-                          const cats = comparisonData.categories || [];
-                          const wonA = cats.filter(c => c.winner === 'a').length;
-                          const wonB = cats.filter(c => c.winner === 'b').length;
-                          const tied = cats.filter(c => c.winner === 'tie').length;
-                          const mostDangerous = cats.length > 0 ? cats.reduce((max, c) =>
-                            Math.abs(c.severity_delta || 0) > Math.abs(max?.severity_delta || 0) ? c : max, cats[0]) : null;
-                          const docAName = comparisonData.doc_a?.label ? comparisonData.doc_a.label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document A';
-                          const docBName = comparisonData.doc_b?.label ? comparisonData.doc_b.label.replace(/^https?:\/\/(www\.)?/, '').replace(/\/.*$/, '') : 'Document B';
-                          let summaryLine = '';
-                          if (comparisonData.overall_winner === 'a') {
-                            summaryLine = `${docAName} poses greater contractual and legal risk. ${docBName} has more clauses overall but lower average severity.`;
-                          } else if (comparisonData.overall_winner === 'b') {
-                            summaryLine = `${docBName} poses greater contractual and legal risk. ${docAName} has more clauses overall but lower average severity.`;
-                          } else {
-                            summaryLine = `Both documents have similar overall risk profiles across categories.`;
-                          }
-                          return (
-                            <div style={{ background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', padding: '24px', textAlign: 'center' }}>
-                              <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text)', marginBottom: '20px' }}>
-                                {comparisonData.verdict || 'Analysis Complete'}
-                              </h3>
-                              <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '20px' }}>
-                                <div style={{ textAlign: 'center' }}>
-                                  <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--error)' }}>{wonA}</div>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>A Won</div>
-                                </div>
-                                <div style={{ textAlign: 'center' }}>
-                                  <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-muted)' }}>{tied}</div>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>Tied</div>
-                                </div>
-                                <div style={{ textAlign: 'center' }}>
-                                  <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--success)' }}>{wonB}</div>
-                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>B Won</div>
-                                </div>
-                              </div>
-                              {mostDangerous && (
-                                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                                  Most dangerous category: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{mostDangerous.category}</span>
-                                </div>
-                              )}
-                              <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', maxWidth: '500px', margin: '0 auto', lineHeight: 1.5 }}>
-                                {summaryLine}
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
-                          <button className="action-btn" onClick={() => { setShowCompareSelector(true); setComparisonData(null); }}>
-                            Compare New Documents
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: '12px' }}>
-                        <Scale size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
-                        <p>Select two documents above to see a detailed comparison</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </motion.section>
-            )}
-
-            {activeView === 'chat' && (
-              <motion.section
-                key="view-chat"
-                className="view-section active"
-                style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}
-                initial={viewMotion.initial}
-                animate={viewMotion.animate}
-                exit={viewMotion.exit}
-              >
-                <div className="chat-header" style={{ borderBottom: '1px solid var(--border)', background: 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div className="chat-logo"><BrainCircuit size={18} /></div>
-                    <div className="chat-title">
-                      <h3>Digital Jurist Assistant</h3>
-                      <p>Document Q&A</p>
-                    </div>
-                  </div>
-                  {analysisResult && (
-                    <button
-                      className="chat-sugg-btn"
-                      onClick={() => setActiveView('results')}
-                      style={{ padding: '4px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '4px' }}
+                      }}
+                      disabled={!compareDocA || !compareDocB || compareDocA.job_id === compareDocB.job_id}
+                      className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white text-sm font-semibold disabled:opacity-50"
                     >
-                      <Minimize2 size={14} /> Back to Report
-                    </button>
-                  )}
-                </div>
-
-                <div className="chat-messages" ref={chatBoxRefFull}>
-                  {chatMessages.map((msg, i) => (
-                    <div className={`msg ${msg.role}`} key={i}>
-                      <div className="msg-avatar">{msg.role === 'bot' ? <BrainCircuit size={14} /> : (user?.email?.[0].toUpperCase() || 'U')}</div>
-                      <div className="msg-bubble" dangerouslySetInnerHTML={renderFauxHTML(msg.role === 'bot' ? (msg.html || parseMarkdown(msg.content)) : msg.content)}></div>
-                    </div>
-                  ))}
-                  {isChatTyping && (
-                    <div className="msg bot">
-                      <div className="msg-avatar"><BrainCircuit size={14} /></div>
-                      <div className="msg-bubble"><TypingDots /></div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="chat-input" style={{
-                  opacity: sessionId ? 1 : 0.5,
-                  pointerEvents: sessionId ? 'all' : 'none',
-                  borderTop: '1px solid var(--border)',
-                  borderBottom: 'none',
-                  paddingTop: '16px',
-                  background: 'transparent',
-                  height: 'auto',
-                  flexShrink: 0
-                }}>
-                  <div className="chat-suggestions">
-                    {['Summarize risks', 'Is there an opt-out?', 'Data collection terms?'].map(sugg => (
-                      <div key={sugg} className="chat-sugg-btn" onClick={() => setChatInput(sugg)}>{sugg}</div>
-                    ))}
-                  </div>
-                  <div className="chat-form">
-                    <input
-                      type="text"
-                      className="chat-input-field"
-                      placeholder="Ask about specific clauses or risks..."
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && sendChat()}
-                    />
-                    <button className="chat-send" onClick={sendChat} disabled={!chatInput.trim()}>
-                      <ChevronRight size={18} />
+                      Compare Now
                     </button>
                   </div>
-                </div>
-              </motion.section>
+                </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </ErrorBoundary>
         </main>
       </div>
 
-      <div className="toast-container">
+      <ChatPopup
+        isOpen={isChatPopupOpen}
+        onToggle={() => setIsChatPopupOpen(!isChatPopupOpen)}
+        chatMessages={chatMessages}
+        chatInput={chatInput}
+        onChatInputChange={setChatInput}
+        onSendChat={sendChat}
+        isChatTyping={isChatTyping}
+        sessionId={sessionId}
+        user={user}
+      />
+
+      <div className={`fixed ${isChatPopupOpen ? 'bottom-28' : 'bottom-6'} right-6 flex flex-col gap-3 z-[9999]`}>
         {toasts.map(t => (
-          <div key={t.id} className={`toast show ${t.isError ? 'error' : ''}`}>
-            <span style={{ fontSize: '18px' }}>{t.isError ? '⚠️' : '✓'}</span> {t.message}
+          <div
+            key={t.id}
+            className={`px-4 py-3 rounded-lg text-sm ${t.isError
+              ? 'bg-red-500/20 border border-red-500/30 text-red-500'
+              : 'bg-green-500/20 border border-green-500/30 text-green-500'
+              }`}
+          >
+            {t.message}
           </div>
         ))}
       </div>
