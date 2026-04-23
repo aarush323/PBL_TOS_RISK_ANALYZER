@@ -1,18 +1,14 @@
 import React from 'react';
 import { Scale, LogOut, HelpCircle, User, Plus, Sun, Moon } from 'lucide-react';
 import { useTheme } from './ThemeProvider.jsx';
+import { getRiskClass } from '../utils/colorUtils';
 
-export default function Sidebar({ 
+export default function Sidebar({
   activeView, onNavigate, user, onLogout,
   historyItems, onOpenHistory, isHistoryLoading, selectedHistoryId, onNewAnalysis
 }) {
   const { theme, toggle } = useTheme();
 
-  const getRiskColor = (risk) => {
-    if (risk === 'High') return 'bg-red-500';
-    if (risk === 'Medium') return 'bg-yellow-500';
-    return 'bg-green-500';
-  };
 
   const truncateLabel = (label, maxLen = 20) => {
     if (!label) return 'Untitled';
@@ -38,10 +34,10 @@ export default function Sidebar({
           <div className="px-4 py-2">
             <h3 className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Recent Analyses</h3>
           </div>
-          
+
           {isHistoryLoading ? (
             <div className="px-4 space-y-2">
-              {[1,2,3].map(i => (
+              {[1, 2, 3].map(i => (
                 <div key={i} className="h-10 bg-white/5 rounded-lg animate-pulse" />
               ))}
             </div>
@@ -55,19 +51,18 @@ export default function Sidebar({
                 <button
                   key={item.job_id}
                   onClick={() => onOpenHistory(item.job_id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                    selectedHistoryId === item.job_id
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${selectedHistoryId === item.job_id
                       ? 'bg-[#007AFF]/20 text-white'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
-                  }`}
+                    }`}
                 >
-                  <div className={`w-2 h-2 rounded-full ${getRiskColor(item.overall_risk)}`} />
+                  <div className={`w-2 h-2 rounded-full ${getRiskClass(item.overall_risk)}`} />
                   <span className="text-xs truncate">{truncateLabel(item.source_label || item.source)}</span>
                 </button>
               ))}
             </div>
           )}
-          
+
           <div className="px-4 mt-3">
             <button
               onClick={onNewAnalysis}
@@ -94,7 +89,7 @@ export default function Sidebar({
             {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
           </span>
         </button>
-        
+
         <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-all">
           <HelpCircle size={18} />
           <span className="text-sm font-medium">Support</span>

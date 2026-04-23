@@ -1,6 +1,7 @@
 import React from 'react';
 import { Scale, Plus, MessageSquare, ArrowLeft, AlertTriangle, Shield, Trophy, Crown, FileText, Info } from 'lucide-react';
 import { useTheme } from './ThemeProvider.jsx';
+import { getScoreColor, getRiskColor } from '../utils/colorUtils';
 
 export default function ComparePage({
   comparisonData,

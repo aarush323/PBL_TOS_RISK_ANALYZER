@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider.jsx';
 import { motion } from 'framer-motion';
+import { getScoreColor } from '../utils/colorUtils';
 
 const CATEGORY_COLORS = {
   'Legal': { color: '#ef4444', bg: 'bg-red-500' },
@@ -89,11 +90,6 @@ export default function OverviewPage({
     };
   }, [analysisResult]);
 
-  const getScoreColor = () => {
-    if (score >= 75) return '#22c55e';
-    if (score >= 50) return '#f59e0b';
-    return '#ef4444';
-  };
 
   const getScoreDescription = () => {
     if (score >= 85) return "This document is exceptionally safe with standard legal frameworks.";
@@ -207,7 +203,7 @@ export default function OverviewPage({
                 transition={{ duration: 1.5, ease: "easeOut" }}
                 d="M 10 45 A 35 35 0 0 1 90 45"
                 fill="none"
-                stroke={getScoreColor()}
+                stroke={getScoreColor(score)}
                 strokeWidth="10"
                 strokeLinecap="round"
               />
@@ -220,7 +216,7 @@ export default function OverviewPage({
           </div>
 
           <div className="text-center z-10">
-            <p className={`text-lg font-extrabold uppercase tracking-widest pointer-events-none transition-colors duration-300`} style={{ color: getScoreColor() }}>
+            <p className={`text-lg font-extrabold uppercase tracking-widest pointer-events-none transition-colors duration-300`} style={{ color: getScoreColor(score) }}>
               {overallRisk} Risk Level
             </p>
             <p className={`text-[10px] mt-1 font-bold uppercase tracking-[0.1em] ${mutedTextClass}`}>
