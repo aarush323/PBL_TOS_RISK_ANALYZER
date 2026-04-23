@@ -615,7 +615,16 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setNarrativeVerdict(data.reply || null);
+        const verdict = data.reply || null;
+        setNarrativeVerdict(verdict);
+
+        // Merge into current analysis result for unified data flow
+        if (verdict && analysisResult) {
+          setAnalysisResult(prev => ({
+            ...prev,
+            executive_summary: verdict
+          }));
+        }
       }
     } catch (err) {
       console.error('Verdict fetch failed:', err);
@@ -992,6 +1001,7 @@ export default function App() {
                     analysisResult={analysisResult}
                     sourceInfo={sourceInfo}
                     calculateScore={calculateScore}
+                    narrativeVerdict={narrativeVerdict}
                   />
                 </motion.section>
               )}

@@ -297,140 +297,76 @@ export default function OverviewPage({
         </div>
       </div>
 
-      {/* Grid: Stats & Depth */}
+      {/* Grid: High Impact Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Clauses', value: totalClauses, icon: FileText, color: 'text-blue-400', bg: 'bg-blue-400/5' },
-          { label: 'Risky Clauses', value: riskyClauses, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-400/5' },
-          { label: 'NLP Cleared', value: nlpCleared, icon: Check, color: 'text-green-400', bg: 'bg-green-400/5' },
-          { label: 'Risk Ratio', value: `${totalClauses > 0 ? ((riskyClauses / totalClauses) * 100).toFixed(1) : 0}%`, icon: Target, color: 'text-purple-400', bg: 'bg-purple-400/5' },
+          { label: 'Total Clauses', value: totalClauses, icon: FileText, color: 'text-[#007AFF]', bg: 'bg-[#007AFF]/5' },
+          { label: 'High Risk Vectors', value: riskyClauses, icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-500/5' },
+          { label: 'AI Deep Scan', value: `${deepScanPct}%`, icon: BrainCircuit, color: 'text-indigo-400', bg: 'bg-indigo-400/5' },
+          { label: 'Overall Safety', value: `${score}/100`, icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
         ].map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <div key={i} className={`glass-card p-6 group transition-all`}>
-              <div className="flex items-center gap-3 mb-4">
+            <div key={i} className={`glass-card p-6 flex flex-col justify-between group transition-all hover:scale-[1.02] duration-300`}>
+              <div className="flex items-center justify-between mb-4">
                 <div className={`p-2 rounded-lg ${stat.bg}`}>
                   <Icon size={18} className={stat.color} />
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-[0.1em] ${mutedTextClass}`}>{stat.label}</span>
+                <TrendingUp size={14} className="text-white/10 group-hover:text-white/30 transition-colors" />
               </div>
-              <div className={`text-3xl font-black ${textClass}`}>{stat.value}</div>
+              <div>
+                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>{stat.label}</span>
+                <div className={`text-3xl font-black mt-1 ${textClass}`}>{stat.value}</div>
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* transparency and depth row */}
+      {/* Visual Intelligence Section - HERO ROW */}
       <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 lg:col-span-8 glass-card p-8 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Analysis Transparency</h3>
-            <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${subTextClass}`}>
-              <Activity size={12} className="text-emerald-500" />
-              Source: Cerebras LLaMA-3 Engine
+        {/* Radar Matrix - Promoted to Hero */}
+        <div className="col-span-12 lg:col-span-8 glass-card p-8 group relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/5 blur-[100px] pointer-events-none" />
+          <div className="flex items-center justify-between mb-10">
+            <div>
+              <h3 className={`text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2 ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>
+                <Activity size={16} />
+                Risk Breakdown Matrix
+              </h3>
+              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${mutedTextClass}`}>Multi-Dimensional Risk Mapping</p>
+            </div>
+            <div className={`flex items-center gap-4 text-[10px] font-black tracking-widest ${subTextClass}`}>
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#007AFF]" /> CATEGORICAL INTENSITY</div>
             </div>
           </div>
 
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className={`text-lg font-black ${textClass}`}>{deepScanPct}% Deep Scan</p>
-                  <p className={`text-xs ${mutedTextClass}`}>Full neural network evaluation</p>
-                </div>
-                <p className={`text-xs font-bold ${subTextClass}`}>{deepAnalyzed} of {totalClauses} total</p>
-              </div>
-              <div className={`h-3 bg-white/5 rounded-full overflow-hidden border ${theme === 'light' ? 'border-gray-100' : 'border-white/5'}`}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${deepScanPct}%` }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-8">
-              <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-gray-50/50 border-gray-100' : 'bg-white/5 border-white/5'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <ShieldCheck size={14} className="text-emerald-500" />
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Fast NLP Filter</span>
-                </div>
-                <p className={`text-2xl font-black ${textClass}`}>{analysisTransparency?.nlpFiltered || 0}</p>
-                <p className={`text-[10px] mt-1 leading-relaxed ${subTextClass}`}>Identified as safe via structural pattern matching.</p>
-              </div>
-              <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-blue-50/30 border-blue-100' : 'bg-[#007AFF]/5 border-[#007AFF]/10'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <BrainCircuit size={14} className="text-[#007AFF]" />
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Deep AI Layer</span>
-                </div>
-                <p className={`text-2xl font-black text-[#007AFF]`}>{deepAnalyzed}</p>
-                <p className={`text-[10px] mt-1 leading-relaxed ${subTextClass}`}>Subjected to multi-pass LLM risk verification.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-span-12 lg:col-span-4 glass-card p-8 flex flex-col items-center justify-center relative overflow-hidden group">
-          <div className="flex flex-col items-center justify-center space-y-6 py-4">
-            <div className="relative">
-              <svg className="w-48 h-48 transform -rotate-90 drop-shadow-xl">
-                <circle
-                  cx="96"
-                  cy="96"
-                  r="80"
-                  stroke={theme === 'light' ? '#f1f5f9' : 'rgba(255,255,255,0.05)'}
-                  strokeWidth="12"
-                  fill="transparent"
-                />
-                <motion.circle
-                  initial={{ strokeDasharray: "0, 502" }}
-                  animate={{ strokeDasharray: `${(502 * deepScanPct) / 100}, 502` }}
-                  transition={{ duration: 2, ease: "easeInOut" }}
-                  cx="96"
-                  cy="96"
-                  r="80"
-                  stroke="#007AFF"
-                  strokeWidth="12"
-                  fill="transparent"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-5xl font-black tracking-tighter ${textClass}`}>{deepScanPct}%</span>
-                <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Coverage</span>
-              </div>
-            </div>
-            <div className="text-center space-y-1">
-              <p className={`text-sm font-black uppercase tracking-tight ${textClass}`}>Audit Scope</p>
-              <p className={`text-[10px] font-bold uppercase tracking-widest ${mutedTextClass}`}>Comprehensive Deep Scan</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Radar Matrix Row */}
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-12 lg:col-span-8 glass-card p-8">
-          <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-10 flex items-center gap-2 ${mutedTextClass}`}>
-            <Activity size={14} className="text-[#007AFF]" />
-            Risk Breakdown Matrix
-          </h3>
           <div className="flex flex-col md:flex-row items-center gap-16">
-            <div className="w-full md:w-1/2 max-w-[350px]">
+            <div className="w-full md:w-[400px] max-w-full drop-shadow-2xl">
               {renderRadarChart()}
             </div>
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+            <div className="flex-1 space-y-4 w-full">
               {['Legal', 'Privacy', 'Security', 'Financial', 'User'].map((label, i) => {
                 const breakdown = breakdownArray.find(b => b.category?.toLowerCase().includes(label.toLowerCase()));
                 const count = breakdown?.count || 0;
+                const pct = riskyClauses > 0 ? (count / riskyClauses) * 100 : 0;
                 return (
-                  <div key={i} className={`flex items-center justify-between p-4 rounded-xl border ${theme === 'light' ? 'bg-gray-50/50 border-gray-100' : 'bg-white/5 border-white/5'}`}>
-                    <div className="flex items-center gap-3">
-                      <span className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-red-500' : i === 1 ? 'bg-amber-500' : i === 2 ? 'bg-blue-500' : i === 3 ? 'bg-emerald-500' : 'bg-purple-500'}`} />
-                      <span className={`text-xs font-bold ${textClass}`}>{label}</span>
+                  <div key={i} className={`p-4 rounded-2xl border transition-all hover:translate-x-2 ${theme === 'light' ? 'bg-gray-50/50 border-gray-100 hover:border-indigo-100' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-2.5 h-2.5 rounded-full ${i === 0 ? 'bg-red-500' : i === 1 ? 'bg-amber-500' : i === 2 ? 'bg-blue-500' : i === 3 ? 'bg-emerald-500' : 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]'}`} />
+                        <span className={`text-xs font-black uppercase tracking-widest ${textClass}`}>{label}</span>
+                      </div>
+                      <span className={`text-[10px] font-black ${mutedTextClass}`}>{count} Risks ({Math.round(pct)}%)</span>
                     </div>
-                    <span className={`text-[10px] font-black ${mutedTextClass}`}>{count} Risks</span>
+                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 1, delay: i * 0.1 }}
+                        className={`h-full ${i === 0 ? 'bg-red-500' : i === 1 ? 'bg-amber-500' : i === 2 ? 'bg-blue-500' : i === 3 ? 'bg-emerald-500' : 'bg-purple-500'}`}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -438,33 +374,173 @@ export default function OverviewPage({
           </div>
         </div>
 
-        <div className="col-span-12 lg:col-span-4 glass-card p-8 flex flex-col">
-          <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-6 ${mutedTextClass}`}>Health Checklist</h3>
-          <div className="flex-1 flex flex-col justify-center space-y-4">
-            {healthCheckItems.map((item, i) => (
-              <div
-                key={i}
-                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${item.passed
-                  ? 'bg-green-500/5 border-green-500/10 text-green-500'
-                  : 'bg-amber-500/5 border-amber-500/10 text-amber-500'
-                  }`}
-              >
-                <div className="flex items-center gap-3">
-                  {item.passed ? <Check size={14} className="stroke-[3]" /> : <AlertTriangle size={14} className="stroke-[3]" />}
-                  <span className="text-[10px] font-black uppercase tracking-widest">{item.name}</span>
+        {/* Visual Health Sparklines & Checklist */}
+        <div className="col-span-12 lg:col-span-4 space-y-6">
+          <div className="glass-card p-8 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Visual Risk Map</h3>
+              <Target size={16} className="text-red-500" />
+            </div>
+
+            {/* Document Severity Sparkline (Mini Heatmap) */}
+            <div className="flex-1 flex flex-col justify-center space-y-6">
+              <div className="space-y-4">
+                <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Severity Hotspots</p>
+                <div className="h-16 flex items-end gap-[2px]">
+                  {(analysisResult?.clauses || []).map((c, i) => {
+                    const sev = c.severity_score || 0;
+                    return (
+                      <div
+                        key={i}
+                        className={`flex-1 rounded-t-[1px] transition-all duration-500 ${c.is_risky ? (sev >= 5 ? 'bg-red-500' : 'bg-amber-500') : 'bg-white/10'}`}
+                        style={{ height: `${Math.max(10, (sev / 10) * 100)}%` }}
+                      />
+                    );
+                  }).slice(0, 50)}
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-tight ${item.passed ? 'text-green-600' : 'text-amber-600'}`}>
-                  {item.passed ? 'PASSED' : 'FLAGGED'}
-                </span>
+                <div className="flex justify-between text-[8px] font-bold text-white/20 uppercase tracking-widest">
+                  <span>Start</span>
+                  <span>End of Doc</span>
+                </div>
               </div>
-            ))}
+
+              <div className="pt-6 border-t border-white/5 space-y-3">
+                <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Critical Verification</p>
+                {healthCheckItems.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className={`text-[10px] font-bold ${subTextClass}`}>{item.name}</span>
+                    {item.passed ? <ShieldCheck size={14} className="text-green-500" /> : <ShieldAlert size={14} className="text-amber-500" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigate && onNavigate('clauses')}
+              className="mt-8 w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+            >
+              Detailed Matrix
+              <ArrowRight size={14} />
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Second Row: Deep Analysis & Distribution */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* Transparency Bar Chart */}
+        <div className="col-span-12 lg:col-span-8 glass-card p-8">
+          <div className="flex items-center justify-between mb-10">
+            <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Analysis Transparency</h3>
+            <div className={`px-4 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black text-emerald-500 uppercase tracking-widest text-center`}>
+              AI Engine: Neural Deep Mesh
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="space-y-10">
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <p className={`text-2xl font-black ${textClass}`}>{deepScanPct}%</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Context Coverage</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-black text-[#007AFF]`}>{deepAnalyzed}</p>
+                    <p className={`text-[9px] font-bold text-white/30 uppercase`}>Clauses</p>
+                  </div>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${deepScanPct}%` }}
+                    transition={{ duration: 1.5 }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-black/20 border-white/5'}`}>
+                  <ShieldCheck size={20} className="text-green-500 mb-3" />
+                  <p className={`text-lg font-black ${textClass}`}>{analysisTransparency?.nlpFiltered}</p>
+                  <p className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Pattern Safe</p>
+                </div>
+                <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-white border-blue-100 shadow-sm' : 'bg-white/5 border-[#007AFF]/20'}`}>
+                  <BrainCircuit size={20} className="text-[#007AFF] mb-3" />
+                  <p className={`text-lg font-black text-[#007AFF]`}>{deepAnalyzed}</p>
+                  <p className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Deep Audit</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center justify-center p-6 bg-indigo-500/[0.02] rounded-3xl border border-indigo-500/10">
+              <div className="relative">
+                <svg className="w-44 h-44 transform -rotate-90">
+                  <circle cx="88" cy="88" r="75" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
+                  <motion.circle
+                    cx="88" cy="88" r="75" stroke="currentColor" strokeWidth="12" strokeDasharray="471" fill="transparent"
+                    initial={{ strokeDashoffset: 471 }}
+                    animate={{ strokeDashoffset: 471 - (471 * deepScanPct) / 100 }}
+                    transition={{ duration: 2, ease: "easeInOut" }}
+                    className="text-indigo-500"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-4xl font-black tracking-tighter ${textClass}`}>{deepScanPct}%</span>
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Deep Layer</span>
+                </div>
+              </div>
+              <p className={`text-center text-[10px] font-bold mt-6 leading-relaxed max-w-[150px] ${subTextClass}`}>
+                Ratio of clauses subjected to high-fidelity risk evaluation.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Narrative Recap */}
+        <div className="col-span-12 lg:col-span-4 glass-card p-0 overflow-hidden group">
+          <div className={`h-full p-8 flex flex-col justify-between relative ${theme === 'light' ? 'bg-indigo-50/50' : 'bg-gradient-to-br from-indigo-500/10 to-transparent'}`}>
+            <div className="absolute top-0 right-0 p-4">
+              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <Zap size={16} className="text-white fill-white" />
+              </div>
+            </div>
+
+            <div>
+              <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Executive Summary</h3>
+              <p className={`text-lg font-medium leading-relaxed italic font-serif ${theme === 'light' ? 'text-gray-800' : 'text-white/90'}`}>
+                "{narrativeVerdict || "Analysis complete. System identifies specific categorical risks across your document's primary vectors."}"
+              </p>
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-white/5">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex -space-x-3">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/5 flex items-center justify-center overflow-hidden">
+                      <Activity size={12} className="text-white/20" />
+                    </div>
+                  ))}
+                </div>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Audit Complete</span>
+              </div>
+              <button
+                onClick={() => onNavigate && onNavigate('reports')}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all active:scale-95"
+              >
+                Final Report View
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
       <div className="flex items-center justify-between pt-6">
         <p className={`text-[10px] font-bold uppercase tracking-widest ${mutedTextClass}`}>
-          Jurist AI Protocol Engine v1.4.2
+          Jurist AI System Audit
         </p>
         <div className="flex items-center gap-4">
           <button

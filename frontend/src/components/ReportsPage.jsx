@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Printer, Copy, Check, AlertTriangle, Shield, Scale, Zap, BrainCircuit } from 'lucide-react';
+import { FileText, Printer, Copy, Check, AlertTriangle, Shield, Scale, Zap, BrainCircuit, Activity } from 'lucide-react';
 import EmptyState from './EmptyState.jsx';
 import { useTheme } from './ThemeProvider.jsx';
 
@@ -131,70 +131,115 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-10 mb-10">
-          <div className="space-y-6">
+        {/* Visual Intelligence: Document Risk Map */}
+        <div className="mb-12 break-inside-avoid shadow-inner p-8 bg-black/5 rounded-3xl border border-white/5">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className={`${mutedTextClass} text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2`}>
+              <Activity size={14} className="text-[#007AFF]" />
+              Document Severity Risk Map
+            </h3>
+            <span className={`text-[10px] font-bold ${subTextClass} opacity-50 uppercase tracking-widest`}>Structural Risk Distribution</span>
+          </div>
+
+          <div className="h-32 flex items-end gap-[2px] mb-6">
+            {(analysisResult?.clauses || []).map((c, i) => {
+              const sev = c.severity_score || 0;
+              return (
+                <div
+                  key={i}
+                  className={`flex-1 rounded-t-sm ${c.is_risky ? (sev >= 5 ? 'bg-red-500' : 'bg-amber-500') : 'bg-white/10'}`}
+                  style={{ height: `${Math.max(12, (sev / 10) * 100)}%` }}
+                />
+              );
+            }).slice(0, 100)}
+          </div>
+          <div className="flex justify-between border-t border-white/5 pt-4">
+            <div className="flex gap-8">
+              <div>
+                <p className={`${mutedTextClass} text-[9px] font-black uppercase tracking-widest mb-1`}>Critical Zones</p>
+                <p className={`text-xl font-black text-red-500`}>{analysisResult.risky_clause_count}</p>
+              </div>
+              <div>
+                <p className={`${mutedTextClass} text-[9px] font-black uppercase tracking-widest mb-1`}>Avg Intensity</p>
+                <p className={`text-xl font-black ${textClass}`}>{(analysisResult.clauses?.reduce((s, c) => s + (c.severity_score || 0), 0) / (analysisResult.total_clauses || 1)).toFixed(1)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500" /><span className={`text-[9px] font-bold ${subTextClass} uppercase`}>Critical</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /><span className={`text-[9px] font-bold ${subTextClass} uppercase`}>Moderate</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-white/10" /><span className={`text-[9px] font-bold ${subTextClass} uppercase`}>Negligible</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-12 mb-12 break-inside-avoid">
+          <div className="space-y-8">
             <div>
-              <h3 className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2`}>
-                <BrainCircuit size={14} className="text-[#007AFF]" />
-                Risk Distribution
+              <h3 className={`${mutedTextClass} text-[10px] font-black uppercase tracking-[0.2em] mb-8 flex items-center gap-2`}>
+                <BrainCircuit size={16} className="text-[#007AFF]" />
+                Categorical Risk Intensity
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {(Array.isArray(analysisResult.risk_breakdown) ? analysisResult.risk_breakdown : (analysisResult.risk_breakdown ? Object.entries(analysisResult.risk_breakdown).map(([category, count]) => ({ category, count })) : [])).map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-3">
-                    <span className={`w-28 text-[10px] font-bold uppercase tracking-wider ${subTextClass}`}>{item.category}</span>
-                    <div className={`flex-1 h-2 rounded-full overflow-hidden ${theme === 'light' ? 'bg-gray-100' : 'bg-white/5'}`}>
-                      <div className="h-full bg-red-500 rounded-full" style={{ width: `${(item.count / (analysisResult.risky_clause_count || 1)) * 100}%` }} />
+                  <div key={idx} className="space-y-2">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                      <span className={subTextClass}>{item.category}</span>
+                      <span className={textClass}>{item.count} Vectors Identified</span>
                     </div>
-                    <span className={`text-xs font-bold w-6 text-right ${textClass}`}>{item.count}</span>
+                    <div className={`h-2.5 rounded-full overflow-hidden ${theme === 'light' ? 'bg-gray-100' : 'bg-white/5'}`}>
+                      <div className={`h-full rounded-full ${idx % 3 === 0 ? 'bg-red-500' : idx % 3 === 1 ? 'bg-amber-500' : 'bg-[#007AFF]'}`} style={{ width: `${(item.count / (analysisResult.risky_clause_count || 1)) * 100}%` }} />
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className={`p-6 rounded-2xl border border-dashed ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'} print:bg-white`}>
-            <h3 className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest mb-4 flex items-center gap-2`}>
-              <Zap size={14} className="text-amber-500" />
-              Strategic Advice
-            </h3>
-            <ul className="space-y-3">
-              {(Array.isArray(analysisResult.risk_breakdown) ? analysisResult.risk_breakdown : (analysisResult.risk_breakdown ? Object.entries(analysisResult.risk_breakdown).map(([category, count]) => ({ category, count })) : [])).slice(0, 4).map((item, idx) => (
-                <li key={idx} className={`flex gap-2 text-xs leading-relaxed font-semibold ${subTextClass}`}>
-                  <span className="text-amber-500 font-bold">•</span>
-                  <span>Prioritize negotiation on <span className={textClass}>{item.category.toLowerCase()}</span> terms to reduce liability.</span>
-                </li>
-              ))}
-            </ul>
+          <div className={`p-8 rounded-3xl border border-dashed flex flex-col justify-between ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'} print:bg-white`}>
+            <div>
+              <h3 className={`${mutedTextClass} text-[10px] font-black uppercase tracking-[0.2em] mb-6 flex items-center gap-2`}>
+                <Zap size={16} className="text-amber-500" />
+                Strategic Mitigation Guide
+              </h3>
+              <ul className="space-y-5">
+                {(Array.isArray(analysisResult.risk_breakdown) ? analysisResult.risk_breakdown : (analysisResult.risk_breakdown ? Object.entries(analysisResult.risk_breakdown).map(([category, count]) => ({ category, count })) : [])).slice(0, 4).map((item, idx) => (
+                  <li key={idx} className={`flex gap-3 text-xs leading-relaxed font-semibold ${subTextClass}`}>
+                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                    <span>Immediate negotiation recommended for <span className="text-amber-500 font-black">{item.category.toUpperCase()}</span> provisions to limit downstream liability exposure.</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
         <div className="break-inside-avoid">
-          <h3 className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest mb-4 border-b ${theme === 'light' ? 'border-gray-100' : 'border-white/5'} pb-2`}>
-            Top 10 Flagged Clauses (Ranked by Severity)
+          <h3 className={`${mutedTextClass} text-[10px] font-black uppercase tracking-[0.2em] mb-8 border-b ${theme === 'light' ? 'border-gray-100' : 'border-white/5'} pb-4`}>
+            Critical Severity Vectors (Ranked Top 10)
           </h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             {Array.isArray(analysisResult.clauses) ? (
               analysisResult.clauses
                 .filter(c => c.is_risky)
                 .sort((a, b) => (b.severity_score || 0) - (a.severity_score || 0))
                 .slice(0, 10)
                 .map((clause, idx) => (
-                  <div key={idx} className={`p-4 border rounded-xl shadow-sm break-inside-avoid transition-all ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-white/5 border-white/5 hover:border-white/10'}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-black ${theme === 'light' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>{idx + 1}</span>
-                        <span className={`font-black text-[10px] uppercase tracking-wider ${textClass}`}>{clause.risk_categories?.[0] || 'General Risk'}</span>
+                  <div key={idx} className={`p-6 border rounded-2xl shadow-sm break-inside-avoid transition-all ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-black/20 border-white/5 group hover:border-[#007AFF]/30'}`}>
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black ${theme === 'light' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>{idx + 1}</span>
+                        <span className={`font-black text-[10px] uppercase tracking-widest ${textClass}`}>{clause.risk_categories?.[0] || 'General Risk'}</span>
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-tighter ${clause.severity_score >= 8 ? 'bg-red-500 text-white' :
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${clause.severity_score >= 8 ? 'bg-red-500 text-white' :
                         clause.severity_score >= 5 ? 'bg-amber-500 text-white' :
                           'bg-[#007AFF] text-white'
                         }`}>
                         SEV: {clause.severity_score?.toFixed(1)}
                       </span>
                     </div>
-                    <p className={`text-[10px] leading-relaxed italic mb-3 line-clamp-2 ${theme === 'light' ? 'text-gray-500 border-l-2 border-gray-100 pl-2' : 'text-white/40 border-l-2 border-white/5 pl-2'}`}>"{(clause.text || '').trim()}"</p>
-                    <div className={`p-3 rounded-lg text-[10px] font-medium leading-relaxed ${theme === 'light' ? 'bg-gray-50 text-gray-800' : 'bg-black/20 text-white/70'}`}>
-                      <span className={`font-black block mb-1 uppercase tracking-widest text-[9px] ${theme === 'light' ? 'text-gray-400' : 'text-[#007AFF]'}`}>AI Analysis</span>
+                    <p className={`text-xs leading-relaxed italic mb-5 line-clamp-3 font-serif ${theme === 'light' ? 'text-gray-500 border-l-4 border-gray-100 pl-4' : 'text-white/40 border-l-4 border-white/5 pl-4'}`}>"{(clause.text || '').trim()}"</p>
+                    <div className={`p-5 rounded-2xl text-xs font-semibold leading-relaxed ${theme === 'light' ? 'bg-gray-50 text-gray-800' : 'bg-white/5 text-white/70'}`}>
+                      <span className={`font-black block mb-2 uppercase tracking-[0.2em] text-[9px] ${theme === 'light' ? 'text-gray-400' : 'text-[#007AFF]'}`}>AI Diagnostic</span>
                       {clause.explanation}
                     </div>
                   </div>
@@ -203,9 +248,14 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-gray-100 text-center">
-          <p className={`${mutedTextClass} text-[9px] font-black tracking-[0.2em] uppercase`}>End of Automated Risk Assessment Report</p>
-          <p className="text-[8px] text-gray-300 mt-2 font-medium">Protocol Version: 1.0.4 — Jurist AI Cloud Extraction</p>
+        <div className="mt-16 pt-8 border-t border-white/5 text-center">
+          <p className={`${mutedTextClass} text-[10px] font-black tracking-[0.4em] uppercase`}>End of Automated System Audit</p>
+          <div className="flex items-center justify-center gap-4 mt-4 opacity-50">
+            <Scale size={14} className={mutedTextClass} />
+            <Activity size={14} className={mutedTextClass} />
+            <BrainCircuit size={14} className={mutedTextClass} />
+          </div>
+          <p className="text-[8px] text-white/10 mt-6 font-bold uppercase tracking-widest">Jurist AI — Enterprise Intelligence Engine</p>
         </div>
       </div>
     </div>
