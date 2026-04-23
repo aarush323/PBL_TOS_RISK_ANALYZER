@@ -603,7 +603,7 @@ export default function App() {
     if (!targetSessionId || !token) return;
     setIsVerdictLoading(true);
     try {
-      const prompt = `Write 3 to 4 sentences about this document's legal risk profile. Focus on what's actually in the document — specific patterns that stand out, how severe the risks are, and what action makes sense. Be direct and factual, not formulaic.`;
+      const prompt = `You are a senior legal risk analyst. Write a 2–3 sentence executive summary of this document's risk profile. Rules: (1) State the overall risk level and the number of flagged clauses in the first sentence. (2) Name the dominant risk category and what it means for the user in the second sentence. (3) Give a single, direct action recommendation in the third sentence. Use professional, precise language. No greetings, no hedging, no markdown, no bullet points. Output plain text only.`;
 
       const res = await fetchWithRetry(`${API}/chat`, {
         method: 'POST',
@@ -630,8 +630,8 @@ export default function App() {
     const totalCount = analysisResult.total_clauses || 1;
     if (riskyCount === 0) return 100;
 
-    const avgSeverity = analysisResult.avg_severity_score || 
-                     ((analysisResult.total_severity_score || 0) / (riskyCount || 1));
+    const avgSeverity = analysisResult.avg_severity_score ||
+      ((analysisResult.total_severity_score || 0) / (riskyCount || 1));
     const overallRisk = analysisResult.overall_risk || 'Low';
 
     let score = 100;

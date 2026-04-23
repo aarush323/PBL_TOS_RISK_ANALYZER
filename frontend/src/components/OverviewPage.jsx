@@ -5,6 +5,7 @@ import {
   ShieldAlert, ShieldCheck, Target, TrendingUp, Info
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider.jsx';
+import { motion } from 'framer-motion';
 
 export default function OverviewPage({
   analysisResult,
@@ -142,6 +143,14 @@ export default function OverviewPage({
     );
   };
 
+  const subTextClass = theme === 'light' ? 'text-gray-500' : 'text-white/60';
+  const mutedTextClass = theme === 'light' ? 'text-gray-400' : 'text-white/40';
+  const textClass = theme === 'light' ? 'text-gray-900' : 'text-white';
+
+  const totalRisky = analysisResult?.risky_clause_count || 0;
+  const deepAnalyzed = totalClauses - (analysisResult?.skipped_llm_count || 0);
+  const deepScanPct = totalClauses > 0 ? Math.round((deepAnalyzed / totalClauses) * 100) : 0;
+
   return (
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-start">
@@ -149,408 +158,321 @@ export default function OverviewPage({
           <div className="flex items-center gap-3 mb-2">
             <span className="text-[10px] font-semibold text-[#007AFF] uppercase tracking-wider">Analysis Results</span>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-1">Executive Summary</h1>
+          <h1 className={`text-2xl font-bold mb-1 ${textClass}`}>Executive Summary</h1>
           {sourceInfo?.type && (
-            <a
-              onClick={() => { }}
-              className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors cursor-pointer"
-            >
+            <div className="flex items-center gap-2 text-sm text-white/60">
               {sourceInfo.type === 'url' && <Link size={14} />}
               {(sourceInfo.type === 'pdf' || sourceInfo.type === 'text') && <FileText size={14} />}
-              <span>{sourceInfo.value || 'Document'}</span>
-            </a>
+              <span className="truncate max-w-md">{sourceInfo.value || 'Document'}</span>
+            </div>
           )}
         </div>
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
-            <AlertTriangle size={14} className="text-red-400" />
-            <span className="text-white/80">{riskyClauses} flagged</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
-            <ShieldCheck size={14} className="text-green-400" />
-            <span className="text-white/80">{Math.round((nlpCleared / (totalClauses || 1)) * 100)}% safe</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#007AFF]/10 border border-[#007AFF]/20">
-            <BrainCircuit size={14} className="text-[#007AFF]" />
-            <span className="text-white/80">{Math.round(((totalClauses - (analysisResult?.skipped_llm_count || 0)) / (totalClauses || 1)) * 100)}% deep</span>
-          </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => onNavigate && onNavigate('reports')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all ${theme === 'light' ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
+          >
+            <Share2 size={16} />
+            Generate Report
+          </button>
         </div>
       </div>
 
-      {/* Feature 1: AI Narrative Verdict */}
-      {(narrativeVerdict || isVerdictLoading) && (
-        <div className="relative overflow-hidden bg-white/5 border-l-4 border-[#007AFF] rounded-r-lg p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-[#007AFF] flex items-center justify-center">
-              <Zap size={14} className="text-white" />
+      {/* Hero Stats Section */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* Score Gauge */}
+        <div className="col-span-12 lg:col-span-5 glass-card p-8 flex flex-col items-center justify-center relative overflow-hidden group">
+          <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full blur-3xl transition-all duration-1000 ${theme === 'light' ? 'bg-blue-100/40 group-hover:bg-blue-200/40' : 'bg-[#007AFF]/10 group-hover:bg-[#007AFF]/20'}`} />
+
+          <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${mutedTextClass}`}>Safety Score</h3>
+
+          <div className="relative w-56 h-32 mb-4">
+            <svg viewBox="0 0 100 50" className="w-full h-full drop-shadow-2xl">
+              <path
+                d="M 10 45 A 35 35 0 0 1 90 45"
+                fill="none"
+                stroke={theme === 'light' ? '#f1f5f9' : 'rgba(255,255,255,0.05)'}
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+              <motion.path
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: score / 100 }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
+                d="M 10 45 A 35 35 0 0 1 90 45"
+                fill="none"
+                stroke={getScoreColor()}
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+              <span className={`text-6xl font-black tracking-tighter drop-shadow-sm ${textClass}`}>
+                {score}
+              </span>
             </div>
-            <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
-              AI Verdict
-            </span>
           </div>
-          {isVerdictLoading ? (
-            <div className="space-y-2">
-              <div className="h-4 bg-white/5 rounded animate-pulse w-full" />
-              <div className="h-4 bg-white/5 rounded animate-pulse w-3/4" />
-              <div className="h-4 bg-white/5 rounded animate-pulse w-5/6" />
-            </div>
-          ) : (
-            <p className="text-base text-white/90 leading-relaxed">
-              "{narrativeVerdict}"
+
+          <div className="text-center z-10">
+            <p className={`text-lg font-extrabold uppercase tracking-widest pointer-events-none transition-colors duration-300`} style={{ color: getScoreColor() }}>
+              {overallRisk} Risk Level
             </p>
-          )}
-        </div>
-      )}
-
-      <div className="grid grid-cols-7 gap-6">
-        <div className="col-span-5 glass-card p-8 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#007AFF]/5 to-transparent pointer-events-none" />
-          <div className="relative flex items-center gap-12">
-            <div className="relative w-32 h-32">
-              <div className="absolute inset-0 rounded-full blur-xl opacity-30" style={{ backgroundColor: getScoreColor() }} />
-              <svg viewBox="0 0 100 50" className="w-full h-full relative z-10">
-                <path
-                  d="M 10 45 A 35 35 0 0 1 90 45"
-                  fill="none"
-                  stroke={theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M 10 45 A 35 35 0 0 1 90 45"
-                  fill="none"
-                  stroke={getScoreColor()}
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={`${score * 1.1} 110`}
-                  className="transition-all duration-1000"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
-                <span className="text-5xl font-bold text-white">{score}</span>
-                <span className="text-xs text-white/50 uppercase">/ 100</span>
-              </div>
-            </div>
-            <div className="flex-1 space-y-4">
-              <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase ${overallRisk === 'High' ? 'bg-red-500/20 text-red-500' :
-                overallRisk === 'Medium' ? 'bg-amber-500/20 text-amber-500' :
-                  'bg-green-500/20 text-green-500'
-                }`}>
-                <AlertTriangle size={14} />
-                <span>{overallRisk} Risk</span>
-              </div>
-              <p className="text-base text-white/60">
-                {riskyClauses} of {totalClauses} clauses flagged
-              </p>
-              <p className="text-sm text-white/40">
-                {getScoreDescription()}
-              </p>
-            </div>
+            <p className={`text-[10px] mt-1 font-bold uppercase tracking-[0.1em] ${mutedTextClass}`}>
+              Based on {totalRisky} high-severity vectors
+            </p>
           </div>
         </div>
 
-        <div className="col-span-2 glass-card p-6 flex flex-col justify-center">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-sm text-white/50 uppercase">Clauses Flagged</span>
-          </div>
-          <div className="text-4xl font-bold text-white">{riskyClauses}</div>
-          <div className="w-full h-2 bg-white/10 rounded-full mt-3 overflow-hidden">
-            <div
-              className="h-full bg-[#007AFF] rounded-full transition-all"
-              style={{ width: `${totalClauses > 0 ? (riskyClauses / totalClauses) * 100 : 0}%` }}
-            />
+        {/* AI Narrative Verdict - THE "PEAK" UI */}
+        <div className="col-span-12 lg:col-span-7 relative group overflow-hidden rounded-3xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-[0.08] dark:opacity-[0.15]" />
+          <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, 0],
+            }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-20 -right-20 w-80 h-80 bg-[#6366f1]/20 rounded-full blur-[80px]"
+          />
+
+          <div className={`glass-card h-full p-8 relative z-10 border-none flex flex-col justify-between ${theme === 'light' ? 'bg-white/40' : 'bg-black/20 text-white'}`}>
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-indigo-500 rounded-lg blur-lg opacity-40 animate-pulse" />
+                    <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <Zap size={20} className="text-white fill-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Professional Summary</h3>
+                    <p className={`text-[9px] font-bold uppercase tracking-widest ${mutedTextClass}`}>Jurist AI Executive Verdict</p>
+                  </div>
+                </div>
+                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest border shadow-sm ${theme === 'light' ? 'bg-white border-indigo-100 text-indigo-600' : 'bg-white/5 border-white/10 text-white/60'}`}>
+                  CONFIDENCE: HIGH
+                </div>
+              </div>
+
+              {isVerdictLoading ? (
+                <div className="flex items-center gap-4 py-8">
+                  <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                  <p className={`text-lg font-medium animate-pulse ${subTextClass}`}>Synthesizing risk profile...</p>
+                </div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <p className={`text-xl font-medium leading-relaxed italic tracking-tight font-serif ${theme === 'light' ? 'text-gray-800' : 'text-indigo-50/90'}`}>
+                    "{narrativeVerdict || "The initial analysis is complete. Detailed review of the flagged clauses is recommended to understand specific legal implications."}"
+                  </p>
+                </motion.div>
+              )}
+            </div>
+
+            {!isVerdictLoading && (
+              <div className="mt-8 pt-6 border-t border-indigo-500/10 flex items-center justify-between whitespace-nowrap">
+                <div className="flex gap-6">
+                  <div>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Critical Risks</p>
+                    <p className="text-xl font-black text-red-500">{totalRisky}</p>
+                  </div>
+                  <div className="w-px h-10 bg-indigo-500/10" />
+                  <div>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Compliance Score</p>
+                    <p className="text-xl font-black text-emerald-500">{score}%</p>
+                  </div>
+                </div>
+                <div className="flex -space-x-2">
+                  <div className="w-8 h-8 rounded-full border-2 border-indigo-500 bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-700 z-30">AI</div>
+                  <div className="w-8 h-8 rounded-full border-2 border-purple-500 bg-purple-100 flex items-center justify-center text-[10px] font-bold text-purple-700 z-20">LGL</div>
+                  <div className="w-8 h-8 rounded-full border-2 border-pink-500 bg-pink-100 flex items-center justify-center text-[10px] font-bold text-pink-700 z-10">RISK</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-6">
+      {/* Grid: Stats & Depth */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Total Clauses', value: totalClauses, icon: FileText, color: 'text-blue-400', bg: 'bg-blue-400/5' },
           { label: 'Risky Clauses', value: riskyClauses, icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-400/5' },
           { label: 'NLP Cleared', value: nlpCleared, icon: Check, color: 'text-green-400', bg: 'bg-green-400/5' },
-          { label: 'Risk Ratio', value: `${((riskyClauses / (totalClauses || 1)) * 100).toFixed(1)}%`, icon: Target, color: 'text-purple-400', bg: 'bg-purple-400/5' },
+          { label: 'Risk Ratio', value: `${totalClauses > 0 ? ((riskyClauses / totalClauses) * 100).toFixed(1) : 0}%`, icon: Target, color: 'text-purple-400', bg: 'bg-purple-400/5' },
         ].map((stat, i) => {
           const Icon = stat.icon;
           return (
-            <div key={i} className={`glass-card p-8 hover:border-white/20 transition-all group relative overflow-hidden`}>
-              <div className={`absolute top-0 right-0 w-24 h-24 ${stat.bg} blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:opacity-100 opacity-50 transition-opacity`} />
-              <div className="relative">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className={`p-2 rounded-lg ${stat.bg}`}>
-                    <Icon size={18} className={stat.color} />
-                  </div>
-                  <span className="text-xs font-bold text-white/40 uppercase tracking-widest">{stat.label}</span>
+            <div key={i} className={`glass-card p-6 group transition-all`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`p-2 rounded-lg ${stat.bg}`}>
+                  <Icon size={18} className={stat.color} />
                 </div>
-                <div className="text-4xl font-black text-white tracking-tight">{stat.value}</div>
+                <span className={`text-[10px] font-black uppercase tracking-[0.1em] ${mutedTextClass}`}>{stat.label}</span>
               </div>
+              <div className={`text-3xl font-black ${textClass}`}>{stat.value}</div>
             </div>
           );
         })}
       </div>
 
-      {/* Feature Row: Transparency + Analysis Depth */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Analysis Transparency Card */}
-        {analysisTransparency && (
-          <div className="glass-card p-6 flex flex-col justify-between">
-            <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-              <Zap size={18} className="text-emerald-400" />
-              How We Analyzed
-            </h3>
+      {/* transparency and depth row */}
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-12 lg:col-span-8 glass-card p-8 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Analysis Transparency</h3>
+            <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${subTextClass}`}>
+              <Activity size={12} className="text-emerald-500" />
+              Source: Cerebras LLaMA-3 Engine
+            </div>
+          </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-full h-8 bg-white/5 rounded-lg overflow-hidden relative">
-                  <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white/80 z-10">
-                    {analysisTransparency.total} clauses ingested
-                  </div>
-                  <div className="h-full bg-[#007AFF]/20 rounded-lg" style={{ width: '100%' }} />
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className={`text-lg font-black ${textClass}`}>{deepScanPct}% Deep Scan</p>
+                  <p className={`text-xs ${mutedTextClass}`}>Full neural network evaluation</p>
                 </div>
+                <p className={`text-xs font-bold ${subTextClass}`}>{deepAnalyzed} of {totalClauses} total</p>
               </div>
-
-              <div className="flex gap-3">
-                <div className="flex-1 p-3">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span className="text-xs text-white/60">Fast NLP Filter</span>
-                  </div>
-                  <div className="h-14 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-center">
-                    <span className="text-xl font-bold text-emerald-400">
-                      {analysisTransparency.nlpFiltered}
-                    </span>
-                    <span className="text-xs text-emerald-400/60 ml-1.5">
-                      ({analysisTransparency.nlpPercent}%)
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-white/40 mt-1 leading-tight">
-                    Cleared by keyword analysis — no AI cost
-                  </p>
-                </div>
-
-                <div className="flex-1 p-3">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-2 h-2 rounded-full bg-[#007AFF]" />
-                    <span className="text-xs text-white/60">Deep AI (Cerebras)</span>
-                  </div>
-                  <div className="h-14 bg-[#007AFF]/10 border border-[#007AFF]/20 rounded-lg flex items-center justify-center">
-                    <span className="text-xl font-bold text-[#007AFF]">
-                      {analysisTransparency.deepAnalyzed}
-                    </span>
-                    <span className="text-xs text-[#007AFF]/60 ml-1.5">
-                      ({analysisTransparency.deepPercent}%)
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-white/40 mt-1 leading-tight">
-                    Full LLM assessment with reasoning
-                  </p>
-                </div>
+              <div className={`h-3 bg-white/5 rounded-full overflow-hidden border ${theme === 'light' ? 'border-gray-100' : 'border-white/5'}`}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${deepScanPct}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"
+                />
               </div>
+            </div>
 
-              <div className="pt-2 border-t border-white/5">
-                <div className="flex items-center gap-4 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <ShieldCheck size={12} className="text-green-400" />
-                    <span className="text-white/60">AI Cleared:</span>
-                    <span className="text-green-400 font-semibold">{analysisTransparency.safeFromDeep}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <ShieldAlert size={12} className="text-red-400" />
-                    <span className="text-white/60">Flagged Risky:</span>
-                    <span className="text-red-400 font-semibold">{analysisTransparency.riskyFound}</span>
-                  </div>
+            <div className="grid grid-cols-2 gap-8">
+              <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-gray-50/50 border-gray-100' : 'bg-white/5 border-white/5'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <ShieldCheck size={14} className="text-emerald-500" />
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Fast NLP Filter</span>
                 </div>
+                <p className={`text-2xl font-black ${textClass}`}>{analysisTransparency?.nlpFiltered || 0}</p>
+                <p className={`text-[10px] mt-1 leading-relaxed ${subTextClass}`}>Identified as safe via structural pattern matching.</p>
+              </div>
+              <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-blue-50/30 border-blue-100' : 'bg-[#007AFF]/5 border-[#007AFF]/10'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <BrainCircuit size={14} className="text-[#007AFF]" />
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Deep AI Layer</span>
+                </div>
+                <p className={`text-2xl font-black text-[#007AFF]`}>{deepAnalyzed}</p>
+                <p className={`text-[10px] mt-1 leading-relaxed ${subTextClass}`}>Subjected to multi-pass LLM risk verification.</p>
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Analysis Depth Card */}
-        <div className="glass-card p-6 flex flex-col justify-between">
-          <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-            <BrainCircuit size={18} className="text-[#007AFF]" />
-            Analysis Depth
-          </h3>
-          <div className="flex items-center gap-6 py-2">
-            <div className="relative w-24 h-24">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                <circle cx="50" cy="50" r="40" fill="none" stroke={theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'} strokeWidth="10" />
+        <div className="col-span-12 lg:col-span-4 glass-card p-8 flex flex-col items-center justify-center relative overflow-hidden group">
+          <div className="flex flex-col items-center justify-center space-y-6 py-4">
+            <div className="relative">
+              <svg className="w-48 h-48 transform -rotate-90 drop-shadow-xl">
                 <circle
-                  cx="50" cy="50" r="40" fill="none" stroke="#007AFF" strokeWidth="10"
-                  strokeDasharray={`${((totalClauses - (analysisResult?.skipped_llm_count || 0)) / (totalClauses || 1)) * 251.2} 251.2`}
+                  cx="96"
+                  cy="96"
+                  r="80"
+                  stroke={theme === 'light' ? '#f1f5f9' : 'rgba(255,255,255,0.05)'}
+                  strokeWidth="12"
+                  fill="transparent"
+                />
+                <motion.circle
+                  initial={{ strokeDasharray: "0, 502" }}
+                  animate={{ strokeDasharray: `${(502 * deepScanPct) / 100}, 502` }}
+                  transition={{ duration: 2, ease: "easeInOut" }}
+                  cx="96"
+                  cy="96"
+                  r="80"
+                  stroke="#007AFF"
+                  strokeWidth="12"
+                  fill="transparent"
                   strokeLinecap="round"
-                  className="transition-all duration-700"
                 />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold text-white">
-                  {Math.round(((totalClauses - (analysisResult?.skipped_llm_count || 0)) / (totalClauses || 1)) * 100)}
-                </span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-5xl font-black tracking-tighter ${textClass}`}>{deepScanPct}%</span>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Coverage</span>
               </div>
             </div>
-            <div className="flex-1 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-white/60">AI-Analyzed</span>
-                <span className="text-white font-medium">{totalClauses - (analysisResult?.skipped_llm_count || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-white/60">NLP-Filtered</span>
-                <span className="text-white font-medium">{analysisResult?.skipped_llm_count || 0}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-white/60">Scanned</span>
-                <span className="text-green-400 font-medium">100%</span>
-              </div>
+            <div className="text-center space-y-1">
+              <p className={`text-sm font-black uppercase tracking-tight ${textClass}`}>Audit Scope</p>
+              <p className={`text-[10px] font-bold uppercase tracking-widest ${mutedTextClass}`}>Comprehensive Deep Scan</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Secondary Row: Risk Profile + Factor Cards */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Risk Profile Card */}
-        <div className="glass-card p-6">
-          <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-            <Activity size={18} className="text-red-400" />
-            Risk Profile
+      {/* Radar Matrix Row */}
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-12 lg:col-span-8 glass-card p-8">
+          <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-10 flex items-center gap-2 ${mutedTextClass}`}>
+            <Activity size={14} className="text-[#007AFF]" />
+            Risk Breakdown Matrix
           </h3>
-          <div className="space-y-4">
-            {breakdownArray.length > 0 ? (
-              breakdownArray.slice(0, 3).map((cat, i) => {
-                const colors = ['bg-red-500', 'bg-amber-500', 'bg-blue-500'];
-                const color = colors[i] || colors[0];
-                const percentage = ((cat.count / (analysisResult?.risky_clause_count || 1)) * 100).toFixed(0);
-                return (
-                  <div key={i}>
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${color}`} />
-                        <span className="text-white/90 font-medium">{cat.category}</span>
-                      </div>
-                      <span className="text-white/60">{cat.count} clauses ({percentage}%)</span>
-                    </div>
-                    <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${color} rounded-full transition-all`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-sm text-white/40">No risk breakdown available.</p>
-            )}
-          </div>
-          {breakdownArray.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <div className="flex items-center gap-2 text-sm">
-                <ShieldAlert size={14} className="text-amber-400" />
-                <span className="text-white/60">Recommendation:</span>
-              </div>
-              <p className="text-sm text-white/80 mt-1">
-                Review {breakdownArray[0]?.category || 'risk'} clauses carefully
-              </p>
+          <div className="flex flex-col md:flex-row items-center gap-16">
+            <div className="w-full md:w-1/2 max-w-[350px]">
+              {renderRadarChart()}
             </div>
-          )}
-        </div>
-
-        {/* Top Risk Factors - Sexy Cards */}
-        <div className="glass-card p-6">
-          <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-            <ShieldAlert size={18} className="text-red-400" />
-            Key Risk Factors
-          </h3>
-          {riskyClauseList.length === 0 ? (
-            <p className="text-sm text-white/50">No risky clauses identified.</p>
-          ) : (
-            <div className="space-y-3">
-              {riskyClauseList.slice(0, 3).map((clause, i) => {
-                const category = clause.risk_categories?.[0] || 'General';
-                const severity = i === 0 ? 'HIGH' : i === 1 ? 'MEDIUM' : 'LOW';
-                const severityColor = i === 0 ? 'bg-red-500/20 text-red-400' : i === 1 ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400';
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+              {['Legal', 'Privacy', 'Security', 'Financial', 'User'].map((label, i) => {
+                const breakdown = breakdownArray.find(b => b.category?.toLowerCase().includes(label.toLowerCase()));
+                const count = breakdown?.count || 0;
                 return (
-                  <div key={i} className="p-4 rounded-lg bg-white/5 border border-white/10 hover:border-white/20 transition-all">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${severityColor}`}>
-                        {severity}
-                      </span>
-                      <span className="text-xs text-white/50">{category}</span>
+                  <div key={i} className={`flex items-center justify-between p-4 rounded-xl border ${theme === 'light' ? 'bg-gray-50/50 border-gray-100' : 'bg-white/5 border-white/5'}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-red-500' : i === 1 ? 'bg-amber-500' : i === 2 ? 'bg-blue-500' : i === 3 ? 'bg-emerald-500' : 'bg-purple-500'}`} />
+                      <span className={`text-xs font-bold ${textClass}`}>{label}</span>
                     </div>
-                    <p className="text-sm text-white/80 line-clamp-2">{clause.explanation}</p>
+                    <span className={`text-[10px] font-black ${mutedTextClass}`}>{count} Risks</span>
                   </div>
                 );
               })}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Final Row: Radar Chart */}
-      <div className="glass-card p-6">
-        <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-6 flex items-center gap-2">
-          <Activity size={14} className="text-[#007AFF]" />
-          Risk Breakdown Matrix
-        </h3>
-        <div className="flex items-center gap-16">
-          <div className="flex-[1.5] max-w-[500px]">
-            {renderRadarChart()}
           </div>
-          <div className="flex-1 grid grid-cols-2 gap-4">
-            {['legal', 'privacy', 'security', 'financial', 'user'].map((key, i) => {
-              const cat = [{
-                key: 'legal', label: 'Legal'
-              }, {
-                key: 'privacy', label: 'Privacy'
-              }, {
-                key: 'security', label: 'Security'
-              }, {
-                key: 'financial', label: 'Financial'
-              }, {
-                key: 'user', label: 'User Rights'
-              }][i];
-              return (
-                <div key={i} className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
-                  <span className={`w-3 h-3 rounded-full ${key === 'legal' ? 'bg-red-500' :
-                    key === 'privacy' ? 'bg-amber-500' :
-                      key === 'security' ? 'bg-blue-500' :
-                        key === 'financial' ? 'bg-yellow-500' :
-                          'bg-gray-500'
-                    }`} />
-                  <span className="text-sm text-white/80 font-medium">{cat.label}</span>
+        </div>
+
+        <div className="col-span-12 lg:col-span-4 glass-card p-8 flex flex-col">
+          <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-6 ${mutedTextClass}`}>Health Checklist</h3>
+          <div className="flex-1 flex flex-col justify-center space-y-4">
+            {healthCheckItems.map((item, i) => (
+              <div
+                key={i}
+                className={`flex items-center justify-between p-3 rounded-xl border transition-all ${item.passed
+                  ? 'bg-green-500/5 border-green-500/10 text-green-500'
+                  : 'bg-amber-500/5 border-amber-500/10 text-amber-500'
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  {item.passed ? <Check size={14} className="stroke-[3]" /> : <AlertTriangle size={14} className="stroke-[3]" />}
+                  <span className="text-[10px] font-black uppercase tracking-widest">{item.name}</span>
                 </div>
-              );
-            })}
+                <span className={`text-[10px] font-black uppercase tracking-tight ${item.passed ? 'text-green-600' : 'text-amber-600'}`}>
+                  {item.passed ? 'PASSED' : 'FLAGGED'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        {/* Compact Health Checklist */}
-        <div className="flex items-center gap-2">
-          {healthCheckItems.slice(0, 5).map((item, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border ${item.passed
-                ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                }`}
-            >
-              {item.passed ? <Check size={12} /> : <AlertTriangle size={12} />}
-              <span>{item.name}</span>
-            </div>
-          ))}
-        </div>
+      <div className="flex items-center justify-between pt-6">
+        <p className={`text-[10px] font-bold uppercase tracking-widest ${mutedTextClass}`}>
+          Jurist AI Protocol Engine v1.4.2
+        </p>
         <div className="flex items-center gap-4">
           <button
             onClick={() => onNavigate && onNavigate('clauses')}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white text-sm font-semibold hover:shadow-lg hover:shadow-[#007AFF]/30"
+            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white text-xs font-black uppercase tracking-widest hover:shadow-lg hover:shadow-[#007AFF]/30 transition-all active:scale-[0.98]"
           >
-            <span>View All Flagged Clauses</span>
+            Explore Flagged Clauses
             <ArrowRight size={16} />
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white/80 hover:bg-white/10 transition-all">
-            <Download size={14} />
-            <span>Export</span>
           </button>
         </div>
       </div>
