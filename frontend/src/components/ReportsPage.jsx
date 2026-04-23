@@ -1,7 +1,54 @@
 import React from 'react';
-import { FileText, Printer, Copy, Check, AlertTriangle, Shield, Scale, Zap, BrainCircuit, Activity } from 'lucide-react';
+import {
+  FileText, Printer, Copy, Check, AlertTriangle,
+  Shield, Scale, Zap, BrainCircuit, Activity
+} from 'lucide-react';
 import EmptyState from './EmptyState.jsx';
 import { useTheme } from './ThemeProvider.jsx';
+
+const CATEGORY_COLORS = {
+  'Privacy Risk': { bg: 'bg-purple-500', text: 'text-purple-500', border: 'border-purple-500/30' },
+  'Legal Risk': { bg: 'bg-red-500', text: 'text-red-500', border: 'border-red-500/30' },
+  'Financial Risk': { bg: 'bg-green-500', text: 'text-green-500', border: 'border-green-500/30' },
+  'Security Risk': { bg: 'bg-blue-500', text: 'text-blue-500', border: 'border-blue-500/30' },
+  'User Rights Risk': { bg: 'bg-amber-500', text: 'text-amber-500', border: 'border-amber-500/30' },
+  'Transparency Risk': { bg: 'bg-cyan-500', text: 'text-cyan-500', border: 'border-cyan-500/30' },
+  'Data Risk': { bg: 'bg-indigo-500', text: 'text-indigo-500', border: 'border-indigo-500/30' },
+  'General': { bg: 'bg-slate-500', text: 'text-slate-500', border: 'border-slate-500/30' }
+};
+
+const MITIGATION_STRATEGIES = {
+  'Privacy Risk': [
+    "Implement granular consent management and data minimization protocols to reduce regulatory friction.",
+    "Draft explicit third-party data processing agreements to maintain user trust and compliance.",
+    "Review standard disclosure triggers to ensure they align with 'Privacy by Design' principles."
+  ],
+  'Legal Risk': [
+    "Seek explicit limits on indemnification or negotiate for clear exclusions that protect operational autonomy.",
+    "Re-evaluate dispute resolution clauses to prioritize arbitration and limit class-action eligibility.",
+    "Clarify jurisdictional reach to avoid unexpected legal liabilities in secondary markets."
+  ],
+  'Financial Risk': [
+    "Standardize refund and renewal transparency to avoid high 'Dark Pattern' severity scores.",
+    "Implement clear fee disclosure benchmarks to prevent unexpected financial liability claims.",
+    "Negotiate payment term flexibility to maintain healthy cash-flow buffers during disputes."
+  ],
+  'Security Risk': [
+    "Adopt 'Best Effort' security language while ensuring internal liability is capped at industry standards.",
+    "Clarify breach notification timelines to align with standard cyber-insurance requirements.",
+    "Define clear security audit rights to maintain transparency without compromising core infrastructure."
+  ],
+  'User Rights Risk': [
+    "Implement clear account termination appeals processes to reduce 'Arbitrary Termination' risks.",
+    "Ensure 'Continued Use' changes are notified via primary channels to avoid notification-based challenges.",
+    "Balance IP ownership rights to ensure users retain reasonable control over personal contributions."
+  ],
+  'General': [
+    "Maintain a clear version history and change log to build long-term user and legal trust.",
+    "Review overarching liability caps to ensure they remain proportional to the service complexity.",
+    "Standardize definitions across the document to reduce ambiguity-based legal interpretations."
+  ]
+};
 
 export default function ReportsPage({ analysisResult, sourceInfo, calculateScore, narrativeVerdict, onNewAnalysis }) {
   const { theme } = useTheme();
@@ -55,6 +102,15 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getCategoryStyles = (category) => {
+    return CATEGORY_COLORS[category] || CATEGORY_COLORS['General'];
+  };
+
+  const getMitigationText = (category, index) => {
+    const variations = MITIGATION_STRATEGIES[category] || MITIGATION_STRATEGIES['General'];
+    return variations[index % variations.length];
   };
 
   return (
@@ -180,17 +236,20 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                 Categorical Risk Intensity
               </h3>
               <div className="space-y-6">
-                {(Array.isArray(analysisResult.risk_breakdown) ? analysisResult.risk_breakdown : (analysisResult.risk_breakdown ? Object.entries(analysisResult.risk_breakdown).map(([category, count]) => ({ category, count })) : [])).map((item, idx) => (
-                  <div key={idx} className="space-y-2">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                      <span className={subTextClass}>{item.category}</span>
-                      <span className={textClass}>{item.count} Vectors Identified</span>
+                {(Array.isArray(analysisResult.risk_breakdown) ? analysisResult.risk_breakdown : (analysisResult.risk_breakdown ? Object.entries(analysisResult.risk_breakdown).map(([category, count]) => ({ category, count })) : [])).map((item, idx) => {
+                  const styles = getCategoryStyles(item.category);
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                        <span className={subTextClass}>{item.category}</span>
+                        <span className={`${styles.text} font-black`}>{item.count} Vectors Identified</span>
+                      </div>
+                      <div className={`h-2.5 rounded-full overflow-hidden ${theme === 'light' ? 'bg-gray-100' : 'bg-white/5'}`}>
+                        <div className={`h-full rounded-full ${styles.bg}`} style={{ width: `${(item.count / (analysisResult.risky_clause_count || 1)) * 100}%` }} />
+                      </div>
                     </div>
-                    <div className={`h-2.5 rounded-full overflow-hidden ${theme === 'light' ? 'bg-gray-100' : 'bg-white/5'}`}>
-                      <div className={`h-full rounded-full ${idx % 3 === 0 ? 'bg-red-500' : idx % 3 === 1 ? 'bg-amber-500' : 'bg-[#007AFF]'}`} style={{ width: `${(item.count / (analysisResult.risky_clause_count || 1)) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -202,12 +261,15 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                 Strategic Mitigation Guide
               </h3>
               <ul className="space-y-5">
-                {(Array.isArray(analysisResult.risk_breakdown) ? analysisResult.risk_breakdown : (analysisResult.risk_breakdown ? Object.entries(analysisResult.risk_breakdown).map(([category, count]) => ({ category, count })) : [])).slice(0, 4).map((item, idx) => (
-                  <li key={idx} className={`flex gap-3 text-xs leading-relaxed font-semibold ${subTextClass}`}>
-                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                    <span>Immediate negotiation recommended for <span className="text-amber-500 font-black">{item.category.toUpperCase()}</span> provisions to limit downstream liability exposure.</span>
-                  </li>
-                ))}
+                {(Array.isArray(analysisResult.risk_breakdown) ? analysisResult.risk_breakdown : (analysisResult.risk_breakdown ? Object.entries(analysisResult.risk_breakdown).map(([category, count]) => ({ category, count })) : [])).slice(0, 4).map((item, idx) => {
+                  const styles = getCategoryStyles(item.category);
+                  return (
+                    <li key={idx} className={`flex gap-3 text-xs leading-relaxed font-semibold ${subTextClass}`}>
+                      <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${styles.bg}`} />
+                      <span>{getMitigationText(item.category, idx)} (<span className={`${styles.text} font-black`}>{item.category.toUpperCase()}</span> Priority)</span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>
@@ -223,27 +285,31 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                 .filter(c => c.is_risky)
                 .sort((a, b) => (b.severity_score || 0) - (a.severity_score || 0))
                 .slice(0, 10)
-                .map((clause, idx) => (
-                  <div key={idx} className={`p-6 border rounded-2xl shadow-sm break-inside-avoid transition-all ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-black/20 border-white/5 group hover:border-[#007AFF]/30'}`}>
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black ${theme === 'light' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>{idx + 1}</span>
-                        <span className={`font-black text-[10px] uppercase tracking-widest ${textClass}`}>{clause.risk_categories?.[0] || 'General Risk'}</span>
+                .map((clause, idx) => {
+                  const mainCategory = clause.risk_categories?.[0] || 'General';
+                  const styles = getCategoryStyles(mainCategory);
+                  return (
+                    <div key={idx} className={`p-6 border rounded-2xl shadow-sm break-inside-avoid transition-all ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-black/20 border-white/5 group hover:border-[#007AFF]/30'}`}>
+                      <div className="flex items-center justify-between mb-5">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black ${theme === 'light' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>{idx + 1}</span>
+                          <span className={`font-black text-[10px] uppercase tracking-widest ${styles.text}`}>{mainCategory}</span>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${clause.severity_score >= 8 ? 'bg-red-500 text-white' :
+                          clause.severity_score >= 5 ? 'bg-amber-500 text-white' :
+                            'bg-[#007AFF] text-white'
+                          }`}>
+                          SEV: {clause.severity_score?.toFixed(1)}
+                        </span>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${clause.severity_score >= 8 ? 'bg-red-500 text-white' :
-                        clause.severity_score >= 5 ? 'bg-amber-500 text-white' :
-                          'bg-[#007AFF] text-white'
-                        }`}>
-                        SEV: {clause.severity_score?.toFixed(1)}
-                      </span>
+                      <p className={`text-xs leading-relaxed italic mb-5 line-clamp-3 font-serif ${theme === 'light' ? 'text-gray-500 border-l-4 border-gray-100 pl-4' : 'text-white/40 border-l-4 border-white/5 pl-4'}`}>"{(clause.text || '').trim()}"</p>
+                      <div className={`p-5 rounded-2xl text-xs font-semibold leading-relaxed ${theme === 'light' ? 'bg-gray-50 text-gray-800' : 'bg-white/5 text-white/70'}`}>
+                        <span className={`font-black block mb-2 uppercase tracking-[0.2em] text-[9px] ${styles.text}`}>AI Diagnostic</span>
+                        {clause.explanation}
+                      </div>
                     </div>
-                    <p className={`text-xs leading-relaxed italic mb-5 line-clamp-3 font-serif ${theme === 'light' ? 'text-gray-500 border-l-4 border-gray-100 pl-4' : 'text-white/40 border-l-4 border-white/5 pl-4'}`}>"{(clause.text || '').trim()}"</p>
-                    <div className={`p-5 rounded-2xl text-xs font-semibold leading-relaxed ${theme === 'light' ? 'bg-gray-50 text-gray-800' : 'bg-white/5 text-white/70'}`}>
-                      <span className={`font-black block mb-2 uppercase tracking-[0.2em] text-[9px] ${theme === 'light' ? 'text-gray-400' : 'text-[#007AFF]'}`}>AI Diagnostic</span>
-                      {clause.explanation}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
             ) : null}
           </div>
         </div>

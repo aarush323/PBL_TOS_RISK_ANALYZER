@@ -7,6 +7,14 @@ import {
 import { useTheme } from './ThemeProvider.jsx';
 import { motion } from 'framer-motion';
 
+const CATEGORY_COLORS = {
+  'Legal': { color: '#ef4444', bg: 'bg-red-500' },
+  'Privacy': { color: '#a855f7', bg: 'bg-purple-500' },
+  'Security': { color: '#3b82f6', bg: 'bg-blue-500' },
+  'Financial': { color: '#22c55e', bg: 'bg-green-500' },
+  'User': { color: '#f59e0b', bg: 'bg-amber-500' }
+};
+
 export default function OverviewPage({
   analysisResult,
   sourceInfo,
@@ -28,8 +36,6 @@ export default function OverviewPage({
   // Fix: Convert risk_breakdown from dict to array for rendering
   const breakdownArray = React.useMemo(() => {
     if (!analysisResult?.risk_breakdown) return [];
-    // If it's already an array (old format), return as is (wrapped). 
-    // If it's a dict (new backend format), convert it.
     if (Array.isArray(analysisResult.risk_breakdown)) {
       return [...analysisResult.risk_breakdown].sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0));
     }
@@ -64,7 +70,6 @@ export default function OverviewPage({
     return checks;
   }, [breakdownArray]);
 
-  // Feature 3: NLP vs Deep AI Transparency
   const analysisTransparency = React.useMemo(() => {
     if (!analysisResult) return null;
     const total = analysisResult.total_clauses || 0;
@@ -131,13 +136,14 @@ export default function OverviewPage({
             <line key={i} x1="100" y1="100" x2={100 + 100 * Math.cos(angle)} y2={100 + 100 * Math.sin(angle)} stroke={axisStroke} strokeWidth="0.5" />
           );
         })}
-        <polygon points={points} fill="rgba(0, 122, 255, 0.25)" stroke="#007AFF" strokeWidth="2.5" className="transition-all duration-700" />
+        <polygon points={points} fill="rgba(0, 122, 255, 0.2)" stroke="#007AFF" strokeWidth="2" className="transition-all duration-700" />
         {categories.map((label, i) => {
           const breakdown = breakdownArray.find(b => b.category.toLowerCase().includes(label.toLowerCase()));
           const val = breakdown ? breakdown.count : 0;
           const angle = (i * 72 - 90) * (Math.PI / 180);
           const radius = (val / maxCount) * 92;
-          return <circle key={i} cx={100 + radius * Math.cos(angle)} cy={100 + radius * Math.sin(angle)} r="3.5" fill="#007AFF" />;
+          const categoryColor = CATEGORY_COLORS[label]?.color || '#007AFF';
+          return <circle key={i} cx={100 + radius * Math.cos(angle)} cy={100 + radius * Math.sin(angle)} r="3.5" fill={categoryColor} className="shadow-lg" />;
         })}
       </svg>
     );
@@ -350,11 +356,12 @@ export default function OverviewPage({
                 const breakdown = breakdownArray.find(b => b.category?.toLowerCase().includes(label.toLowerCase()));
                 const count = breakdown?.count || 0;
                 const pct = riskyClauses > 0 ? (count / riskyClauses) * 100 : 0;
+                const categoryColor = CATEGORY_COLORS[label]?.bg || 'bg-slate-500';
                 return (
                   <div key={i} className={`p-4 rounded-2xl border transition-all hover:translate-x-2 ${theme === 'light' ? 'bg-gray-50/50 border-gray-100 hover:border-indigo-100' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
-                        <span className={`w-2.5 h-2.5 rounded-full ${i === 0 ? 'bg-red-500' : i === 1 ? 'bg-amber-500' : i === 2 ? 'bg-blue-500' : i === 3 ? 'bg-emerald-500' : 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]'}`} />
+                        <span className={`w-2.5 h-2.5 rounded-full ${categoryColor}`} />
                         <span className={`text-xs font-black uppercase tracking-widest ${textClass}`}>{label}</span>
                       </div>
                       <span className={`text-[10px] font-black ${mutedTextClass}`}>{count} Risks ({Math.round(pct)}%)</span>
@@ -364,7 +371,7 @@ export default function OverviewPage({
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
                         transition={{ duration: 1, delay: i * 0.1 }}
-                        className={`h-full ${i === 0 ? 'bg-red-500' : i === 1 ? 'bg-amber-500' : i === 2 ? 'bg-blue-500' : i === 3 ? 'bg-emerald-500' : 'bg-purple-500'}`}
+                        className={`h-full ${categoryColor}`}
                       />
                     </div>
                   </div>
