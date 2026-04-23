@@ -17,42 +17,16 @@ const CATEGORY_COLORS = {
   'General': { bg: 'bg-slate-500', text: 'text-slate-500', border: 'border-slate-500/30' }
 };
 
-const MITIGATION_STRATEGIES = {
-  'Privacy Risk': [
-    "Implement granular consent management and data minimization protocols to reduce regulatory friction.",
-    "Draft explicit third-party data processing agreements to maintain user trust and compliance.",
-    "Review standard disclosure triggers to ensure they align with 'Privacy by Design' principles."
-  ],
-  'Legal Risk': [
-    "Seek explicit limits on indemnification or negotiate for clear exclusions that protect operational autonomy.",
-    "Re-evaluate dispute resolution clauses to prioritize arbitration and limit class-action eligibility.",
-    "Clarify jurisdictional reach to avoid unexpected legal liabilities in secondary markets."
-  ],
-  'Financial Risk': [
-    "Standardize refund and renewal transparency to avoid high 'Dark Pattern' severity scores.",
-    "Implement clear fee disclosure benchmarks to prevent unexpected financial liability claims.",
-    "Negotiate payment term flexibility to maintain healthy cash-flow buffers during disputes."
-  ],
-  'Security Risk': [
-    "Adopt 'Best Effort' security language while ensuring internal liability is capped at industry standards.",
-    "Clarify breach notification timelines to align with standard cyber-insurance requirements.",
-    "Define clear security audit rights to maintain transparency without compromising core infrastructure."
-  ],
-  'User Rights Risk': [
-    "Implement clear account termination appeals processes to reduce 'Arbitrary Termination' risks.",
-    "Ensure 'Continued Use' changes are notified via primary channels to avoid notification-based challenges.",
-    "Balance IP ownership rights to ensure users retain reasonable control over personal contributions."
-  ],
-  'General': [
-    "Maintain a clear version history and change log to build long-term user and legal trust.",
-    "Review overarching liability caps to ensure they remain proportional to the service complexity.",
-    "Standardize definitions across the document to reduce ambiguity-based legal interpretations."
-  ]
-};
-
 export default function ReportsPage({ analysisResult, sourceInfo, calculateScore, narrativeVerdict, onNewAnalysis }) {
   const { theme } = useTheme();
   const [copied, setCopied] = React.useState(false);
+
+  const criticalClauses = React.useMemo(() => {
+    return (analysisResult?.clauses || [])
+      .filter(c => c.is_risky)
+      .sort((a, b) => (b.severity_score || 0) - (a.severity_score || 0))
+      .slice(0, 5);
+  }, [analysisResult]);
 
   if (!analysisResult) {
     return <EmptyState view="reports" onNewAnalysis={onNewAnalysis} />;
@@ -71,7 +45,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
 
   const handleCopy = () => {
     const clauses = analysisResult?.clauses || [];
-    const criticalClauses = clauses
+    const topClauses = clauses
       .filter(c => c.is_risky)
       .sort((a, b) => (b.severity_score || 0) - (a.severity_score || 0))
       .slice(0, 10);
@@ -85,18 +59,10 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
       text += `EXECUTIVE VERDICT:\n"${narrativeVerdict}"\n\n`;
     }
 
-    text += `STATISTICAL SUMMARY:\n`;
-    text += `• Total Clauses: ${analysisResult.total_clauses}\n`;
-    text += `• Flagged Clauses: ${analysisResult.risky_clause_count} (${Math.round(analysisResult.risky_clause_count / (analysisResult.total_clauses || 1) * 100)}%)\n`;
-    text += `• NLP Cleared: ${analysisResult.total_clauses - analysisResult.risky_clause_count}\n\n`;
-
-    text += `TOP 10 RISKY CLAUSES (Sorted by Severity):\n`;
-    text += `=========================================\n\n`;
-
-    criticalClauses.forEach((c, i) => {
-      text += `[${i + 1}] SEVERITY: ${c.severity_score}/10 | CATEGORY: ${c.risk_categories?.[0] || 'General'}\n`;
-      text += `EXPLANATION: ${c.explanation}\n`;
-      text += `CLAUSE: "${(c.text || '').trim()}"\n\n`;
+    text += `TOP RISKY CLAUSES:\n`;
+    topClauses.forEach((c, i) => {
+      text += `[${i + 1}] SEVERITY: ${c.severity_score}/10 | ${c.risk_categories?.[0] || 'GENERAL'}\n`;
+      text += `INSIGHT: ${c.explanation}\n\n`;
     });
 
     navigator.clipboard.writeText(text);
@@ -106,11 +72,6 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
 
   const getCategoryStyles = (category) => {
     return CATEGORY_COLORS[category] || CATEGORY_COLORS['General'];
-  };
-
-  const getMitigationText = (category, index) => {
-    const variations = MITIGATION_STRATEGIES[category] || MITIGATION_STRATEGIES['General'];
-    return variations[index % variations.length];
   };
 
   return (
@@ -135,7 +96,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
         </div>
       </div>
 
-      <div className={`glass-card p-10 print:bg-white print:text-black print:border-none print:shadow-none print:p-8 ${theme === 'light' ? 'bg-white border-gray-100' : ''}`}>
+      <div id="report-document" className={`glass-card p-10 print:bg-white print:text-black print:border-none print:shadow-none print:p-8 ${theme === 'light' ? 'bg-white border-gray-100' : ''}`}>
         <div className={`flex items-center justify-between border-b-2 ${theme === 'light' ? 'border-gray-100' : 'border-white/5'} pb-6 mb-8`}>
           <div className="flex items-center gap-4">
             <div className={`p-3 rounded-xl ${theme === 'light' ? 'bg-blue-50' : 'bg-[#007AFF]/10'}`}>
@@ -166,7 +127,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
             { label: 'Flagged', value: analysisResult.risky_clause_count, sub: 'Risky Vectors', color: 'text-red-500' },
             { label: 'AI Deep Scan', value: `${Math.round(((analysisResult.total_clauses - (analysisResult.skipped_llm_count || 0)) / (analysisResult.total_clauses || 1)) * 100)}%`, sub: 'Coverage', color: 'text-emerald-500' },
           ].map((stat, i) => (
-            <div key={i} className={`${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/5'} p-5 rounded-2xl border print:bg-white`}>
+            <div key={i} className={`${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'} p-5 rounded-2xl border print:bg-white`}>
               <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest mb-1`}>{stat.label}</p>
               <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
               <p className={`${mutedTextClass} text-[10px] font-medium mt-1`}>{stat.sub}</p>
@@ -174,7 +135,6 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
           ))}
         </div>
 
-        {/* Narrative Verdict section in report */}
         {narrativeVerdict && (
           <div className={`mb-10 p-6 rounded-2xl border ${theme === 'light' ? 'bg-blue-50 border-blue-100' : 'bg-blue-500/5 border-blue-500/10'}`}>
             <h3 className={`text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2 ${theme === 'light' ? 'text-blue-700' : 'text-blue-400'}`}>
@@ -187,8 +147,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
           </div>
         )}
 
-        {/* Visual Intelligence: Document Risk Map */}
-        <div className="mb-12 break-inside-avoid shadow-inner p-8 bg-black/5 rounded-3xl border border-white/5">
+        <div className="mb-12 break-inside-avoid shadow-inner p-8 bg-black/5 rounded-3xl border border-white/5 print:bg-white print:border-gray-200">
           <div className="flex items-center justify-between mb-8">
             <h3 className={`${mutedTextClass} text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2`}>
               <Activity size={14} className="text-[#007AFF]" />
@@ -220,11 +179,6 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                 <p className={`text-xl font-black ${textClass}`}>{(analysisResult.clauses?.reduce((s, c) => s + (c.severity_score || 0), 0) / (analysisResult.total_clauses || 1)).toFixed(1)}</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500" /><span className={`text-[9px] font-bold ${subTextClass} uppercase`}>Critical</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /><span className={`text-[9px] font-bold ${subTextClass} uppercase`}>Moderate</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-white/10" /><span className={`text-[9px] font-bold ${subTextClass} uppercase`}>Negligible</span></div>
-            </div>
           </div>
         </div>
 
@@ -254,22 +208,29 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
             </div>
           </div>
 
-          <div className={`p-8 rounded-3xl border border-dashed flex flex-col justify-between ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'} print:bg-white`}>
+          <div className={`p-8 rounded-3xl border border-dashed flex flex-col justify-between ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'} print:bg-white print:border-solid`}>
             <div>
               <h3 className={`${mutedTextClass} text-[10px] font-black uppercase tracking-[0.2em] mb-6 flex items-center gap-2`}>
-                <Zap size={16} className="text-amber-500" />
-                Strategic Mitigation Guide
+                <Scale size={16} className="text-amber-500" />
+                Dynamic Risk Resolutions
               </h3>
-              <ul className="space-y-5">
-                {(Array.isArray(analysisResult.risk_breakdown) ? analysisResult.risk_breakdown : (analysisResult.risk_breakdown ? Object.entries(analysisResult.risk_breakdown).map(([category, count]) => ({ category, count })) : [])).slice(0, 4).map((item, idx) => {
-                  const styles = getCategoryStyles(item.category);
-                  return (
-                    <li key={idx} className={`flex gap-3 text-xs leading-relaxed font-semibold ${subTextClass}`}>
-                      <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${styles.bg}`} />
-                      <span>{getMitigationText(item.category, idx)} (<span className={`${styles.text} font-black`}>{item.category.toUpperCase()}</span> Priority)</span>
-                    </li>
-                  );
-                })}
+              <ul className="space-y-5 text-left">
+                {criticalClauses.length > 0 ? (
+                  criticalClauses.map((clause, idx) => {
+                    const styles = getCategoryStyles(clause.risk_categories?.[0] || 'General');
+                    return (
+                      <li key={idx} className={`flex gap-3 text-xs leading-relaxed font-semibold ${subTextClass} print:text-black`}>
+                        <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${styles.bg}`} />
+                        <div>
+                          <span className={`${styles.text} font-black uppercase text-[9px] tracking-widest`}>{clause.risk_categories?.[0] || 'GENERAL'}</span>
+                          <p className="mt-1">{clause.explanation?.split('.')?.[0]}.</p>
+                        </div>
+                      </li>
+                    );
+                  })
+                ) : (
+                  <li className={`text-xs ${subTextClass}`}>No critical resolutions required based on current audit status.</li>
+                )}
               </ul>
             </div>
           </div>
@@ -289,7 +250,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                   const mainCategory = clause.risk_categories?.[0] || 'General';
                   const styles = getCategoryStyles(mainCategory);
                   return (
-                    <div key={idx} className={`p-6 border rounded-2xl shadow-sm break-inside-avoid transition-all ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-black/20 border-white/5 group hover:border-[#007AFF]/30'}`}>
+                    <div key={idx} className={`p-6 border rounded-2xl shadow-sm break-inside-avoid transition-all ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-black/20 border-white/5 group hover:border-[#007AFF]/30'} text-left`}>
                       <div className="flex items-center justify-between mb-5">
                         <div className="flex items-center gap-3">
                           <span className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] font-black ${theme === 'light' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>{idx + 1}</span>
