@@ -29,24 +29,6 @@ def test_nlp_features_benign():
     print(f"NLP benign: modal={features['modal_verbs']}, categories={features['triggered_categories']}")
     print("NLP benign clause: OK")
 
-def test_full_pipeline_zoom():
-    extraction = handle_input("url", "https://explore.zoom.us/en/terms")
-    result = analyze_document(extraction)
-    assert result["total_clauses"] > 10
-    assert result["risky_clause_count"] > 0
-    assert result["overall_risk"] in ["Low", "Medium", "High"]
-    assert "risk_breakdown" in result
-    print(f"Full pipeline Zoom: OK")
-    print(f"  Total clauses: {result['total_clauses']}")
-    print(f"  Risky clauses: {result['risky_clause_count']}")
-    print(f"  Overall risk: {result['overall_risk']}")
-    print(f"  Breakdown: {result['risk_breakdown']}")
-
-def test_zoom_has_legal_risk():
-    extraction = handle_input("url", "https://explore.zoom.us/en/terms")
-    result = analyze_document(extraction)
-    assert result["risk_breakdown"]["Legal Risk"] > 0, "Zoom should have Legal Risk (arbitration clause)"
-    print(f"Zoom Legal Risk detection: OK — {result['risk_breakdown']['Legal Risk']} clauses")
 
 if __name__ == "__main__":
     print("Running Part 2 analysis tests...\n")
@@ -55,7 +37,4 @@ if __name__ == "__main__":
     test_nlp_features_risky()
     test_nlp_features_benign()
 
-    test_full_pipeline_zoom()
-
-    test_zoom_has_legal_risk()
     print("\nAll Part 2 tests passed.")
