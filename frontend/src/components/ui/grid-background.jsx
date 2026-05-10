@@ -5,7 +5,7 @@ export function GridBackground() {
         <div
             className="fixed inset-0 pointer-events-none"
             style={{
-                background: "radial-gradient(circle at center, #1E40AF, #000000)",
+                background: "linear-gradient(to bottom, #000000, #020617)",
                 zIndex: 0,
             }}
         >
@@ -13,11 +13,20 @@ export function GridBackground() {
                 className="absolute inset-0"
                 style={{
                     backgroundImage: `
-            linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)
+            linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)
           `,
-                    backgroundSize: "20px 20px",
+                    backgroundSize: "60px 60px",
                 }}
+            />
+            <div
+                className="absolute inset-0"
+                style={{
+                    background: "radial-gradient(ellipse at 50% 0%, rgba(30, 64, 175, 0.4) 0%, transparent 70%)",
+                }}
+            />
+            <div
+                className="absolute inset-0 z-0 bg-black [mask-image:radial-gradient(ellipse_at_center,transparent_30%,black_100%)]"
             />
         </div>
     )

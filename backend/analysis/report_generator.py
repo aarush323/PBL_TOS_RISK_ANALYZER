@@ -26,7 +26,7 @@ def _call_llm(prompt: str) -> str:
                     "messages": [{"role": "user", "content": prompt}],
                     "response_format": {"type": "json_object"},
                     "temperature": 0.1,
-                    "max_completion_tokens": 2000,
+                    "max_completion_tokens": 8000,
                 },
                 timeout=120.0,
             )
@@ -45,7 +45,7 @@ def _call_llm(prompt: str) -> str:
                     "model": GROQ_MODEL,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.1,
-                    "max_tokens": 2000,
+                    "max_tokens": 8000,
                     "response_format": {"type": "json_object"},
                 },
                 timeout=30.0,
