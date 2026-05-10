@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Analysis, ChatSession, ChatMessage, JobStatus, User, CompareSession
@@ -218,6 +219,32 @@ async def get_compare_history(
     result = await db.execute(
         select(CompareSession)
         .where(CompareSession.user_id == user_id)
+        .order_by(CompareSession.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def get_compare_history_for_session(
+    db: AsyncSession,
+    user_id: str,
+    session_id: str,
+    limit: int = 20,
+) -> list[CompareSession]:
+    try:
+        session_uuid = uuid.UUID(session_id)
+    except ValueError:
+        return []
+
+    result = await db.execute(
+        select(CompareSession)
+        .where(
+            CompareSession.user_id == user_id,
+            or_(
+                CompareSession.session_id_a == session_uuid,
+                CompareSession.session_id_b == session_uuid,
+            ),
+        )
         .order_by(CompareSession.created_at.desc())
         .limit(limit)
     )

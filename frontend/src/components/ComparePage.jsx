@@ -110,9 +110,9 @@ export default function ComparePage({
           )}
         </div>
 
-        {compareHistory?.length > 0 && (
+        {compareHistory?.length > 0 ? (
           <div>
-            <h3 className={`text-sm font-semibold uppercase mb-3 ${mutedTextClass}`}>Past Comparisons</h3>
+            <h3 className={`text-sm font-semibold uppercase mb-3 ${mutedTextClass}`}>Past Comparisons (This Chat)</h3>
             <div className="space-y-2">
               {compareHistory.map(c => (
                 <button key={c.compare_id} onClick={() => onOpenCompareHistory(c.compare_id)}
@@ -124,6 +124,10 @@ export default function ComparePage({
                 </button>
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="glass-card p-4">
+            <p className={mutedTextClass}>No comparisons yet for this chat session.</p>
           </div>
         )}
       </div>

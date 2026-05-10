@@ -36,6 +36,8 @@ export default function AppLayout() {
     // Map current path to activeView label
     const path = location.pathname.replace('/app', '').replace('/', '') || 'dashboard';
 
+    const hasActiveChat = Boolean(analysisResult);
+
     return (
         <div className="min-h-screen bg-[#050505]">
             <LoadingOverlay
@@ -105,8 +107,9 @@ export default function AppLayout() {
                 <Header
                     activeView={path}
                     analysisResult={analysisResult}
+                    hasActiveChat={hasActiveChat}
                     onNavigate={(view) => {
-                        if (['overview', 'clauses', 'reports'].includes(view) && !analysisResult) {
+                        if (['overview', 'clauses', 'reports', 'compare'].includes(view) && !analysisResult) {
                             navigate('/app');
                             addToast('Please select or run an analysis first.', true);
                         } else {

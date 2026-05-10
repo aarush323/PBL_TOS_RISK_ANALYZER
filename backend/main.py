@@ -1188,11 +1188,15 @@ async def compare_documents(
 
 @app.get("/compare/history")
 async def get_compare_history(
+    session_id: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get user's comparison history."""
-    history = await crud.get_compare_history(db, current_user.id)
+    """Get user's comparison history, optionally filtered by session."""
+    if session_id:
+        history = await crud.get_compare_history_for_session(db, current_user.id, session_id)
+    else:
+        history = await crud.get_compare_history(db, current_user.id)
     return {
         "compares": [
             {

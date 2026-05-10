@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Search, Bell, Plus, X } from 'lucide-react';
 
-export default function Header({ onNewAnalysis, activeView, analysisResult, onNavigate, onHighlightClause }) {
+export default function Header({ onNewAnalysis, activeView, analysisResult, hasActiveChat, onNavigate, onHighlightClause }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef(null);
@@ -18,8 +18,7 @@ export default function Header({ onNewAnalysis, activeView, analysisResult, onNa
   const navItems = [
     { id: 'overview', label: 'Overview' },
     { id: 'clauses', label: 'Clauses' },
-    { id: 'compare', label: 'Compare' },
-    { id: 'reports', label: 'Reports' },
+    ...(hasActiveChat ? [{ id: 'compare', label: 'Compare' }, { id: 'reports', label: 'Reports' }] : []),
     { id: 'settings', label: 'Settings' },
   ];
 

@@ -17,6 +17,11 @@ export default function EmptyState({ view, onNewAnalysis }) {
             icon: <FileSearch size={48} className="text-[#007AFF]" />,
             title: 'No Report Generated',
             description: 'Once you analyze a document, you can generate and export a professional risk assessment report here.',
+        },
+        compare: {
+            icon: <FileSearch size={48} className="text-[#007AFF]" />,
+            title: 'No Comparisons Yet',
+            description: 'Open a chat analysis first, then compare documents side by side from the Compare view.',
         }
     };
 

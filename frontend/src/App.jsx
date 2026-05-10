@@ -174,7 +174,10 @@ function ClausesWrapper() {
 }
 
 function ReportsWrapper() {
-  const { analysisResult, sourceInfo, calculateScore, analysisJobId, token } = useAppContext();
+  const { analysisResult, sourceInfo, calculateScore, analysisJobId, token, navigate, setSelectedHistoryId } = useAppContext();
+  if (!analysisResult) {
+    return <EmptyState view="reports" onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
+  }
   return (
     <ReportsPage
       analysisResult={analysisResult}
@@ -191,8 +194,12 @@ function CompareWrapper() {
     comparisonData, historyItems, isComparing,
     compareHistory, openCompareHistory, setShowCompareSelector,
     setComparisonData, setCompareDocA, setCompareDocB,
-    setIsChatPopupOpen, calculateScore,
+    setIsChatPopupOpen, calculateScore, analysisResult,
+    navigate, setSelectedHistoryId,
   } = useAppContext();
+  if (!analysisResult) {
+    return <EmptyState view="compare" onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
+  }
   return (
     <ComparePage
       comparisonData={comparisonData}

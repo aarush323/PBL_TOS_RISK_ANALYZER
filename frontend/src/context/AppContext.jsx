@@ -102,9 +102,16 @@ export function AppProvider({ children }) {
     useEffect(() => {
         if (token) {
             loadHistory();
-            loadCompareHistory();
         }
     }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (token && sessionId) {
+            loadCompareHistory(sessionId);
+        } else if (token) {
+            setCompareHistory([]);
+        }
+    }, [token, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Auth ───
 
@@ -221,10 +228,11 @@ export function AppProvider({ children }) {
         }
     };
 
-    const loadCompareHistory = async () => {
+    const loadCompareHistory = async (targetSessionId) => {
         setIsCompareHistoryLoading(true);
         try {
-            const res = await fetch(`${API}/compare/history`, {
+            const query = targetSessionId ? `?session_id=${encodeURIComponent(targetSessionId)}` : '';
+            const res = await fetch(`${API}/compare/history${query}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -490,6 +498,7 @@ export function AppProvider({ children }) {
                 const replyText = (data.reply || '') + "\n\n💡 I've loaded the comparison details. Switch to the Compare view for the full side-by-side analysis!";
                 setChatMessages([...newChat, { role: 'bot', content: replyText, html: parseMarkdown(replyText) }]);
                 addToast('Comparison complete! Check the Compare page for details.');
+                if (sessionId) loadCompareHistory(sessionId);
             } else if (data.comparison_needed) {
                 setChatMessages([...newChat, { role: 'bot', content: data.reply || '', html: parseMarkdown(data.reply || '') }]);
                 if (data.comparison_options) setShowCompareSelector(true);
@@ -533,6 +542,7 @@ export function AppProvider({ children }) {
                 setComparisonData(data.structured);
                 setShowCompareSelector(false);
                 addToast('Comparison complete!');
+                if (sessionId) loadCompareHistory(sessionId);
             } else {
                 addToast(data.detail || 'Comparison failed', true);
             }
