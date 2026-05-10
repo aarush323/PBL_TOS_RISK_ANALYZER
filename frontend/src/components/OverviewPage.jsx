@@ -359,14 +359,14 @@ export default function OverviewPage({
             <div className="w-full md:w-[400px] max-w-full drop-shadow-2xl">
               {renderRadarChart()}
             </div>
-            <div className="flex-1 space-y-4 w-full">
+            <div className="w-full md:w-[45%] md:flex-none space-y-4">
               {['Legal', 'Privacy', 'Security', 'Financial', 'User'].map((label, i) => {
                 const breakdown = breakdownArray.find(b => b.category?.toLowerCase().includes(label.toLowerCase()));
                 const count = breakdown?.count || 0;
                 const pct = riskyClauses > 0 ? (count / riskyClauses) * 100 : 0;
                 const categoryColor = CATEGORY_COLORS[label]?.bg || 'bg-slate-500';
                 return (
-                  <div key={i} className={`p-4 rounded-2xl border transition-all hover:translate-x-2 ${theme === 'light' ? 'bg-gray-50/50 border-gray-100 hover:border-indigo-100' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
+                  <div key={i} className={`w-full px-4 py-4 rounded-2xl border transition-all hover:translate-x-2 ${theme === 'light' ? 'bg-gray-50/50 border-gray-100 hover:border-indigo-100' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <span className={`w-2.5 h-2.5 rounded-full ${categoryColor}`} />
