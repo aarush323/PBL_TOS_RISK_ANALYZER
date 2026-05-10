@@ -409,6 +409,31 @@ body {
   svg {
     max-width: 100% !important;
   }
+
+  /* Report-specific: ensure report sections don't break badly */
+  [data-section-id] {
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Force all report content to be fully visible */
+  .line-clamp-3,
+  .line-clamp-2 {
+    -webkit-line-clamp: unset !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* Expand all collapsible sections for print */
+  [data-section-id] .hidden,
+  [data-section-id] [class*="hidden"] {
+    display: block !important;
+  }
+
+  /* Hide collapse/expand toggles in print */
+  [data-section-id] .cursor-pointer svg {
+    display: none !important;
+  }
 }
 
 @keyframes fade-in {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Scale, LogOut, HelpCircle, User, Plus, Sun, Moon } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Scale, LogOut, HelpCircle, Plus, Sun, Moon } from 'lucide-react';
 import { useTheme } from './ThemeProvider.jsx';
 import { getRiskClass } from '../utils/colorUtils';
 
@@ -8,7 +9,10 @@ export default function Sidebar({
   historyItems, onOpenHistory, isHistoryLoading, selectedHistoryId, onNewAnalysis
 }) {
   const { theme, toggle } = useTheme();
+  const location = useLocation();
 
+  // Determine active state from route path
+  const currentPath = location.pathname.replace('/app', '').replace('/', '') || 'dashboard';
 
   const truncateLabel = (label, maxLen = 20) => {
     if (!label) return 'Untitled';
@@ -52,8 +56,8 @@ export default function Sidebar({
                   key={item.job_id}
                   onClick={() => onOpenHistory(item.job_id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${selectedHistoryId === item.job_id
-                      ? 'bg-[#007AFF]/20 text-white'
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#007AFF]/20 text-white'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
                     }`}
                 >
                   <div className={`w-2 h-2 rounded-full ${getRiskClass(item.overall_risk)}`} />

@@ -152,6 +152,7 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
                 "risk_categories": [],
                 "confidence": "Low",
                 "explanation": None,
+                "severity_score": 0.0,
                 "skipped_llm": True
             })
         else:
@@ -254,5 +255,118 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
         "total_severity_score": round(total_severity, 2),
         "avg_severity_score": round(avg_severity, 2),
         "risk_breakdown": risk_breakdown,
-        "clauses": results
+        "clauses": results,
+        "aggregated_signals": aggregate_signals(results, risky)
+    }
+
+
+def aggregate_signals(results: list[dict], risky: list[dict]) -> dict:
+    confidence_counts = {"High": 0, "Medium": 0, "Low": 0}
+    for r in risky:
+        c = r.get("confidence", "Low")
+        if c in confidence_counts:
+            confidence_counts[c] += 1
+
+    critical_phrases_found = []
+    for r in risky:
+        text_lower = r.get("text", "").lower()
+        for phrase in CRITICAL_PHRASES:
+            if phrase in text_lower:
+                critical_phrases_found.append({
+                    "phrase": phrase,
+                    "clause_id": r.get("id"),
+                    "clause_text": r.get("text", "")[:120]
+                })
+
+    power_lang_count = 0
+    negation_count = 0
+    modal_verb_counts = {}
+    total_modal = 0
+
+    for r in results:
+        nlp = r.get("nlp_features", {})
+        if nlp.get("has_power_language") or nlp.get("triggered_categories"):
+            power_lang_count += 1
+        if nlp.get("has_negation"):
+            negation_count += 1
+        for mv in nlp.get("modal_verbs", []):
+            modal_verb_counts[mv] = modal_verb_counts.get(mv, 0) + 1
+            total_modal += 1
+
+    all_categories = ["Privacy Risk", "Legal Risk", "Security Risk", "Financial Risk", "User Rights Risk"]
+    cross_correlation = {}
+    for r in risky:
+        cats = r.get("risk_categories", [])
+        for i, c1 in enumerate(cats):
+            for c2 in cats[i+1:]:
+                key = tuple(sorted([c1, c2]))
+                cross_correlation[key] = cross_correlation.get(key, 0) + 1
+
+    correlation_matrix = {}
+    for (c1, c2), count in cross_correlation.items():
+        pair_key = f"{c1} + {c2}"
+        correlation_matrix[pair_key] = count
+
+    total_risky = len(results)
+    front_weight = 0
+    back_weight = 0
+    for r in risky:
+        pw = r.get("position_weight", 1.0)
+        if pw >= 1.3:
+            front_weight += 1
+        elif pw <= 0.8:
+            back_weight += 1
+
+    severity_distribution = {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0
+    }
+    for r in risky:
+        sev = r.get("severity_score", 0)
+        if sev >= 7:
+            severity_distribution["critical"] += 1
+        elif sev >= 5:
+            severity_distribution["high"] += 1
+        elif sev >= 3:
+            severity_distribution["medium"] += 1
+        else:
+            severity_distribution["low"] += 1
+
+    risk_concentration = {}
+    if total_risky > 0:
+        risk_concentration["front_loaded_pct"] = round((front_weight / total_risky) * 100, 1) if total_risky else 0
+        risk_concentration["back_loaded_pct"] = round((back_weight / total_risky) * 100, 1) if total_risky else 0
+        if risk_concentration.get("front_loaded_pct", 0) > 50:
+            risk_concentration["verdict"] = "Risks are front-loaded — critical clauses appear early in document"
+        elif risk_concentration.get("back_loaded_pct", 0) > 50:
+            risk_concentration["verdict"] = "Risks are back-loaded — critical clauses appear later in document"
+        else:
+            risk_concentration["verdict"] = "Risks are evenly distributed throughout document"
+
+    top_risky_by_severity = sorted(risky, key=lambda r: r.get("severity_score", 0), reverse=True)[:5]
+    top_5_formatted = []
+    for r in top_risky_by_severity:
+        top_5_formatted.append({
+            "id": r.get("id"),
+            "text": (r.get("text", "") or "")[:150],
+            "categories": r.get("risk_categories", []),
+            "severity_score": r.get("severity_score", 0),
+            "explanation": r.get("explanation", "")
+        })
+
+    return {
+        "confidence_distribution": confidence_counts,
+        "critical_phrases_found": critical_phrases_found[:20],
+        "nlp_aggregates": {
+            "power_language_count": power_lang_count,
+            "negation_count": negation_count,
+            "modal_verb_total": total_modal,
+            "modal_verb_breakdown": modal_verb_counts
+        },
+        "category_cross_correlation": correlation_matrix,
+        "risk_concentration": risk_concentration,
+        "severity_distribution": severity_distribution,
+        "top_5_clauses": top_5_formatted
     }

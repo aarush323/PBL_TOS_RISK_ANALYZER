@@ -1,0 +1,24 @@
+import React from 'react';
+
+export function GridBackground() {
+    return (
+        <div
+            className="fixed inset-0 pointer-events-none"
+            style={{
+                background: "radial-gradient(circle at center, #1E40AF, #000000)",
+                zIndex: 0,
+            }}
+        >
+            <div
+                className="absolute inset-0"
+                style={{
+                    backgroundImage: `
+            linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)
+          `,
+                    backgroundSize: "20px 20px",
+                }}
+            />
+        </div>
+    )
+}

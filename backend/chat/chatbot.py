@@ -46,71 +46,69 @@ async def chat_with_document_rag(
 
     cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
 
-    if cerebras_api_key:
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        if cerebras_api_key:
+            try:
+                logger.info("RAG Chat request via Cerebras...")
+                response = await client.post(
+                    CEREBRAS_API_URL,
+                    headers={
+                        "Authorization": f"Bearer {cerebras_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": CEREBRAS_MODEL,
+                        "messages": messages,
+                        "temperature": 0.3,
+                        "max_completion_tokens": 800,
+                    },
+                )
+                response.raise_for_status()
+                reply = response.json()["choices"][0]["message"]["content"]
+                logger.info(f"Cerebras RAG response received ({len(reply)} chars)")
+                return reply.strip()
+            except Exception as e:
+                logger.warning(f"Cerebras RAG error: {e}. Falling back to Groq...")
+
+        groq_api_key = os.environ.get("GROQ_API_KEY")
+        if groq_api_key:
+            try:
+                logger.info("RAG Chat request via Groq...")
+                response = await client.post(
+                    GROQ_API_URL,
+                    headers={"Authorization": f"Bearer {groq_api_key}"},
+                    json={
+                        "model": GROQ_MODEL,
+                        "messages": messages,
+                        "temperature": 0.3,
+                        "max_completion_tokens": 800,
+                    },
+                )
+                response.raise_for_status()
+                reply = response.json()["choices"][0]["message"]["content"]
+                logger.info(f"Groq RAG response received ({len(reply)} chars)")
+                return reply.strip()
+            except Exception as e:
+                logger.warning(f"Groq RAG error: {e}. Falling back to Ollama...")
+
         try:
-            logger.info("RAG Chat request via Cerebras...")
-            response = httpx.post(
-                CEREBRAS_API_URL,
-                headers={
-                    "Authorization": f"Bearer {cerebras_api_key}",
-                    "Content-Type": "application/json",
-                },
+            logger.info("RAG Chat request via Ollama...")
+            response = await client.post(
+                OLLAMA_URL,
                 json={
-                    "model": CEREBRAS_MODEL,
+                    "model": OLLAMA_MODEL,
                     "messages": messages,
-                    "temperature": 0.3,
-                    "max_completion_tokens": 800,
+                    "stream": False,
+                    "options": {"temperature": 0.3, "num_predict": 800},
                 },
-                timeout=120.0,
             )
             response.raise_for_status()
-            reply = response.json()["choices"][0]["message"]["content"]
-            logger.info(f"Cerebras RAG response received ({len(reply)} chars)")
+            reply = response.json()["message"]["content"]
+            logger.info(f"Ollama RAG response received ({len(reply)} chars)")
             return reply.strip()
         except Exception as e:
-            logger.warning(f"Cerebras RAG error: {e}. Falling back to Groq...")
-
-    groq_api_key = os.environ.get("GROQ_API_KEY")
-    if groq_api_key:
-        try:
-            logger.info("RAG Chat request via Groq...")
-            response = httpx.post(
-                GROQ_API_URL,
-                headers={"Authorization": f"Bearer {groq_api_key}"},
-                json={
-                    "model": GROQ_MODEL,
-                    "messages": messages,
-                    "temperature": 0.3,
-                    "max_completion_tokens": 800,
-                },
-                timeout=120.0,
-            )
-            response.raise_for_status()
-            reply = response.json()["choices"][0]["message"]["content"]
-            logger.info(f"Groq RAG response received ({len(reply)} chars)")
-            return reply.strip()
-        except Exception as e:
-            logger.warning(f"Groq RAG error: {e}. Falling back to Ollama...")
-
-    try:
-        logger.info("RAG Chat request via Ollama...")
-        response = httpx.post(
-            OLLAMA_URL,
-            json={
-                "model": OLLAMA_MODEL,
-                "messages": messages,
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 800},
-            },
-            timeout=120.0,
-        )
-        response.raise_for_status()
-        reply = response.json()["message"]["content"]
-        logger.info(f"Ollama RAG response received ({len(reply)} chars)")
-        return reply.strip()
-    except Exception as e:
-        logger.error(f"Ollama RAG error: {e}")
-        raise RuntimeError(f"Both LLM providers failed. Last error: {e}")
+            logger.error(f"Ollama RAG error: {e}")
+            raise RuntimeError(f"Both LLM providers failed. Last error: {e}")
 
 
 async def chat_comparison(
@@ -144,71 +142,69 @@ async def chat_comparison(
 
     cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
 
-    if cerebras_api_key:
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        if cerebras_api_key:
+            try:
+                logger.info("Comparison chat request via Cerebras...")
+                response = await client.post(
+                    CEREBRAS_API_URL,
+                    headers={
+                        "Authorization": f"Bearer {cerebras_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": CEREBRAS_MODEL,
+                        "messages": messages,
+                        "temperature": 0.3,
+                        "max_completion_tokens": 1000,
+                    },
+                )
+                response.raise_for_status()
+                reply = response.json()["choices"][0]["message"]["content"]
+                logger.info(f"Cerebras comparison response received ({len(reply)} chars)")
+                return reply.strip()
+            except Exception as e:
+                logger.warning(f"Cerebras comparison error: {e}. Falling back to Groq...")
+
+        groq_api_key = os.environ.get("GROQ_API_KEY")
+        if groq_api_key:
+            try:
+                logger.info("Comparison chat request via Groq...")
+                response = await client.post(
+                    GROQ_API_URL,
+                    headers={"Authorization": f"Bearer {groq_api_key}"},
+                    json={
+                        "model": GROQ_MODEL,
+                        "messages": messages,
+                        "temperature": 0.3,
+                        "max_completion_tokens": 1000,
+                    },
+                )
+                response.raise_for_status()
+                reply = response.json()["choices"][0]["message"]["content"]
+                logger.info(f"Groq comparison response received ({len(reply)} chars)")
+                return reply.strip()
+            except Exception as e:
+                logger.warning(f"Groq comparison error: {e}. Falling back to Ollama...")
+
         try:
-            logger.info("Comparison chat request via Cerebras...")
-            response = httpx.post(
-                CEREBRAS_API_URL,
-                headers={
-                    "Authorization": f"Bearer {cerebras_api_key}",
-                    "Content-Type": "application/json",
-                },
+            logger.info("Comparison chat request via Ollama...")
+            response = await client.post(
+                OLLAMA_URL,
                 json={
-                    "model": CEREBRAS_MODEL,
+                    "model": OLLAMA_MODEL,
                     "messages": messages,
-                    "temperature": 0.3,
-                    "max_completion_tokens": 1000,
+                    "stream": False,
+                    "options": {"temperature": 0.3, "num_predict": 1000},
                 },
-                timeout=120.0,
             )
             response.raise_for_status()
-            reply = response.json()["choices"][0]["message"]["content"]
-            logger.info(f"Cerebras comparison response received ({len(reply)} chars)")
+            reply = response.json()["message"]["content"]
+            logger.info(f"Ollama comparison response received ({len(reply)} chars)")
             return reply.strip()
         except Exception as e:
-            logger.warning(f"Cerebras comparison error: {e}. Falling back to Groq...")
-
-    groq_api_key = os.environ.get("GROQ_API_KEY")
-    if groq_api_key:
-        try:
-            logger.info("Comparison chat request via Groq...")
-            response = httpx.post(
-                GROQ_API_URL,
-                headers={"Authorization": f"Bearer {groq_api_key}"},
-                json={
-                    "model": GROQ_MODEL,
-                    "messages": messages,
-                    "temperature": 0.3,
-                    "max_completion_tokens": 1000,
-                },
-                timeout=120.0,
-            )
-            response.raise_for_status()
-            reply = response.json()["choices"][0]["message"]["content"]
-            logger.info(f"Groq comparison response received ({len(reply)} chars)")
-            return reply.strip()
-        except Exception as e:
-            logger.warning(f"Groq comparison error: {e}. Falling back to Ollama...")
-
-    try:
-        logger.info("Comparison chat request via Ollama...")
-        response = httpx.post(
-            OLLAMA_URL,
-            json={
-                "model": OLLAMA_MODEL,
-                "messages": messages,
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 1000},
-            },
-            timeout=120.0,
-        )
-        response.raise_for_status()
-        reply = response.json()["message"]["content"]
-        logger.info(f"Ollama comparison response received ({len(reply)} chars)")
-        return reply.strip()
-    except Exception as e:
-        logger.error(f"Ollama comparison error: {e}")
-        raise RuntimeError(f"Both LLM providers failed. Last error: {e}")
+            logger.error(f"Ollama comparison error: {e}")
+            raise RuntimeError(f"Both LLM providers failed. Last error: {e}")
 
 
 def truncate_document(text: str) -> str:
@@ -218,10 +214,9 @@ def truncate_document(text: str) -> str:
     return text[:MAX_CONTEXT_CHARS] + "\n\n... [Document truncated for context length]"
 
 
-def chat_with_document(document_text: str, conversation: list[dict]) -> str:
+async def chat_with_document(document_text: str, conversation: list[dict]) -> str:
     """
-    Legacy sync method for backward compatibility.
-    Sends a chat request to the LLM with the document as context.
+    Send a chat request to the LLM with the document as context.
 
     Args:
         document_text: The full extracted text of the ToS document
@@ -253,68 +248,66 @@ DOCUMENT:
 
     cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
 
-    if cerebras_api_key:
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        if cerebras_api_key:
+            try:
+                logger.info("Chat request via Cerebras...")
+                response = await client.post(
+                    CEREBRAS_API_URL,
+                    headers={
+                        "Authorization": f"Bearer {cerebras_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": CEREBRAS_MODEL,
+                        "messages": messages,
+                        "temperature": 0.3,
+                        "max_completion_tokens": 800,
+                    },
+                )
+                response.raise_for_status()
+                reply = response.json()["choices"][0]["message"]["content"]
+                logger.info(f"Cerebras chat response received ({len(reply)} chars)")
+                return reply.strip()
+            except Exception as e:
+                logger.warning(f"Cerebras chat error: {e}. Falling back to Groq...")
+
+        groq_api_key = os.environ.get("GROQ_API_KEY")
+        if groq_api_key:
+            try:
+                logger.info("Chat request via Groq...")
+                response = await client.post(
+                    GROQ_API_URL,
+                    headers={"Authorization": f"Bearer {groq_api_key}"},
+                    json={
+                        "model": GROQ_MODEL,
+                        "messages": messages,
+                        "temperature": 0.3,
+                        "max_completion_tokens": 800,
+                    },
+                )
+                response.raise_for_status()
+                reply = response.json()["choices"][0]["message"]["content"]
+                logger.info(f"Groq chat response received ({len(reply)} chars)")
+                return reply.strip()
+            except Exception as e:
+                logger.warning(f"Groq chat error: {e}. Falling back to Ollama...")
+
         try:
-            logger.info("Chat request via Cerebras...")
-            response = httpx.post(
-                CEREBRAS_API_URL,
-                headers={
-                    "Authorization": f"Bearer {cerebras_api_key}",
-                    "Content-Type": "application/json",
-                },
+            logger.info("Chat request via Ollama...")
+            response = await client.post(
+                OLLAMA_URL,
                 json={
-                    "model": CEREBRAS_MODEL,
+                    "model": OLLAMA_MODEL,
                     "messages": messages,
-                    "temperature": 0.3,
-                    "max_completion_tokens": 800,
+                    "stream": False,
+                    "options": {"temperature": 0.3, "num_predict": 800},
                 },
-                timeout=120.0,
             )
             response.raise_for_status()
-            reply = response.json()["choices"][0]["message"]["content"]
-            logger.info(f"Cerebras chat response received ({len(reply)} chars)")
+            reply = response.json()["message"]["content"]
+            logger.info(f"Ollama chat response received ({len(reply)} chars)")
             return reply.strip()
         except Exception as e:
-            logger.warning(f"Cerebras chat error: {e}. Falling back to Groq...")
-
-    groq_api_key = os.environ.get("GROQ_API_KEY")
-    if groq_api_key:
-        try:
-            logger.info("Chat request via Groq...")
-            response = httpx.post(
-                GROQ_API_URL,
-                headers={"Authorization": f"Bearer {groq_api_key}"},
-                json={
-                    "model": GROQ_MODEL,
-                    "messages": messages,
-                    "temperature": 0.3,
-                    "max_completion_tokens": 800,
-                },
-                timeout=120.0,
-            )
-            response.raise_for_status()
-            reply = response.json()["choices"][0]["message"]["content"]
-            logger.info(f"Groq chat response received ({len(reply)} chars)")
-            return reply.strip()
-        except Exception as e:
-            logger.warning(f"Groq chat error: {e}. Falling back to Ollama...")
-
-    try:
-        logger.info("Chat request via Ollama...")
-        response = httpx.post(
-            OLLAMA_URL,
-            json={
-                "model": OLLAMA_MODEL,
-                "messages": messages,
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 800},
-            },
-            timeout=120.0,
-        )
-        response.raise_for_status()
-        reply = response.json()["message"]["content"]
-        logger.info(f"Ollama chat response received ({len(reply)} chars)")
-        return reply.strip()
-    except Exception as e:
-        logger.error(f"Ollama chat error: {e}")
-        raise RuntimeError(f"Both LLM providers failed. Last error: {e}")
+            logger.error(f"Ollama chat error: {e}")
+            raise RuntimeError(f"Both LLM providers failed. Last error: {e}")

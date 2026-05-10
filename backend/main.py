@@ -28,6 +28,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from extraction.input_handler import handle_input
 from analysis.analyzer import analyze_document
+from analysis.summary_generator import generate_executive_summary
+from analysis.report_generator import generate_full_report
 from analysis.cancellation import cancel_job, clear_job
 from chat.chatbot import chat_with_document, chat_with_document_rag, chat_comparison
 from chat.indexer import index_document, get_index_status, reindex_document
@@ -359,7 +361,8 @@ def extract_text(body: AnalyzeInput):
 def extract_pdf(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
-    temp_path = f"/tmp/{file.filename}"
+    safe_name = f"{uuid.uuid4()}_{file.filename}"
+    temp_path = f"/tmp/{safe_name}"
     try:
         with open(temp_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
@@ -378,6 +381,16 @@ async def _run_analysis_background(job_id: str, extraction: dict):
     async with AsyncSessionLocal() as db:
         try:
             result = await asyncio.to_thread(analyze_document, extraction, job_id)
+            summary = await asyncio.to_thread(generate_executive_summary, result)
+            result["professional_summary"] = summary.get("professional_summary", "")
+            result["executive_summary"] = summary.get("executive_summary", "")
+            result["key_findings"] = summary.get("key_findings", [])
+            result["risk_verdict"] = summary.get("risk_verdict", result.get("overall_risk", "Low"))
+            result["confidence_level"] = summary.get("confidence_level", "Medium")
+            result["action_required"] = summary.get("action_required", False)
+            result["top_concern"] = summary.get("top_concern", "")
+            result["recommendation"] = summary.get("recommendation", "")
+            result["safety_score"] = _calc_score_from_result(result)
             await crud.update_analysis_complete(db, job_id, result)
             logger.info(f"Job {job_id} complete, saved to DB.")
         except Exception as e:
@@ -483,6 +496,26 @@ async def analyze_status(job_id: str, db: AsyncSession = Depends(get_db)):
     return {"status": "processing"}
 
 
+@app.get("/analyze/summary/{job_id}")
+async def get_analysis_summary(job_id: str, db: AsyncSession = Depends(get_db)):
+    job = await crud.get_analysis_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status.value != "complete":
+        raise HTTPException(status_code=400, detail="Analysis not yet complete")
+    result = job.result or {}
+    return {
+        "professional_summary": result.get("professional_summary", ""),
+        "executive_summary": result.get("executive_summary", ""),
+        "key_findings": result.get("key_findings", []),
+        "risk_verdict": result.get("risk_verdict", result.get("overall_risk", "Low")),
+        "confidence_level": result.get("confidence_level", "Medium"),
+        "action_required": result.get("action_required", False),
+        "top_concern": result.get("top_concern", ""),
+        "recommendation": result.get("recommendation", ""),
+    }
+
+
 @app.post("/analyze/stop/{job_id}")
 async def stop_analysis(job_id: str, db: AsyncSession = Depends(get_db)):
     cancel_job(job_id)
@@ -550,6 +583,13 @@ async def store_document(
     user_id = current_user.id if current_user else None
     existing = await crud.get_chat_session(db, session_id)
     if existing:
+        if existing.is_indexed and len(existing.document_text or '') >= len(document_text):
+            return {
+                "status": "already_indexed",
+                "session_id": session_id,
+                "char_count": len(existing.document_text),
+                "indexing": "skipped",
+            }
         existing.document_text = document_text
         existing.is_indexed = False
         await db.commit()
@@ -561,6 +601,50 @@ async def store_document(
     return {
         "status": "stored",
         "session_id": session_id,
+        "char_count": len(document_text),
+        "indexing": "started",
+    }
+
+
+@app.post("/chat/restore/{job_id}")
+async def restore_chat_session(
+    job_id: str,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """Restore a chat session from a completed analysis by reconstructing document text from clauses."""
+    job = await crud.get_analysis_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    if job.status.value != "complete":
+        raise HTTPException(status_code=400, detail="Analysis not yet complete")
+
+    result = job.result or {}
+    clauses = result.get("clauses", [])
+    document_text = " ".join(c.get("text", "") for c in clauses if c.get("text"))
+    if not document_text.strip():
+        document_text = result.get("source", job.source or "Loaded from saved analysis.")
+
+    user_id = current_user.id if current_user else None
+    existing = await crud.get_chat_session(db, job_id)
+    if existing:
+        if existing.is_indexed:
+            return {
+                "status": "restored",
+                "session_id": job_id,
+                "indexing": "already_indexed",
+            }
+        existing.document_text = document_text
+        await db.commit()
+    else:
+        await crud.create_chat_session(db, job_id, document_text, user_id=user_id)
+
+    background_tasks.add_task(_index_document_background, job_id, document_text)
+
+    return {
+        "status": "restored",
+        "session_id": job_id,
         "char_count": len(document_text),
         "indexing": "started",
     }
@@ -719,9 +803,7 @@ async def chat(
                 body.message, session.document_text, conversation, clauses
             )
         else:
-            reply = await asyncio.to_thread(
-                chat_with_document, session.document_text, conversation
-            )
+            reply = await chat_with_document(session.document_text, conversation)
         logger.info(f"[CHAT] Response generated via {'RAG' if use_rag else 'full-doc'} ({len(reply)} chars)")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
@@ -750,6 +832,7 @@ async def _handle_comparison(
     if not session_a or not session_b:
         return {
             "reply": "One of the comparison documents is not available.",
+            "session_id": body.session_id,
             "comparison_needed": True,
         }
 
@@ -818,7 +901,7 @@ async def _handle_comparison(
         }
     except Exception as e:
         logger.error(f"Comparison failed: {e}")
-        return {"reply": f"Comparison failed: {str(e)}", "comparison_needed": True}
+        return {"reply": f"Comparison failed: {str(e)}", "session_id": body.session_id, "comparison_needed": True}
 
 
 def _build_comparison_structured(
@@ -1137,3 +1220,52 @@ async def get_compare(
     if not compare:
         raise HTTPException(status_code=404, detail="Comparison not found")
     return {"result": compare.result}
+
+
+@app.post("/report/generate/{job_id}")
+async def generate_report(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """Generate a comprehensive report for a completed analysis."""
+    job = await crud.get_analysis_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status.value != "complete":
+        raise HTTPException(status_code=400, detail="Analysis not yet complete")
+
+    if job.result and job.result.get("_report_cache"):
+        logger.info(f"Returning cached report for job {job_id}")
+        return {"status": "complete", "report": job.result["_report_cache"]}
+
+    try:
+        source_info = {
+            "value": job.source or "Unknown",
+            "type": job.source_type or "text",
+        }
+        report = await asyncio.to_thread(generate_full_report, job.result or {}, source_info)
+
+        if job.result:
+            job.result["_report_cache"] = report
+            await db.commit()
+
+        return {"status": "complete", "report": report}
+    except Exception as e:
+        logger.error(f"Report generation failed for job {job_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
+
+
+@app.get("/report/{job_id}")
+async def get_report(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """Return a previously generated report, or 404 if not yet generated."""
+    job = await crud.get_analysis_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not job.result or not job.result.get("_report_cache"):
+        raise HTTPException(status_code=404, detail="Report not yet generated. POST /report/generate/{job_id} first.")
+    return {"status": "complete", "report": job.result["_report_cache"]}

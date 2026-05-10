@@ -22,8 +22,6 @@ export default function OverviewPage({
   calculateScore,
   onNavigate,
   historyItems,
-  narrativeVerdict,
-  isVerdictLoading
 }) {
   const { theme } = useTheme();
   const score = typeof calculateScore === 'function' ? calculateScore() : 0;
@@ -253,48 +251,62 @@ export default function OverviewPage({
                   </div>
                 </div>
                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest border shadow-sm ${theme === 'light' ? 'bg-white border-indigo-100 text-indigo-600' : 'bg-white/5 border-white/10 text-white/60'}`}>
-                  CONFIDENCE: HIGH
+                  CONFIDENCE: {analysisResult?.confidence_level || 'HIGH'}
                 </div>
               </div>
 
-              {isVerdictLoading ? (
-                <div className="flex items-center gap-4 py-8">
-                  <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-                  <p className={`text-lg font-medium animate-pulse ${subTextClass}`}>Synthesizing risk profile...</p>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <p className={`text-xl font-medium leading-relaxed italic tracking-tight font-serif ${theme === 'light' ? 'text-gray-800' : 'text-indigo-50/90'}`}>
+                  "{analysisResult?.professional_summary || analysisResult?.executive_summary || "The initial analysis is complete. Detailed review of the flagged clauses is recommended to understand specific legal implications."}"
+                </p>
+              </motion.div>
+
+              {(analysisResult?.key_findings || []).length > 0 && (
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {analysisResult.key_findings.slice(0, 5).map((finding, i) => {
+                    const sevColor = finding.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                      finding.severity === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                      finding.severity === 'medium' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                      'bg-green-500/20 text-green-400 border-green-500/30';
+                    return (
+                      <span key={i} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${sevColor}`}>
+                        {finding.category}: {finding.severity}
+                      </span>
+                    );
+                  })}
                 </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4"
-                >
-                  <p className={`text-xl font-medium leading-relaxed italic tracking-tight font-serif ${theme === 'light' ? 'text-gray-800' : 'text-indigo-50/90'}`}>
-                    "{narrativeVerdict || "The initial analysis is complete. Detailed review of the flagged clauses is recommended to understand specific legal implications."}"
-                  </p>
-                </motion.div>
+              )}
+
+              {analysisResult?.top_concern && (
+                <div className={`mt-4 p-3 rounded-xl border ${theme === 'light' ? 'bg-red-50 border-red-100' : 'bg-red-500/10 border-red-500/20'}`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>Top Concern</p>
+                  <p className={`text-sm font-medium mt-1 ${theme === 'light' ? 'text-red-900' : 'text-red-300'}`}>{analysisResult.top_concern}</p>
+                </div>
               )}
             </div>
 
-            {!isVerdictLoading && (
-              <div className="mt-8 pt-6 border-t border-indigo-500/10 flex items-center justify-between whitespace-nowrap">
-                <div className="flex gap-6">
-                  <div>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Critical Risks</p>
-                    <p className="text-xl font-black text-red-500">{totalRisky}</p>
-                  </div>
-                  <div className="w-px h-10 bg-indigo-500/10" />
-                  <div>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Compliance Score</p>
-                    <p className="text-xl font-black text-emerald-500">{score}%</p>
-                  </div>
+            <div className="mt-8 pt-6 border-t border-indigo-500/10 flex items-center justify-between whitespace-nowrap">
+              <div className="flex gap-6">
+                <div>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Critical Risks</p>
+                  <p className="text-xl font-black text-red-500">{totalRisky}</p>
                 </div>
-                <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full border-2 border-indigo-500 bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-700 z-30">AI</div>
-                  <div className="w-8 h-8 rounded-full border-2 border-purple-500 bg-purple-100 flex items-center justify-center text-[10px] font-bold text-purple-700 z-20">LGL</div>
-                  <div className="w-8 h-8 rounded-full border-2 border-pink-500 bg-pink-100 flex items-center justify-center text-[10px] font-bold text-pink-700 z-10">RISK</div>
+                <div className="w-px h-10 bg-indigo-500/10" />
+                <div>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Compliance Score</p>
+                  <p className="text-xl font-black text-emerald-500">{score}%</p>
                 </div>
               </div>
-            )}
+              <div className="flex -space-x-2">
+                <div className="w-8 h-8 rounded-full border-2 border-indigo-500 bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-700 z-30">AI</div>
+                <div className="w-8 h-8 rounded-full border-2 border-purple-500 bg-purple-100 flex items-center justify-center text-[10px] font-bold text-purple-700 z-20">LGL</div>
+                <div className="w-8 h-8 rounded-full border-2 border-pink-500 bg-pink-100 flex items-center justify-center text-[10px] font-bold text-pink-700 z-10">RISK</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -514,7 +526,7 @@ export default function OverviewPage({
             <div>
               <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Executive Summary</h3>
               <p className={`text-lg font-medium leading-relaxed italic font-serif ${theme === 'light' ? 'text-gray-800' : 'text-white/90'}`}>
-                "{narrativeVerdict || "Analysis complete. System identifies specific categorical risks across your document's primary vectors."}"
+                "{analysisResult?.executive_summary || analysisResult?.professional_summary || "Analysis complete. System identifies specific categorical risks across your document's primary vectors."}"
               </p>
             </div>
 
