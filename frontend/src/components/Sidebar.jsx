@@ -112,7 +112,6 @@ export default function Sidebar({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{user?.username || user?.email || 'User'}</p>
-            <p className="text-xs text-white/50">Enterprise Plan</p>
           </div>
         </div>
       </div>

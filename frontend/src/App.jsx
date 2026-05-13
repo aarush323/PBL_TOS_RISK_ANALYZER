@@ -262,6 +262,7 @@ function SettingsWrapper() {
 
 function AuthPage() {
   const { token, isAuthLoading, authMode, setAuthMode, handleAuth, toasts, navigate } = useAppContext();
+  const isLoginMode = authMode === 'login';
 
   // If already logged in, redirect to app
   if (token) {
@@ -278,39 +279,39 @@ function AuthPage() {
               <span className="brand-title">Jurist AI</span>
             </div>
           </div>
-          <h2>{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-          <p>{authMode === 'login' ? 'Enter your credentials to access Jurist AI' : 'Join the elite legal AI platform'}</p>
+          <h2>{isLoginMode ? 'Welcome Back' : 'Create Account'}</h2>
+          <p>{isLoginMode ? 'Enter your credentials to access Jurist AI' : 'Join the elite legal AI platform'}</p>
         </div>
 
-        <form className="auth-form" onSubmit={handleAuth}>
-          {authMode === 'signup' && (
+        <form key={authMode} className="auth-form" onSubmit={handleAuth} autoComplete="on">
+          {!isLoginMode && (
             <div className="auth-field">
               <label>Username</label>
-              <input type="text" name="username" className="auth-input" placeholder="choose-a-username" required minLength={3} maxLength={30} />
+              <input type="text" name="username" className="auth-input" placeholder="choose-a-username" autoComplete="username" required minLength={3} maxLength={30} />
             </div>
           )}
           <div className="auth-field">
             <label>Email Address</label>
-            <input type="email" name="email" className="auth-input" placeholder="name@company.com" required />
+            <input type="email" name="email" className="auth-input" placeholder="name@company.com" autoComplete={isLoginMode ? 'username' : 'email'} required />
           </div>
           <div className="auth-field">
             <label>Password</label>
-            <input type="password" name="password" className="auth-input" placeholder="••••••••" required />
+            <input type="password" name="password" className="auth-input" placeholder="••••••••" autoComplete={isLoginMode ? 'current-password' : 'new-password'} required />
           </div>
-          {authMode === 'signup' && (
+          {!isLoginMode && (
             <div className="auth-field">
               <label>Confirm Password</label>
-              <input type="password" name="confirmPassword" className="auth-input" placeholder="••••••••" required />
+              <input type="password" name="confirmPassword" className="auth-input" placeholder="••••••••" autoComplete="new-password" required />
             </div>
           )}
           <button className="auth-btn" type="submit" disabled={isAuthLoading}>
-            {isAuthLoading ? 'Authenticating...' : (authMode === 'login' ? 'Sign In' : 'Register')}
+            {isAuthLoading ? 'Authenticating...' : (isLoginMode ? 'Sign In' : 'Register')}
           </button>
         </form>
         <div className="auth-toggle">
-          {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
-          <span onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}>
-            {authMode === 'login' ? 'Create one' : 'Sign in'}
+          {isLoginMode ? "Don't have an account? " : "Already have an account? "}
+          <span onClick={() => setAuthMode(isLoginMode ? 'signup' : 'login')}>
+            {isLoginMode ? 'Create one' : 'Sign in'}
           </span>
         </div>
       </div>

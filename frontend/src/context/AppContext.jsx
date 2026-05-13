@@ -133,6 +133,7 @@ export function AppProvider({ children }) {
 
     const handleAuth = async (e) => {
         e.preventDefault();
+        const form = e.currentTarget;
         const username = e.target.username?.value?.trim();
         const email = e.target.email.value;
         const password = e.target.password.value;
@@ -160,6 +161,7 @@ export function AppProvider({ children }) {
                 if (res.ok) {
                     localStorage.setItem('tos_token', data.access_token);
                     setToken(data.access_token);
+                    form.reset();
                     addToast('Logged in successfully');
                     navigate('/app');
                 } else {
@@ -173,6 +175,7 @@ export function AppProvider({ children }) {
                 });
                 const data = await res.json();
                 if (res.ok) {
+                    form.reset();
                     addToast('Registration successful!');
                     setAuthMode('login');
                 } else {
