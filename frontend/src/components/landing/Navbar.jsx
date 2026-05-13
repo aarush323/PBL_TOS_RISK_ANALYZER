@@ -15,7 +15,6 @@ export default function Navbar({ onGetStarted }) {
     }, []);
 
     const navLinks = [
-        { label: 'Features', href: '#features' },
         { label: 'How It Works', href: '#technical' },
     ];
 

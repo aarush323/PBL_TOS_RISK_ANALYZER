@@ -51,10 +51,10 @@ export default function FeaturesGrid() {
                 <div className="text-center mb-20">
                     <p className="text-[#007AFF] text-xs font-bold uppercase tracking-[0.3em] mb-4">Architecture</p>
                     <h2 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-5">
-                        How the app works.
+                        Features.
                     </h2>
                     <p className="text-zinc-500 text-lg max-w-xl mx-auto">
-                        These are the main parts of the current pipeline.
+                        The main capabilities in the current build.
                     </p>
                 </div>
 
