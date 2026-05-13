@@ -32,6 +32,23 @@ const SECTION_LABELS = [
   { id: 'appendix', label: 'Appendix', icon: List },
 ];
 
+function renderValue(value) {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.map(renderValue).filter(Boolean).join(', ');
+  if (typeof value === 'object') {
+    return (
+      value.finding ||
+      value.issue ||
+      value.top_concern ||
+      value.text ||
+      value.category ||
+      JSON.stringify(value)
+    );
+  }
+  return String(value);
+}
+
 export default function ReportsPage({ analysisResult, sourceInfo, calculateScore, onNewAnalysis, analysisJobId, token }) {
   const { theme } = useTheme();
   const [copied, setCopied] = React.useState(false);
@@ -262,7 +279,12 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
     }
     if (report?.key_findings?.length) {
       text += `KEY FINDINGS:\n`;
-      report.key_findings.forEach(f => { text += `- [${f.severity?.toUpperCase()}] ${f.category}: ${f.finding}\n`; });
+      report.key_findings.forEach(f => {
+        const severityText = renderValue(f?.severity).toUpperCase();
+        const categoryText = renderValue(f?.category);
+        const findingText = renderValue(f?.finding || f?.issue);
+        text += `- [${severityText}] ${categoryText}: ${findingText}\n`;
+      });
       text += '\n';
     }
     if (report?.critical_clauses?.length) {
@@ -471,25 +493,28 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                   <div className="space-y-3">
                     {(report.key_findings || analysisResult?.key_findings || []).length > 0 ? (
                       (report.key_findings || analysisResult?.key_findings || []).map((f, i) => {
-                        const sevColor = f.severity === 'critical' ? 'border-red-500 bg-red-500/10' :
-                          f.severity === 'high' ? 'border-orange-500 bg-orange-500/10' :
-                            f.severity === 'medium' ? 'border-amber-500 bg-amber-500/10' :
+                        const severity = renderValue(f?.severity).toLowerCase();
+                        const category = renderValue(f?.category);
+                        const findingText = renderValue(f?.finding || f?.issue);
+                        const sevColor = severity === 'critical' ? 'border-red-500 bg-red-500/10' :
+                          severity === 'high' ? 'border-orange-500 bg-orange-500/10' :
+                            severity === 'medium' ? 'border-amber-500 bg-amber-500/10' :
                               'border-green-500 bg-green-500/10';
-                        const sevLabel = f.severity === 'critical' ? 'CRITICAL' :
-                          f.severity === 'high' ? 'HIGH' :
-                            f.severity === 'medium' ? 'MEDIUM' : 'LOW';
+                        const sevLabel = severity === 'critical' ? 'CRITICAL' :
+                          severity === 'high' ? 'HIGH' :
+                            severity === 'medium' ? 'MEDIUM' : 'LOW';
                         return (
                           <div key={i} className={`flex items-start gap-4 p-4 rounded-xl border-l-4 ${sevColor} ${theme === 'light' ? 'bg-opacity-50' : ''}`}>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-xs font-black uppercase tracking-widest ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{f.category}</span>
-                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${f.severity === 'critical' ? 'bg-red-500/20 text-red-500' :
-                                    f.severity === 'high' ? 'bg-orange-500/20 text-orange-500' :
-                                      f.severity === 'medium' ? 'bg-amber-500/20 text-amber-500' :
+                                <span className={`text-xs font-black uppercase tracking-widest ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{category}</span>
+                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${severity === 'critical' ? 'bg-red-500/20 text-red-500' :
+                                    severity === 'high' ? 'bg-orange-500/20 text-orange-500' :
+                                      severity === 'medium' ? 'bg-amber-500/20 text-amber-500' :
                                         'bg-green-500/20 text-green-500'
                                   }`}>{sevLabel}</span>
                               </div>
-                              <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-white/60'}`}>{f.finding}</p>
+                              <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-white/60'}`}>{findingText}</p>
                             </div>
                           </div>
                         );

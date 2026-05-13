@@ -16,6 +16,23 @@ const CATEGORY_COLORS = {
   'User': { color: '#f59e0b', bg: 'bg-amber-500' }
 };
 
+function renderValue(value) {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.map(renderValue).filter(Boolean).join(', ');
+  if (typeof value === 'object') {
+    return (
+      value.finding ||
+      value.issue ||
+      value.top_concern ||
+      value.text ||
+      value.category ||
+      JSON.stringify(value)
+    );
+  }
+  return String(value);
+}
+
 export default function OverviewPage({
   analysisResult,
   sourceInfo,
@@ -268,13 +285,15 @@ export default function OverviewPage({
               {(analysisResult?.key_findings || []).length > 0 && (
                 <div className="mt-6 flex flex-wrap gap-2">
                   {analysisResult.key_findings.slice(0, 5).map((finding, i) => {
+                    const findingCategory = renderValue(finding?.category);
+                    const findingSeverity = renderValue(finding?.severity);
                     const sevColor = finding.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
                       finding.severity === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
                       finding.severity === 'medium' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
                       'bg-green-500/20 text-green-400 border-green-500/30';
                     return (
                       <span key={i} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${sevColor}`}>
-                        {finding.category}: {finding.severity}
+                        {findingCategory}: {findingSeverity}
                       </span>
                     );
                   })}
@@ -284,7 +303,7 @@ export default function OverviewPage({
               {analysisResult?.top_concern && (
                 <div className={`mt-4 p-3 rounded-xl border ${theme === 'light' ? 'bg-red-50 border-red-100' : 'bg-red-500/10 border-red-500/20'}`}>
                   <p className={`text-[10px] font-black uppercase tracking-widest ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>Top Concern</p>
-                  <p className={`text-sm font-medium mt-1 ${theme === 'light' ? 'text-red-900' : 'text-red-300'}`}>{analysisResult.top_concern}</p>
+                  <p className={`text-sm font-medium mt-1 ${theme === 'light' ? 'text-red-900' : 'text-red-300'}`}>{renderValue(analysisResult.top_concern)}</p>
                 </div>
               )}
             </div>
