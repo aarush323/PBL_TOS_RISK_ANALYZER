@@ -78,19 +78,19 @@ export default function ChatPopup({
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(20px)' }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 shrink-0 bg-white/5 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/5">
+      <div className="flex items-center justify-between gap-3 p-4 shrink-0 bg-white/5 border-b border-white/10">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/5 shrink-0">
             <MessageSquare size={16} className="text-white" />
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-white tracking-tight">Jurist AI</h3>
-            <p className="text-[10px] text-white/50 tracking-wider uppercase font-medium">Document Intelligence</p>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold text-white tracking-tight">Jurist AI</h3>
+            <p className="truncate text-[10px] text-white/50 tracking-wider uppercase font-medium">Document Intelligence</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {sessionId && indexStatus && (
-            <span className={`text-[10px] px-2 py-[2px] rounded-full border ${indexStatus.is_indexed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+            <span className={`inline-flex h-7 items-center whitespace-nowrap rounded-full border px-3 text-[10px] font-medium leading-none ${indexStatus.is_indexed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
               {indexStatus.is_indexed ? 'Smart Context' : 'Indexing...'}
             </span>
           )}

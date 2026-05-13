@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Navigate, Routes, Route, useNavigate } from 'react-router-dom';
 import { Scale, FileText, Link, Upload, Activity, Zap } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 
@@ -330,6 +330,10 @@ function AuthPage() {
 
 function LandingWrapper() {
   const { token, navigate } = useAppContext();
+
+  if (token) {
+    return <Navigate to="/app" replace />;
+  }
 
   const handleGetStarted = () => {
     navigate(token ? '/app' : '/auth');
