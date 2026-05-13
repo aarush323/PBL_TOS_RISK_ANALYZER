@@ -18,9 +18,9 @@ export default function HeroSection({ onAnalyze, onGetStarted }) {
     };
 
     return (
-        <div className="relative min-h-screen flex flex-col items-center justify-center pt-20 overflow-hidden">
-            <div className="relative z-10 w-full max-w-xl mx-auto p-8 space-y-12">
-                <div className="space-y-6 text-center">
+        <div className="relative min-h-[78vh] flex flex-col items-center justify-center pt-24 pb-12 overflow-hidden">
+            <div className="relative z-10 w-full max-w-xl mx-auto px-8 py-6 space-y-10">
+                <div className="space-y-5 text-center">
                     <h2 className="text-4xl sm:text-5xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-br from-gray-200 to-gray-600">
                         Review Terms Before You Agree.
                     </h2>
@@ -47,7 +47,7 @@ export default function HeroSection({ onAnalyze, onGetStarted }) {
                     </Button>
                 </form>
 
-                <div className="flex flex-col items-center gap-8">
+                <div className="flex flex-col items-center gap-6">
                     <div className="flex items-center gap-4">
                         <div className="flex -space-x-3">
                             <Avatar className="border-2 border-black w-12 h-12">
@@ -64,9 +64,6 @@ export default function HeroSection({ onAnalyze, onGetStarted }) {
                     </div>
 
                     <div className="flex gap-6 justify-center">
-                        <a href="#" className="text-gray-400 hover:text-gray-300">
-                            <Icons.twitter className="w-5 h-5 fill-current" />
-                        </a>
                         <a href="https://github.com/aarush323" className="text-gray-400 hover:text-gray-300" target="_blank" rel="noreferrer">
                             <Icons.gitHub className="w-5 h-5 fill-current" />
                         </a>
