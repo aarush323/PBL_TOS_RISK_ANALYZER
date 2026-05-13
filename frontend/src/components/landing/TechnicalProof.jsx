@@ -20,44 +20,42 @@ export default function TechnicalProof() {
         <section id="technical" className="py-24 px-6 border-t border-zinc-900">
             <div className="max-w-6xl mx-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                    {/* Text */}
                     <div>
                         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                            Structured output.
+                            How it works.
                             <br />
-                            <span className="text-zinc-500">Zero parsing hacks.</span>
+                            <span className="text-zinc-500">Three steps from input to review.</span>
                         </h2>
                         <p className="text-zinc-400 text-lg leading-relaxed mb-6">
-                            Our API returns strictly validated JSON directly from the LLM pipeline.
-                            Every clause is analyzed with confidence scores, severity ratings,
-                            and cross-referenced against applicable legal frameworks.
+                            Start with a URL, PDF, or pasted text.
+                            The app extracts clauses, scores risk, and shows you the exact language behind each flag.
                         </p>
-                        <div className="flex gap-6">
-                            <div>
-                                <p className="text-2xl font-bold text-white">180+</p>
-                                <p className="text-xs text-zinc-500 uppercase tracking-wider">Clauses per scan</p>
+                        <div className="space-y-4">
+                            <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#007AFF] mb-2">Step 1</p>
+                                <p className="text-white font-semibold mb-1">Add the document</p>
+                                <p className="text-sm text-zinc-400">Paste a Terms URL, upload a PDF, or add raw text.</p>
                             </div>
-                            <div>
-                                <p className="text-2xl font-bold text-white">&lt;60s</p>
-                                <p className="text-xs text-zinc-500 uppercase tracking-wider">Avg analysis time</p>
+                            <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#007AFF] mb-2">Step 2</p>
+                                <p className="text-white font-semibold mb-1">Review the analysis</p>
+                                <p className="text-sm text-zinc-400">The app extracts clauses, flags risky ones, and assigns categories and confidence labels.</p>
                             </div>
-                            <div>
-                                <p className="text-2xl font-bold text-white">98%</p>
-                                <p className="text-xs text-zinc-500 uppercase tracking-wider">Detection rate</p>
+                            <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-5">
+                                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#007AFF] mb-2">Step 3</p>
+                                <p className="text-white font-semibold mb-1">Inspect the flagged clauses</p>
+                                <p className="text-sm text-zinc-400">Open the clause view, read the source text, and ask follow-up questions in chat.</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Code window */}
                     <div className="rounded-2xl bg-zinc-900/80 border border-zinc-800/50 overflow-hidden">
-                        {/* Window chrome */}
                         <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800/50">
                             <div className="w-3 h-3 rounded-full bg-red-500/80" />
                             <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
                             <div className="w-3 h-3 rounded-full bg-green-500/80" />
                             <span className="ml-3 text-xs text-zinc-600 font-mono">analysis_output.json</span>
                         </div>
-                        {/* Code */}
                         <pre className="p-6 text-sm font-mono overflow-x-auto">
                             <code className="text-zinc-300">
                                 {jsonExample.split('\n').map((line, i) => (

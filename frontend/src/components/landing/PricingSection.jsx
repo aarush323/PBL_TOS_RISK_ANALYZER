@@ -4,35 +4,33 @@ import { Button } from '@/components/ui/button';
 
 const plans = [
     {
-        name: 'Hobby',
+        name: 'Current Build',
         price: 'Free',
         period: '',
-        description: 'Perfect for exploring legal document analysis.',
+        description: 'What is available in the app now.',
         features: [
-            '5 analyses per month',
+            'Document analysis',
             'URL extraction',
-            'Basic clause chat',
+            'Clause chat',
             'Risk scoring',
-            'Standard processing',
+            'Single-user workflow',
         ],
-        cta: 'Get Started',
+        cta: 'Open App',
         popular: false,
     },
     {
-        name: 'Pro',
-        price: '$15',
-        period: '/mo',
-        description: 'For power users who need comprehensive analysis.',
+        name: 'Team Plan',
+        price: 'Planned',
+        period: '',
+        description: 'Not available in the product yet.',
         features: [
-            'Unlimited analyses',
-            'PDF upload support',
-            'RAG-powered chat',
-            'Document comparisons',
-            'Full legal reports',
-            'Priority processing',
-            'Export to PDF',
+            'Shared workspaces',
+            'Usage controls',
+            'Team billing',
+            'Admin settings',
+            'Deployment support',
         ],
-        cta: 'Upgrade to Pro',
+        cta: 'Open App',
         popular: true,
     },
 ];
@@ -44,11 +42,11 @@ export default function PricingSection({ onGetStarted }) {
                 {/* Header */}
                 <div className="text-center mb-16">
                     <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                        Transparent pricing.
-                        <span className="text-zinc-500"> No billable hours.</span>
+                        Access.
+                        <span className="text-zinc-500"> No hidden packaging.</span>
                     </h2>
                     <p className="text-zinc-400 text-lg">
-                        Start free, scale when you need it.
+                        What exists today, and what is only planned.
                     </p>
                 </div>
 
@@ -64,7 +62,7 @@ export default function PricingSection({ onGetStarted }) {
                         >
                             {plan.popular && (
                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#007AFF] text-white text-xs font-bold uppercase tracking-wider">
-                                    Most Popular
+                                    Planned
                                 </div>
                             )}
 

@@ -165,14 +165,14 @@ export default function ClausesPage({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Visual Intelligence Hero Section */}
+      {/* Clause map */}
       <div className="bg-gradient-to-b from-[#0a0a0a] to-transparent px-8 py-8 border-b border-white/5">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-black text-white tracking-tighter">Visual Intelligence</h2>
+              <h2 className="text-3xl font-black text-white tracking-tighter">Clause Review</h2>
               <p className="text-sm text-white/40 font-bold uppercase tracking-widest mt-1">
-                Document Severity Dynamics — {sourceInfo?.value || 'Active Analysis'}
+                Clause severity across the document — {sourceInfo?.value || 'Current Analysis'}
               </p>
             </div>
             <div className="flex items-center gap-6">
@@ -198,12 +198,12 @@ export default function ClausesPage({
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xs font-black text-white/50 uppercase tracking-[0.2em] flex items-center gap-2">
                 <Activity size={14} className="text-[#007AFF]" />
-                Severity by Document Position
+                Severity by document position
               </h3>
               <div className="flex items-center gap-4 text-[9px] font-black tracking-widest text-white/30">
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" /> CRITICAL</span>
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> MODERATE</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-white/10" /> SAFE</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-white/10" /> NOT FLAGGED</span>
               </div>
             </div>
             <div className="h-40">{renderSeverityBar()}</div>
@@ -267,7 +267,7 @@ export default function ClausesPage({
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all"
               >
                 <MessageSquare size={16} />
-                Ask Jurist
+                Ask about clauses
               </button>
             </div>
           </div>
@@ -335,20 +335,20 @@ export default function ClausesPage({
                                     <div className="space-y-3">
                                       <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] flex items-center gap-2">
                                         <Zap size={12} />
-                                        Strategic Mitigation
+                                        Review note
                                       </h4>
                                       <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-sm text-amber-100/70 leading-relaxed shadow-inner">
-                                        Seek explicit limits on indemnification or negotiate for clear exclusions that protect your operational autonomy. Standard industry language often overreaches in this specific category.
+                                        Use the source text and explanation as a starting point. Check the exact wording before relying on the score.
                                       </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                       <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 transition-colors hover:bg-blue-500/10">
-                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Precedent</p>
-                                        <p className="text-xs text-blue-100/50 leading-snug">Observed in 14% of similar enterprise SaaS agreements.</p>
+                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Risk category</p>
+                                        <p className="text-xs text-blue-100/50 leading-snug">{(clause.risk_categories || ['General']).join(', ')}</p>
                                       </div>
                                       <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/10 transition-colors hover:bg-purple-500/10">
-                                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-1">AI Verdict</p>
-                                        <p className="text-xs text-purple-100/50 leading-snug">Highly enforceable; high mitigation priority.</p>
+                                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-1">Confidence</p>
+                                        <p className="text-xs text-purple-100/50 leading-snug">{clause.confidence || 'Not provided'}</p>
                                       </div>
                                     </div>
                                   </div>
@@ -366,7 +366,7 @@ export default function ClausesPage({
                                   </div>
                                 ))}
                               </div>
-                              <span className="text-[10px] text-white/30 font-black uppercase tracking-widest">Cross-Referenced Analysis</span>
+                              <span className="text-[10px] text-white/30 font-black uppercase tracking-widest">Analysis context</span>
                             </div>
                             <div className="flex items-center gap-3">
                               <button
@@ -378,7 +378,7 @@ export default function ClausesPage({
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#007AFF] text-white text-[11px] font-black uppercase tracking-tighter hover:bg-[#0056cc] transition-all shadow-[0_8px_20px_-8px_rgba(0,122,255,0.4)] active:scale-95"
                               >
                                 <MessageSquare size={14} />
-                                Explore Risk
+                                Ask about this clause
                               </button>
                               <button
                                 onClick={(e) => {
@@ -387,7 +387,7 @@ export default function ClausesPage({
                                 }}
                                 className={`px-5 py-2.5 rounded-xl border text-[11px] font-black uppercase tracking-tighter transition-all ${isExpanded ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'}`}
                               >
-                                {isExpanded ? 'Collapse' : 'Detailed View'}
+                                {isExpanded ? 'Hide details' : 'Show details'}
                               </button>
                             </div>
                           </div>
@@ -404,7 +404,7 @@ export default function ClausesPage({
                             </div>
                           </div>
                           <div className="flex items-center gap-6">
-                            <span className="text-[10px] font-black text-green-500/40 uppercase tracking-widest border border-green-500/20 px-3 py-1 rounded-full">Validated Safe</span>
+                            <span className="text-[10px] font-black text-green-500/40 uppercase tracking-widest border border-green-500/20 px-3 py-1 rounded-full">No risk flag</span>
                             {renderConfidenceRing(clause.confidence)}
                           </div>
                         </div>

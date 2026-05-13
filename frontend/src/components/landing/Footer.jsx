@@ -21,7 +21,7 @@ export default function Footer() {
                             <span className="text-sm font-bold text-white">Jurist AI</span>
                         </div>
                         <p className="text-xs text-zinc-500 leading-relaxed">
-                            AI-powered legal risk analysis for modern teams.
+                            Terms review software for checking clauses before you agree.
                         </p>
                     </div>
 
@@ -49,7 +49,7 @@ export default function Footer() {
                     </p>
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-xs text-zinc-500">All systems online</span>
+                        <span className="text-xs text-zinc-500">Service status shown in app</span>
                     </div>
                 </div>
             </div>

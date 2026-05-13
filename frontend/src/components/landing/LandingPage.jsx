@@ -4,7 +4,6 @@ import Navbar from './Navbar';
 import HeroSection from './HeroSection';
 import FeaturesGrid from './FeaturesGrid';
 import TechnicalProof from './TechnicalProof';
-import PricingSection from './PricingSection';
 import Footer from './Footer';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,7 +25,6 @@ export default function LandingPage({ onGetStarted }) {
             <HeroSection onAnalyze={handleAnalyze} onGetStarted={onGetStarted || (() => navigate('/app'))} />
             <FeaturesGrid />
             <TechnicalProof />
-            <PricingSection />
             <Footer />
         </div>
     );

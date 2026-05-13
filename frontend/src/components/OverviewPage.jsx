@@ -70,11 +70,11 @@ export default function OverviewPage({
 
   const healthCheckItems = React.useMemo(() => {
     const checks = [
-      { key: 'legal', name: 'Legal Clarity', passed: true },
-      { key: 'privacy', name: 'Privacy Compliance', passed: true },
-      { key: 'security', name: 'Security Provisions', passed: true },
-      { key: 'financial', name: 'Financial Transparency', passed: true },
-      { key: 'user', name: 'User Rights Protection', passed: true },
+      { key: 'legal', name: 'No legal flags', passed: true },
+      { key: 'privacy', name: 'No privacy flags', passed: true },
+      { key: 'security', name: 'No security flags', passed: true },
+      { key: 'financial', name: 'No financial flags', passed: true },
+      { key: 'user', name: 'No user-rights flags', passed: true },
     ];
 
     breakdownArray.forEach(item => {
@@ -107,10 +107,10 @@ export default function OverviewPage({
 
 
   const getScoreDescription = () => {
-    if (score >= 85) return "This document is exceptionally safe with standard legal frameworks.";
-    if (score >= 70) return "General compliance is good, but minor adjustments are recommended.";
-    if (score >= 50) return "Moderate risk detected. Several clauses require immediate review.";
-    return "Critical risks identified. Avoid signing until significant changes are made.";
+    if (score >= 85) return "Few issues were flagged in this document.";
+    if (score >= 70) return "Some issues were flagged and are worth reviewing.";
+    if (score >= 50) return "Several clauses were flagged for review.";
+    return "Many clauses were flagged. Review carefully before agreeing.";
   };
 
   const renderRadarChart = () => {
@@ -175,7 +175,7 @@ export default function OverviewPage({
           <div className="flex items-center gap-3 mb-2">
             <span className="text-[10px] font-semibold text-[#007AFF] uppercase tracking-wider">Analysis Results</span>
           </div>
-          <h1 className={`text-2xl font-bold mb-1 ${textClass}`}>Executive Summary</h1>
+          <h1 className={`text-2xl font-bold mb-1 ${textClass}`}>Summary</h1>
           {sourceInfo?.type && (
             <div className="flex items-center gap-2 text-sm text-white/60">
               {sourceInfo.type === 'url' && <Link size={14} />}
@@ -190,7 +190,7 @@ export default function OverviewPage({
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all ${theme === 'light' ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
           >
             <Share2 size={16} />
-            Generate Report
+            Open Report
           </button>
         </div>
       </div>
@@ -201,7 +201,7 @@ export default function OverviewPage({
         <div className="col-span-12 lg:col-span-5 glass-card p-8 flex flex-col items-center justify-center relative overflow-hidden group">
           <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full blur-3xl transition-all duration-1000 ${theme === 'light' ? 'bg-blue-100/40 group-hover:bg-blue-200/40' : 'bg-[#007AFF]/10 group-hover:bg-[#007AFF]/20'}`} />
 
-          <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${mutedTextClass}`}>Safety Score</h3>
+          <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${mutedTextClass}`}>Risk Score</h3>
 
           <div className="relative w-56 h-32 mb-4">
             <svg viewBox="0 0 100 50" className="w-full h-full drop-shadow-2xl">
@@ -235,12 +235,12 @@ export default function OverviewPage({
               {overallRisk} Risk Level
             </p>
             <p className={`text-[10px] mt-1 font-bold uppercase tracking-[0.1em] ${mutedTextClass}`}>
-              Based on {totalRisky} high-severity vectors
+              Based on {totalRisky} flagged clauses
             </p>
           </div>
         </div>
 
-        {/* AI Narrative Verdict - THE "PEAK" UI */}
+        {/* Generated summary */}
         <div className="col-span-12 lg:col-span-7 relative group overflow-hidden rounded-3xl">
           <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-[0.08] dark:opacity-[0.15]" />
           <motion.div
@@ -263,8 +263,8 @@ export default function OverviewPage({
                     </div>
                   </div>
                   <div>
-                    <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Professional Summary</h3>
-                    <p className={`text-[9px] font-bold uppercase tracking-widest ${mutedTextClass}`}>Jurist AI Executive Verdict</p>
+                    <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Generated Summary</h3>
+                    <p className={`text-[9px] font-bold uppercase tracking-widest ${mutedTextClass}`}>Based on the current analysis output</p>
                   </div>
                 </div>
                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest border shadow-sm ${theme === 'light' ? 'bg-white border-indigo-100 text-indigo-600' : 'bg-white/5 border-white/10 text-white/60'}`}>
@@ -278,7 +278,7 @@ export default function OverviewPage({
                 className="space-y-4"
               >
                 <p className={`text-xl font-medium leading-relaxed italic tracking-tight font-serif ${theme === 'light' ? 'text-gray-800' : 'text-indigo-50/90'}`}>
-                  "{analysisResult?.professional_summary || analysisResult?.executive_summary || "The initial analysis is complete. Detailed review of the flagged clauses is recommended to understand specific legal implications."}"
+                  "{analysisResult?.professional_summary || analysisResult?.executive_summary || "Analysis is complete. Review the flagged clauses and their wording before relying on the score."}"
                 </p>
               </motion.div>
 
@@ -316,7 +316,7 @@ export default function OverviewPage({
                 </div>
                 <div className="w-px h-10 bg-indigo-500/10" />
                 <div>
-                  <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Compliance Score</p>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Score</p>
                   <p className="text-xl font-black text-emerald-500">{score}%</p>
                 </div>
               </div>
@@ -334,9 +334,9 @@ export default function OverviewPage({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Total Clauses', value: totalClauses, icon: FileText, color: 'text-[#007AFF]', bg: 'bg-[#007AFF]/5' },
-          { label: 'High Risk Vectors', value: riskyClauses, icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-500/5' },
-          { label: 'AI Deep Scan', value: `${deepScanPct}%`, icon: BrainCircuit, color: 'text-indigo-400', bg: 'bg-indigo-400/5' },
-          { label: 'Overall Safety', value: `${score}/100`, icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
+          { label: 'Flagged Clauses', value: riskyClauses, icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-500/5' },
+          { label: 'Model-Reviewed', value: `${deepScanPct}%`, icon: BrainCircuit, color: 'text-indigo-400', bg: 'bg-indigo-400/5' },
+          { label: 'Overall Score', value: `${score}/100`, icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
         ].map((stat, i) => {
           const Icon = stat.icon;
           return (
@@ -356,7 +356,7 @@ export default function OverviewPage({
         })}
       </div>
 
-      {/* Visual Intelligence Section - HERO ROW */}
+      {/* Breakdown section */}
       <div className="grid grid-cols-12 gap-6">
         {/* Radar Matrix - Promoted to Hero */}
         <div className="col-span-12 lg:col-span-8 glass-card p-8 group relative overflow-hidden">
@@ -365,13 +365,13 @@ export default function OverviewPage({
             <div>
               <h3 className={`text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2 ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>
                 <Activity size={16} />
-                Risk Breakdown Matrix
+                Risk Breakdown
               </h3>
-              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${mutedTextClass}`}>Multi-Dimensional Risk Mapping</p>
+              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${mutedTextClass}`}>Flagged clauses by category</p>
             </div>
-            <div className={`flex items-center gap-4 text-[10px] font-black tracking-widest ${subTextClass}`}>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#007AFF]" /> CATEGORICAL INTENSITY</div>
-            </div>
+              <div className={`flex items-center gap-4 text-[10px] font-black tracking-widest ${subTextClass}`}>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#007AFF]" /> CATEGORY SHARE</div>
+              </div>
           </div>
 
           <div className="flex flex-col md:flex-row items-center gap-16">
@@ -412,14 +412,14 @@ export default function OverviewPage({
         <div className="col-span-12 lg:col-span-4 space-y-6">
           <div className="glass-card p-8 flex flex-col h-full">
             <div className="flex items-center justify-between mb-8">
-              <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Visual Risk Map</h3>
+              <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Clause Map</h3>
               <Target size={16} className="text-red-500" />
             </div>
 
             {/* Document Severity Sparkline (Mini Heatmap) */}
             <div className="flex-1 flex flex-col justify-center space-y-6">
               <div className="space-y-4">
-                <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Severity Hotspots</p>
+                <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Severity by position</p>
                 <div className="h-16 flex items-end gap-[2px]">
                   {(analysisResult?.clauses || []).map((c, i) => {
                     const sev = c.severity_score || 0;
@@ -439,7 +439,7 @@ export default function OverviewPage({
               </div>
 
               <div className="pt-6 border-t border-white/5 space-y-3">
-                <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Critical Verification</p>
+                <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Category check</p>
                 {healthCheckItems.map((item, i) => (
                   <div key={i} className="flex items-center justify-between">
                     <span className={`text-[10px] font-bold ${subTextClass}`}>{item.name}</span>
@@ -453,22 +453,19 @@ export default function OverviewPage({
               onClick={() => onNavigate && onNavigate('clauses')}
               className="mt-8 w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
             >
-              Detailed Matrix
+              View Clauses
               <ArrowRight size={14} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Second Row: Deep Analysis & Distribution */}
+      {/* Analysis details */}
       <div className="grid grid-cols-12 gap-6">
         {/* Transparency Bar Chart */}
         <div className="col-span-12 lg:col-span-8 glass-card p-8">
           <div className="flex items-center justify-between mb-10">
-            <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Analysis Transparency</h3>
-            <div className={`px-4 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black text-emerald-500 uppercase tracking-widest text-center`}>
-              AI Engine: Neural Deep Mesh
-            </div>
+            <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Analysis Details</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -477,7 +474,7 @@ export default function OverviewPage({
                 <div className="flex justify-between items-end">
                   <div>
                     <p className={`text-2xl font-black ${textClass}`}>{deepScanPct}%</p>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Context Coverage</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Model-reviewed share</p>
                   </div>
                   <div className="text-right">
                     <p className={`text-sm font-black text-[#007AFF]`}>{deepAnalyzed}</p>
@@ -498,12 +495,12 @@ export default function OverviewPage({
                 <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-black/20 border-white/5'}`}>
                   <ShieldCheck size={20} className="text-green-500 mb-3" />
                   <p className={`text-lg font-black ${textClass}`}>{analysisTransparency?.nlpFiltered}</p>
-                  <p className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Pattern Safe</p>
+                  <p className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Rule-cleared</p>
                 </div>
                 <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-white border-blue-100 shadow-sm' : 'bg-white/5 border-[#007AFF]/20'}`}>
                   <BrainCircuit size={20} className="text-[#007AFF] mb-3" />
                   <p className={`text-lg font-black text-[#007AFF]`}>{deepAnalyzed}</p>
-                  <p className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Deep Audit</p>
+                  <p className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Model-reviewed</p>
                 </div>
               </div>
             </div>
@@ -523,11 +520,11 @@ export default function OverviewPage({
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className={`text-4xl font-black tracking-tighter ${textClass}`}>{deepScanPct}%</span>
-                  <span className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Deep Layer</span>
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Reviewed</span>
                 </div>
               </div>
               <p className={`text-center text-[10px] font-bold mt-6 leading-relaxed max-w-[150px] ${subTextClass}`}>
-                Ratio of clauses subjected to high-fidelity risk evaluation.
+                Share of clauses sent to model review after the initial filter step.
               </p>
             </div>
           </div>
@@ -543,9 +540,9 @@ export default function OverviewPage({
             </div>
 
             <div>
-              <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Executive Summary</h3>
+              <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Summary</h3>
               <p className={`text-lg font-medium leading-relaxed italic font-serif ${theme === 'light' ? 'text-gray-800' : 'text-white/90'}`}>
-                "{analysisResult?.executive_summary || analysisResult?.professional_summary || "Analysis complete. System identifies specific categorical risks across your document's primary vectors."}"
+                "{analysisResult?.executive_summary || analysisResult?.professional_summary || "Analysis complete. Review the flagged clauses to see which terms drove the score."}"
               </p>
             </div>
 
@@ -558,13 +555,13 @@ export default function OverviewPage({
                     </div>
                   ))}
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Audit Complete</span>
+                <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Analysis Complete</span>
               </div>
               <button
                 onClick={() => onNavigate && onNavigate('reports')}
                 className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all active:scale-95"
               >
-                Final Report View
+                Open Report
               </button>
             </div>
           </div>
@@ -574,14 +571,14 @@ export default function OverviewPage({
 
       <div className="flex items-center justify-between pt-6">
         <p className={`text-[10px] font-bold uppercase tracking-widest ${mutedTextClass}`}>
-          Jurist AI System Audit
+          Jurist AI analysis
         </p>
         <div className="flex items-center gap-4">
           <button
             onClick={() => onNavigate && onNavigate('clauses')}
             className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white text-xs font-black uppercase tracking-widest hover:shadow-lg hover:shadow-[#007AFF]/30 transition-all active:scale-[0.98]"
           >
-            Explore Flagged Clauses
+            Review Flagged Clauses
             <ArrowRight size={16} />
           </button>
         </div>

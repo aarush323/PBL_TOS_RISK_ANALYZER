@@ -112,7 +112,7 @@ export default function ComparePage({
 
         {compareHistory?.length > 0 ? (
           <div>
-            <h3 className={`text-sm font-semibold uppercase mb-3 ${mutedTextClass}`}>Past Comparisons (This Chat)</h3>
+            <h3 className={`text-sm font-semibold uppercase mb-3 ${mutedTextClass}`}>Past Comparisons (This Session)</h3>
             <div className="space-y-2">
               {compareHistory.map(c => (
                 <button key={c.compare_id} onClick={() => onOpenCompareHistory(c.compare_id)}
@@ -127,7 +127,7 @@ export default function ComparePage({
           </div>
         ) : (
           <div className="glass-card p-4">
-            <p className={mutedTextClass}>No comparisons yet for this chat session.</p>
+            <p className={mutedTextClass}>No saved comparisons in this session yet.</p>
           </div>
         )}
       </div>
@@ -158,7 +158,7 @@ export default function ComparePage({
         </button>
       </div>
 
-      {/* Verdict Banner */}
+      {/* Summary banner */}
       <div className={`relative overflow-hidden border rounded-2xl p-6 ${theme === 'light' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100' : 'bg-gradient-to-r from-[#0A2540] to-[#1a3a5c] border-[#635BFF]/30'}`}>
         <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 ${theme === 'light' ? 'bg-blue-200/50' : 'bg-[#635BFF]/10'}`} />
         <div className="relative flex items-center justify-between">

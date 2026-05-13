@@ -22,11 +22,11 @@ export default function HeroSection({ onAnalyze, onGetStarted }) {
             <div className="relative z-10 w-full max-w-xl mx-auto p-8 space-y-12">
                 <div className="space-y-6 text-center">
                     <h2 className="text-4xl sm:text-5xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-br from-gray-200 to-gray-600">
-                        Decode Legal Risk in Seconds.
+                        Review Terms Before You Agree.
                     </h2>
                     <p className="text-xl text-gray-400 max-w-lg mx-auto">
-                        AI-powered Terms of Service analysis that finds what companies hide in the fine print.
-                        Don't let legal jargon trap you implicitly.
+                        Paste a Terms of Service URL, upload a PDF, or add text.
+                        Jurist AI extracts clauses, flags risky terms, and lets you inspect the exact language.
                     </p>
                 </div>
 
@@ -35,7 +35,7 @@ export default function HeroSection({ onAnalyze, onGetStarted }) {
                         type="url"
                         value={url}
                         onChange={e => setUrl(e.target.value)}
-                        placeholder="Paste a ToS URL (Optional)"
+                        placeholder="Paste a Terms of Service URL"
                         className="h-12 bg-gray-950/50 border-gray-800 text-white"
                     />
                     <Button
@@ -43,7 +43,7 @@ export default function HeroSection({ onAnalyze, onGetStarted }) {
                         variant="ghost"
                         type="submit"
                     >
-                        Get Started
+                        Open App
                     </Button>
                 </form>
 
@@ -60,7 +60,7 @@ export default function HeroSection({ onAnalyze, onGetStarted }) {
                                 <AvatarFallback className="text-sm font-semibold text-white border-white/20 bg-blue-700">MK</AvatarFallback>
                             </Avatar>
                         </div>
-                        <span className="font-bold text-gray-200">2,400+ documents analyzed</span>
+                        <span className="font-bold text-gray-200">Works with URL, PDF, and pasted text</span>
                     </div>
 
                     <div className="flex gap-6 justify-center">

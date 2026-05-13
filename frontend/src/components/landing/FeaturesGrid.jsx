@@ -4,37 +4,37 @@ import { BrainCircuit, Zap, Shield, MessageSquare, ArrowUpRight } from 'lucide-r
 const features = [
     {
         icon: BrainCircuit,
-        title: 'Hybrid NLP + LLM',
-        description: 'NLP pre-filters 70% of clauses, sending only flagged ones to LLMs. Maximum accuracy at minimum cost.',
-        metric: '70%',
-        metricLabel: 'filtered by NLP',
+        title: 'Rules + model review',
+        description: 'The pipeline first filters clauses with rule-based checks, then sends the remaining clauses for model review.',
+        metric: '2-step',
+        metricLabel: 'pipeline',
         span: 'col-span-2',
         accent: '#007AFF',
     },
     {
         icon: Zap,
-        title: 'Multi-Provider Inference',
-        description: 'Cerebras + Groq with automatic round-robin. Local Ollama fallback for air-gapped environments.',
-        metric: '75%',
-        metricLabel: 'cheaper',
+        title: 'Multiple model backends',
+        description: 'The app can call Cerebras, Groq, or a local Ollama setup depending on your configuration.',
+        metric: '3',
+        metricLabel: 'backends',
         span: 'col-span-1',
         accent: '#22c55e',
     },
     {
         icon: Shield,
-        title: 'Privacy-First',
-        description: 'Run analysis on your own infrastructure with Ollama. Your data stays on your machine.',
-        metric: '0',
-        metricLabel: 'data sent',
+        title: 'Local option',
+        description: 'If you run the app with Ollama, model calls can stay on your own machine.',
+        metric: 'Ollama',
+        metricLabel: 'supported',
         span: 'col-span-1',
         accent: '#f59e0b',
     },
     {
         icon: MessageSquare,
-        title: 'RAG-Powered Legal Chat',
-        description: 'pgvector embeddings enable precise clause retrieval. Ask questions about any provision and get contextual answers.',
+        title: 'Document chat',
+        description: 'After analysis, the chat can answer questions using the indexed document text and flagged clauses.',
         metric: 'pgvector',
-        metricLabel: 'embeddings',
+        metricLabel: 'index',
         span: 'col-span-2',
         accent: '#8b5cf6',
     },
@@ -51,10 +51,10 @@ export default function FeaturesGrid() {
                 <div className="text-center mb-20">
                     <p className="text-[#007AFF] text-xs font-bold uppercase tracking-[0.3em] mb-4">Architecture</p>
                     <h2 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-5">
-                        Engineered for production.
+                        How the app works.
                     </h2>
                     <p className="text-zinc-500 text-lg max-w-xl mx-auto">
-                        A heavily optimized pipeline — not a ChatGPT wrapper.
+                        These are the main parts of the current pipeline.
                     </p>
                 </div>
 

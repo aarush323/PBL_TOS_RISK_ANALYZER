@@ -30,7 +30,7 @@ function DashboardPage() {
     <div className="p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-3">Welcome, {user?.email?.split('@')[0] || 'User'}.</h1>
-        <p className="text-white/60 max-w-xl">Ready to deconstruct legal complexity? Initiate a new risk assessment by pasting your legal document, uploading a file, or providing a URL.</p>
+        <p className="text-white/60 max-w-xl">Start a new review by pasting policy text, uploading a PDF, or entering a URL.</p>
       </div>
 
       <div className="flex gap-6">
@@ -67,7 +67,7 @@ function DashboardPage() {
                   <input
                     type="url"
                     className="w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-[#007AFF]/50"
-                    placeholder="https://legal.enterprise.com/terms-of-service"
+                    placeholder="https://example.com/terms"
                     value={urlInput}
                     onChange={e => setUrlInput(e.target.value)}
                   />
@@ -109,7 +109,7 @@ function DashboardPage() {
                 ) : (
                   <Zap size={18} />
                 )}
-                <span>{isProcessing ? 'PROCESSING...' : 'FETCH & ANALYZE'}</span>
+                <span>{isProcessing ? 'PROCESSING...' : 'ANALYZE DOCUMENT'}</span>
               </button>
               {isProcessing && (
                 <button
@@ -128,8 +128,8 @@ function DashboardPage() {
             <div className="w-9 h-9 rounded-lg bg-[#007AFF]/20 flex items-center justify-center mb-4">
               <Activity size={18} className="text-[#007AFF]" />
             </div>
-            <h3 className="text-white font-semibold mb-2">How To Get Better Results</h3>
-            <p className="text-sm text-white/60 mb-4">Use complete policy text when possible. Short excerpts may miss context.</p>
+            <h3 className="text-white font-semibold mb-2">How to get better results</h3>
+            <p className="text-sm text-white/60 mb-4">Use the full document when you can. Short excerpts often remove the context around a clause.</p>
             <ul className="text-xs text-white/50 space-y-2">
               <li>• Prefer full ToS or Privacy Policy documents</li>
               <li>• Use PDF upload for long legal agreements</li>
@@ -280,7 +280,7 @@ function AuthPage() {
             </div>
           </div>
           <h2>{isLoginMode ? 'Welcome Back' : 'Create Account'}</h2>
-          <p>{isLoginMode ? 'Enter your credentials to access Jurist AI' : 'Join the elite legal AI platform'}</p>
+          <p>{isLoginMode ? 'Sign in to continue.' : 'Create an account to save and review analyses.'}</p>
         </div>
 
         <form key={authMode} className="auth-form" onSubmit={handleAuth} autoComplete="on">

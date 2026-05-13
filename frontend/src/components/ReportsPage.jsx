@@ -20,15 +20,15 @@ const CATEGORY_COLORS = {
 };
 
 const SECTION_LABELS = [
-  { id: 'executive-dashboard', label: 'Executive Dashboard', icon: Activity },
-  { id: 'executive-summary', label: 'Executive Summary', icon: BookOpen },
+  { id: 'executive-dashboard', label: 'Risk Snapshot', icon: Activity },
+  { id: 'executive-summary', label: 'Summary', icon: BookOpen },
   { id: 'key-findings', label: 'Key Findings', icon: Target },
-  { id: 'category-deep-dive', label: 'Category Deep Dive', icon: Shield },
+  { id: 'category-deep-dive', label: 'Category Review', icon: Shield },
   { id: 'compliance', label: 'Compliance Assessment', icon: Check },
   { id: 'critical-clauses', label: 'Critical Clauses', icon: AlertOctagon },
   { id: 'risk-distribution', label: 'Risk Distribution', icon: Activity },
   { id: 'action-plan', label: 'Action Plan', icon: Zap },
-  { id: 'transparency', label: 'Transparency', icon: BrainCircuit },
+  { id: 'transparency', label: 'Analysis Details', icon: BrainCircuit },
   { id: 'appendix', label: 'Appendix', icon: List },
 ];
 
@@ -192,7 +192,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
         report_id: `R${Date.now().toString(36)}`,
         generated_at: new Date().toISOString(),
         document_source: sourceInfo?.value || 'Unknown',
-        analysis_engine: 'Jurist AI v2.0',
+        analysis_engine: 'Jurist AI',
       },
       executive_dashboard: {
         safety_score: analysisResult?.total_severity_score || 0,
@@ -221,7 +221,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
             ? 'This clause poses a significant legal or financial risk that could result in loss of user rights or unexpected obligations.'
             : sev >= 5
               ? 'This clause contains terms that may limit your rights or impose unexpected conditions.'
-              : 'This clause has minor risk indicators worth noting for comprehensive review.',
+              : 'This clause has minor risk indicators worth reviewing.',
           negotiation_suggestion: sev >= 8
             ? `Request removal or substantial amendment of this ${cat.replace(' Risk', '').toLowerCase()} clause. Consider it a deal-breaker if unchanged.`
             : sev >= 5
@@ -268,7 +268,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
 
   const handlePrint = () => window.print();
   const handleCopy = () => {
-    let text = `JURIST AI — COMPREHENSIVE LEGAL RISK ASSESSMENT\n`;
+    let text = `JURIST AI — DETAILED RISK REPORT\n`;
     text += `Report ID: ${report?.report_metadata?.report_id || 'N/A'}\n`;
     text += `Generated: ${new Date(report?.report_metadata?.generated_at || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}\n`;
     text += `Document: ${report?.report_metadata?.document_source || sourceInfo?.value || 'Unknown'}\n`;
@@ -319,7 +319,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
   return (
     <div className="space-y-6 print:m-0 print:p-0">
       <div className="flex items-center justify-between print:hidden">
-        <h1 className={`text-2xl font-bold ${textClass}`}>Comprehensive Report</h1>
+        <h1 className={`text-2xl font-bold ${textClass}`}>Detailed Report</h1>
         <div className="flex gap-3">
           <button
             onClick={handleCopy}
@@ -345,16 +345,16 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#007AFF]/20 to-purple-500/20 flex items-center justify-center mx-auto mb-6">
             <FileText size={32} className="text-[#007AFF]" />
           </div>
-          <h2 className={`text-xl font-bold mb-3 ${textClass}`}>Generate Comprehensive Report</h2>
+          <h2 className={`text-xl font-bold mb-3 ${textClass}`}>Generate Detailed Report</h2>
           <p className={`${subTextClass} max-w-lg mx-auto mb-8`}>
-            Generate a professional multi-section legal risk assessment report with compliance analysis, category deep dives, action plan, and full clause appendix.
+            Build a longer report from the current analysis, including flagged clauses, category summaries, and follow-up actions.
           </p>
           <button
             onClick={generateReport}
             className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white font-bold text-sm hover:shadow-lg hover:shadow-[#007AFF]/30 transition-all"
           >
             <Zap size={18} className="inline mr-2" />
-            Generate Comprehensive Report
+            Generate Detailed Report
           </button>
         </div>
       )}
@@ -366,7 +366,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
           </div>
           <h2 className={`text-xl font-bold mb-3 ${textClass}`}>Generating Report...</h2>
           <p className={`${subTextClass} max-w-lg mx-auto`}>
-            Analyzing signals, generating category deep dives, compliance checks, and action plan. This may take a moment.
+            Building the summary, category sections, and clause appendix from the current analysis. This may take a moment.
           </p>
         </div>
       )}
@@ -405,7 +405,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                     <Scale size={32} className="text-[#007AFF]" />
                   </div>
                   <div>
-                    <h2 className={`text-2xl font-extrabold tracking-tight ${textClass}`}>Comprehensive Legal Risk Assessment</h2>
+                    <h2 className={`text-2xl font-extrabold tracking-tight ${textClass}`}>Detailed Risk Report</h2>
                     <p className={`${mutedTextClass} font-bold uppercase text-[10px] tracking-widest mt-1`}>
                       {new Date(report.report_metadata.generated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
@@ -430,14 +430,14 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                   <div className="w-8 h-8 rounded-lg bg-[#007AFF]/20 flex items-center justify-center">
                     <Activity size={16} className="text-[#007AFF]" />
                   </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§1 Executive Dashboard</h3>
+                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§1 Risk Snapshot</h3>
                   {expandedSections['executive-dashboard'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
                 </div>
                 {expandedSections['executive-dashboard'] !== false && (
                   <>
                     <div className="grid grid-cols-4 gap-4 mb-6">
                       <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                        <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Safety Score</p>
+                        <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Risk Score</p>
                         <p className={`text-2xl font-black mt-1 ${textClass}`}>{report.executive_dashboard.safety_score}/100</p>
                       </div>
                       <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
@@ -449,7 +449,7 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                         <p className={`text-2xl font-black mt-1 text-red-500`}>{report.executive_dashboard.total_flagged}</p>
                       </div>
                       <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                        <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>AI Deep Scan</p>
+                        <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Model-Reviewed</p>
                         <p className={`text-2xl font-black mt-1 text-emerald-500`}>{report.executive_dashboard.ai_deep_scan_coverage}</p>
                       </div>
                     </div>
@@ -470,12 +470,12 @@ export default function ReportsPage({ analysisResult, sourceInfo, calculateScore
                   <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
                     <BookOpen size={16} className="text-indigo-500" />
                   </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§2 Executive Summary</h3>
+                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§2 Summary</h3>
                   {expandedSections['executive-summary'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
                 </div>
                 {expandedSections['executive-summary'] !== false && (
                   <p className={`text-base leading-relaxed ${theme === 'light' ? 'text-gray-700' : 'text-white/80'}`}>
-                    {report.executive_summary || analysisResult?.executive_summary || 'No executive summary available.'}
+                    {report.executive_summary || analysisResult?.executive_summary || 'No summary available.'}
                   </p>
                 )}
               </div>

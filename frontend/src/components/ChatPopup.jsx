@@ -85,13 +85,13 @@ export default function ChatPopup({
           </div>
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold text-white tracking-tight">Jurist AI</h3>
-            <p className="truncate text-[10px] text-white/50 tracking-wider uppercase font-medium">Document Intelligence</p>
+            <p className="truncate text-[10px] text-white/50 tracking-wider uppercase font-medium">Document chat</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {sessionId && indexStatus && (
             <span className={`inline-flex h-7 items-center whitespace-nowrap rounded-full border px-3 text-[10px] font-medium leading-none ${indexStatus.is_indexed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
-              {indexStatus.is_indexed ? 'Smart Context' : 'Indexing...'}
+              {indexStatus.is_indexed ? 'Context Ready' : 'Building Context'}
             </span>
           )}
           <button
@@ -117,7 +117,7 @@ export default function ChatPopup({
               <MessageSquare size={28} className="text-white/20" />
             </div>
             <p className="text-sm text-white/40 mb-2">No active document context.</p>
-            <p className="text-xs text-white/30 max-w-[200px]">Run an analysis first to unlock intelligent chat capabilities.</p>
+            <p className="text-xs text-white/30 max-w-[200px]">Run an analysis first, then ask questions about the document and flagged clauses.</p>
           </div>
         ) : (
           <div className="space-y-6">

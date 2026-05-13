@@ -5,23 +5,23 @@ export default function EmptyState({ view, onNewAnalysis }) {
     const configs = {
         overview: {
             icon: <FileSearch size={48} className="text-[#007AFF]" />,
-            title: 'No Analysis Overview',
-            description: 'You haven\'t analyzed any documents yet, or the data is still loading. Start a new audit to see your executive summary.',
+            title: 'No analysis yet',
+            description: 'Run an analysis to see the summary, score, and flagged clauses here.',
         },
         clauses: {
             icon: <Zap size={48} className="text-[#007AFF]" />,
-            title: 'No Clauses Flagged',
-            description: 'Run an analysis to see a detailed breakdown of risky clauses and AI-powered explanations.',
+            title: 'No clause view yet',
+            description: 'Run an analysis to review flagged clauses and the model explanation for each one.',
         },
         reports: {
             icon: <FileSearch size={48} className="text-[#007AFF]" />,
-            title: 'No Report Generated',
-            description: 'Once you analyze a document, you can generate and export a professional risk assessment report here.',
+            title: 'No report yet',
+            description: 'Run an analysis first. Then you can generate a longer report from the current results.',
         },
         compare: {
             icon: <FileSearch size={48} className="text-[#007AFF]" />,
-            title: 'No Comparisons Yet',
-            description: 'Open a chat analysis first, then compare documents side by side from the Compare view.',
+            title: 'No comparison yet',
+            description: 'Analyze at least two documents, then compare their scores and flagged clauses here.',
         }
     };
 
@@ -56,9 +56,9 @@ export default function EmptyState({ view, onNewAnalysis }) {
 
             <div className="mt-12 grid grid-cols-3 gap-6 w-full max-w-2xl">
                 {[
-                    { label: 'Step 1', text: 'Upload PDF or URL' },
-                    { label: 'Step 2', text: 'AI extracts clauses' },
-                    { label: 'Step 3', text: 'Review risk report' },
+                    { label: 'Step 1', text: 'Upload a PDF, paste text, or add a URL' },
+                    { label: 'Step 2', text: 'The app extracts clauses and scores risk' },
+                    { label: 'Step 3', text: 'Review the summary and flagged clauses' },
                 ].map((step, i) => (
                     <div key={i} className="glass-card p-4 text-left">
                         <span className="text-[10px] font-bold text-[#007AFF] uppercase tracking-wider">{step.label}</span>
