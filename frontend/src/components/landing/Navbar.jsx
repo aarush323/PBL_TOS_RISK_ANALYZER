@@ -1,9 +1,12 @@
 import React from 'react';
-import { Scale, Menu, X, ArrowRight } from 'lucide-react';
+import { Scale, Menu, ArrowRight } from 'lucide-react';
+import { useAppContext } from '@/context/AppContext';
 
 export default function Navbar({ onGetStarted }) {
     const [mobileOpen, setMobileOpen] = React.useState(false);
     const [scrolled, setScrolled] = React.useState(false);
+    const { token, user } = useAppContext();
+    const isSignedIn = Boolean(token);
 
     React.useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -55,20 +58,20 @@ export default function Navbar({ onGetStarted }) {
                         onClick={onGetStarted}
                         className="px-4 py-2 text-[13px] text-zinc-400 hover:text-white transition-colors"
                     >
-                        Sign In
+                        {isSignedIn ? (user?.username || user?.email?.split('@')[0] || 'Signed In') : 'Sign In'}
                     </button>
                     <button
                         onClick={onGetStarted}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#007AFF] text-white text-[13px] font-medium hover:bg-[#0066dd] transition-colors"
                     >
-                        Get Started
+                        {isSignedIn ? 'Open App' : 'Get Started'}
                         <ArrowRight size={14} />
                     </button>
                 </div>
 
                 {/* Mobile toggle */}
                 <button className="md:hidden text-zinc-400 hover:text-white" onClick={() => setMobileOpen(!mobileOpen)}>
-                    {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+                    <Menu size={22} />
                 </button>
             </div>
 
@@ -86,7 +89,7 @@ export default function Navbar({ onGetStarted }) {
                     ))}
                     <div className="pt-3 border-t border-zinc-800/50">
                         <button onClick={onGetStarted} className="w-full px-4 py-3 rounded-lg bg-[#007AFF] text-white text-sm font-medium">
-                            Get Started
+                            {isSignedIn ? 'Open App' : 'Get Started'}
                         </button>
                     </div>
                 </div>
