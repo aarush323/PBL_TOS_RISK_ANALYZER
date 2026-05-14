@@ -22,6 +22,7 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
       { id: 'clauses', label: 'Clauses' },
     ] : []),
     ...(hasActiveChat ? [{ id: 'reports', label: 'Reports' }] : []),
+    { id: 'compare', label: 'Compare' },
     { id: 'settings', label: 'Settings' },
   ];
 
