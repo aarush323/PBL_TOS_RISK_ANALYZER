@@ -7,8 +7,24 @@
   --color-surface-3: #1a1a1a;
   --color-surface-glass: rgba(10, 10, 10, 0.7);
 
-  --color-primary: #007AFF;
-  --color-primary-hover: #3395ff;
+  --color-primary: #f5f5f5;
+  --color-primary-hover: #ffffff;
+  --color-primary-foreground: #0a0a0a;
+
+  --color-accent: #ffffff;
+  --color-accent-foreground: #0a0a0a;
+
+  --color-secondary: #1a1a1a;
+  --color-secondary-foreground: #f5f5f5;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+
+  --color-background: #050505;
+  --color-foreground: #f5f5f5;
+
+  --color-input: #2a2a2a;
+  --color-ring: #ffffff;
 
   --color-text: #f5f5f5;
   --color-text-muted: #a1a1a1;
@@ -34,9 +50,9 @@
   --text-secondary: #A1A1AA;
   --text-tertiary: #52525B;
   --text-muted: #3F3F47;
-  --accent: #E8D5B7;
-  --accent-dim: rgba(232, 213, 183, 0.08);
-  --accent-border: rgba(232, 213, 183, 0.18);
+  --accent: #FFFFFF;
+  --accent-dim: rgba(255, 255, 255, 0.08);
+  --accent-border: rgba(255, 255, 255, 0.18);
   --red: #FF4444;
   --red-dim: rgba(255, 68, 68, 0.08);
   --success: #4ADE80;
@@ -207,7 +223,7 @@ body {
 }
 
 .auth-btn {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #0056cc 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   border: none;
   border-radius: 10px;
   padding: 16px 24px;
@@ -488,9 +504,9 @@ body {
   --text-secondary: #636366;
   --text-tertiary: #8E8E93;
   --text-muted: #AEAEB2;
-  --accent: #6C5CE7;
-  --accent-dim: rgba(108, 92, 231, 0.08);
-  --accent-border: rgba(108, 92, 231, 0.18);
+  --accent: #000000;
+  --accent-dim: rgba(0, 0, 0, 0.08);
+  --accent-border: rgba(0, 0, 0, 0.18);
   --red: #FF3B30;
   --red-dim: rgba(255, 59, 48, 0.08);
   --success: #34C759;
@@ -501,8 +517,21 @@ body {
   --color-surface-3: #e5e7eb;
   --color-surface-glass: rgba(255, 255, 255, 0.85);
 
-  --color-primary: #635BFF;
-  --color-primary-hover: #4F46E5;
+  --color-primary: #1C1C1E;
+  --color-primary-hover: #000000;
+  --color-primary-foreground: #FFFFFF;
+
+  --color-accent: #1C1C1E;
+  --color-accent-foreground: #FFFFFF;
+
+  --color-secondary: #e5e7eb;
+  --color-secondary-foreground: #1C1C1E;
+
+  --color-background: #fafafa;
+  --color-foreground: #1C1C1E;
+
+  --color-input: #d4d4d6;
+  --color-ring: #1C1C1E;
 
   --color-text: #0F172A;
   --color-text-muted: #475569;
