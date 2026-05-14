@@ -135,14 +135,15 @@ export default function ComparePage({
       <div className="compare-verdict" style={{ padding: '28px', borderRadius: '16px', border: `1px solid ${s.border}`,
         background: winner === 'tie' ? s.surface : 'rgba(34,197,94,0.04)', marginBottom: '28px' }}>
         <div className="compare-verdict-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+          <div className="compare-verdict-copy" style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', minWidth: 0 }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
               background: winner === 'tie' ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.1)',
               color: winner === 'tie' ? '#f59e0b' : '#22c55e' }}>
               {winner === 'tie' ? <Scale size={22} /> : <Trophy size={22} />}
             </div>
-            <div>
-              <h2 style={{ fontFamily: s.serif, fontSize: '22px', fontWeight: '400', color: 'var(--text-primary)', margin: '0 0 6px' }}>
+            <div style={{ minWidth: 0 }}>
+              <h2 className="compare-verdict-title" style={{ fontFamily: s.serif, fontSize: '22px', fontWeight: '400', color: 'var(--text-primary)', margin: '0 0 6px' }}>
                 {winner === 'tie' ? 'Inconclusive' : `${winner === 'A' ? doc_a.label : doc_b.label} is safer`}
               </h2>
               <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '300', color: 'var(--text-secondary)',
@@ -150,7 +151,7 @@ export default function ComparePage({
             </div>
           </div>
           {winner !== 'tie' && (
-            <span style={{ fontFamily: s.mono, fontSize: '9px', color: '#22c55e', letterSpacing: '0.1em',
+            <span className="compare-recommendation-badge" style={{ fontFamily: s.mono, fontSize: '9px', color: '#22c55e', letterSpacing: '0.1em',
               textTransform: 'uppercase', padding: '4px 12px', borderRadius: '6px',
               background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>Recommended</span>
           )}
@@ -177,7 +178,7 @@ export default function ComparePage({
                 {isWinner && <span style={{ fontFamily: s.mono, fontSize: '9px', fontWeight: '500',
                   background: '#22c55e', color: '#000', padding: '2px 8px', borderRadius: '4px' }}>WINNER</span>}
               </div>
-              <h3 style={{ fontFamily: s.font, fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)',
+              <h3 className="compare-doc-title" style={{ fontFamily: s.font, fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)',
                 margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.label}</h3>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '20px' }}>
                 <span style={{ fontFamily: s.serif, fontSize: '48px', fontWeight: '400', color: getRiskColor(score) }}>{score}</span>
