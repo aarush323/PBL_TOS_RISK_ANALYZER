@@ -110,7 +110,7 @@ export default function AppLayout() {
                     analysisResult={analysisResult}
                     hasActiveChat={hasActiveChat}
                     onNavigate={(view) => {
-                        if (['overview', 'clauses', 'reports', 'compare'].includes(view) && !analysisResult) {
+                        if (['overview', 'clauses', 'reports'].includes(view) && !analysisResult) {
                             navigate('/app');
                             addToast('Please select or run an analysis first.', true);
                         } else {

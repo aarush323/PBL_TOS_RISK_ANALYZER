@@ -114,9 +114,9 @@ export function AppProvider({ children }) {
     }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
-        if (token && sessionId) {
+        if (token) {
             loadCompareHistory(sessionId);
-        } else if (token) {
+        } else {
             setCompareHistory([]);
         }
     }, [token, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps

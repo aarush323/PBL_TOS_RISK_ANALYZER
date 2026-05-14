@@ -71,12 +71,8 @@ function CompareWrapper() {
     comparisonData, historyItems, isComparing,
     compareHistory, openCompareHistory, setShowCompareSelector,
     setComparisonData, setCompareDocA, setCompareDocB,
-    setIsChatPopupOpen, calculateScore, analysisResult,
-    navigate, setSelectedHistoryId,
+    setIsChatPopupOpen,
   } = useAppContext();
-  if (!analysisResult) {
-    return <EmptyState view="compare" onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
-  }
   return (
     <ComparePage
       comparisonData={comparisonData}
@@ -92,7 +88,6 @@ function CompareWrapper() {
         setShowCompareSelector(true);
       }}
       onDiscussInChat={() => setIsChatPopupOpen(true)}
-      calculateScore={calculateScore}
     />
   );
 }

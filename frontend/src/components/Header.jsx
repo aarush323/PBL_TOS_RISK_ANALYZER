@@ -21,7 +21,8 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
   const navItems = [
     { id: 'overview', label: 'Overview' },
     { id: 'clauses', label: 'Clauses' },
-    ...(hasActiveChat ? [{ id: 'compare', label: 'Compare' }, { id: 'reports', label: 'Reports' }] : []),
+    { id: 'compare', label: 'Compare' },
+    ...(hasActiveChat ? [{ id: 'reports', label: 'Reports' }] : []),
     { id: 'settings', label: 'Settings' },
   ];
 
