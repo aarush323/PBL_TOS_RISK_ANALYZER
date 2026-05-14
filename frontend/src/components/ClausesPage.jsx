@@ -96,7 +96,7 @@ export default function ClausesPage({
                   height: `${barHeight}%`,
                   backgroundColor: d.isRisky
                     ? (d.severity >= 5 ? '#ef4444' : '#f59e0b')
-                    : 'rgba(255,255,255,0.1)',
+                    : (theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)'),
                   opacity: d.isRisky ? 1 : 0.4
                 }}
                 title={`Clause ${i + 1}: Sev ${d.severity.toFixed(1)}`}

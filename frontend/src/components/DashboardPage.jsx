@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context.js';
+import { useTheme } from './theme-context.js';
 
 export default function DashboardPage() {
+  const { theme } = useTheme();
+  const isDark = theme !== 'light';
+  
   const {
     inputMode, setInputMode, urlInput, setUrlInput,
     textInput, setTextInput, uploadedFile, setUploadedFile, fileInputRef,
@@ -53,7 +57,7 @@ export default function DashboardPage() {
     <div style={{
       minHeight: '100vh',
       background: 'var(--bg-base)',
-      backgroundImage: `radial-gradient(circle at 50% -20%, rgba(255,255,255,0.03) 0%, transparent 60%)`,
+      backgroundImage: `radial-gradient(circle at 50% -20%, ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'} 0%, transparent 60%)`,
     }}>
       <div style={{
         maxWidth: '720px',
@@ -119,18 +123,22 @@ export default function DashboardPage() {
             position: 'relative',
             background: 'var(--bg-surface)',
             border: '1px solid',
-            borderColor: isCardActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+            borderColor: isCardActive 
+              ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') 
+              : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
             borderRadius: '16px',
             overflow: 'hidden',
             transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
-            boxShadow: isCardActive ? '0 8px 32px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0,0,0,0.2)',
+            boxShadow: isCardActive 
+              ? (isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.15)') 
+              : (isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)'),
           }}
         >
           <div style={{
             display: 'flex',
             alignItems: 'center',
             padding: '8px',
-            borderBottom: '1px solid rgba(255,255,255,0.03)',
+            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)'}`,
             gap: '4px',
           }}>
             {[
@@ -148,7 +156,7 @@ export default function DashboardPage() {
                   padding: '6px 14px',
                   borderRadius: '10px',
                   border: 'none',
-                  background: inputMode === tab.id ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  background: inputMode === tab.id ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)') : 'transparent',
                   color: inputMode === tab.id ? 'var(--text-primary)' : 'var(--text-tertiary)',
                   fontFamily: 'Geist, system-ui, sans-serif',
                   fontSize: '13px',
@@ -176,7 +184,7 @@ export default function DashboardPage() {
             left: 0,
             right: 0,
             height: '1px',
-            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 30%, rgba(255,255,255,0.1) 70%, transparent 100%)',
+            background: `linear-gradient(90deg, transparent 0%, ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'} 30%, ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'} 70%, transparent 100%)`,
             opacity: isCardActive ? 1 : 0.3,
             transition: 'opacity 0.3s ease',
             pointerEvents: 'none',
@@ -226,7 +234,7 @@ export default function DashboardPage() {
                     left: 0,
                     right: 0,
                     height: '1px',
-                    background: urlInput ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    background: urlInput ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)') : 'transparent',
                     transition: 'background 0.2s ease',
                   }} />
                 </div>
@@ -267,7 +275,7 @@ export default function DashboardPage() {
                   right: '32px',
                   fontFamily: 'DM Mono, monospace',
                   fontSize: '11px',
-                  color: 'rgba(255,255,255,0.2)',
+                  color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.3)',
                 }}>
                   {wordCount > 0 ? `${wordCount} words` : ''}
                 </span>
@@ -380,8 +388,8 @@ export default function DashboardPage() {
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '16px 24px',
-            borderTop: '1px solid rgba(255,255,255,0.03)',
-            background: 'rgba(0,0,0,0.2)',
+            borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)'}`,
+            background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <span style={{
@@ -413,7 +421,7 @@ export default function DashboardPage() {
                         style={{
                           width: '3px',
                           height: '10px',
-                          background: 'rgba(255,255,255,0.4)',
+                          background: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
                           borderRadius: '2px',
                           animation: `pulse-bar 1s ease-in-out ${i * 0.15}s infinite`,
                         }}
@@ -427,7 +435,7 @@ export default function DashboardPage() {
                   style={{
                     padding: '6px 12px',
                     background: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
                     borderRadius: '6px',
                     color: 'var(--text-secondary)',
                     fontFamily: 'Geist, system-ui, sans-serif',
@@ -447,10 +455,10 @@ export default function DashboardPage() {
                 disabled={!hasInput}
                 style={{
                   padding: '8px 16px',
-                  background: hasInput ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.05)',
+                  background: hasInput ? (isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)') : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
                   border: 'none',
                   borderRadius: '8px',
-                  color: hasInput ? '#000' : 'rgba(255,255,255,0.2)',
+                  color: hasInput ? (isDark ? '#000' : '#fff') : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'),
                   fontFamily: 'Geist, system-ui, sans-serif',
                   fontSize: '13px',
                   fontWeight: '500',
