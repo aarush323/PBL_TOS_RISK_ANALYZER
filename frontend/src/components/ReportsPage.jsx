@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Download, Activity, Target, Shield, Check, AlertOctagon, Zap, List, BrainCircuit, ArrowLeft, ChevronRight, Loader2, Share2, Printer } from 'lucide-react';
-import { apiFetchJson } from '@/shared/api/client';
+import { FileText, Download, Target, Shield, Check, AlertOctagon, Zap, ArrowLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { apiFetch, apiFetchJson } from '@/shared/api/client';
 import { getAccessToken } from '@/shared/api/auth-storage';
 import EmptyState from './EmptyState.jsx';
 import { useTheme } from './theme-context.js';
@@ -19,6 +19,7 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
   const isDark = theme !== 'light';
   const [report, setReport] = useState(() => analysisResult?._report_cache || null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [activeSection, setActiveSection] = useState('summary');
   const reportRef = useRef(null);
 
@@ -54,8 +55,31 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
     finally { setIsGenerating(false); }
   };
 
-  const handleDownloadPDF = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    if (!analysisJobId || isDownloadingPdf) return;
+    setIsDownloadingPdf(true);
+    try {
+      const res = await apiFetch(`/report/${analysisJobId}/pdf`, { token: token || getAccessToken() });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.detail || 'PDF generation failed');
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${report?.report_metadata?.report_id || analysisJobId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF download failed', err);
+      window.alert(err.message || 'PDF generation failed. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   if (!analysisResult && !report) return <EmptyState title="No Analysis Found" description="Run an analysis first to generate a report." />;
@@ -119,8 +143,9 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
           </p>
         </div>
         <div className="report-toolbar no-print" style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={handleDownloadPDF} style={btnStyle}><Download size={13} /> PDF</button>
-          <button onClick={() => window.print()} style={btnStyle}><Printer size={13} /> Print</button>
+          <button onClick={handleDownloadPDF} disabled={isDownloadingPdf} style={{ ...btnStyle, opacity: isDownloadingPdf ? 0.6 : 1 }}>
+            {isDownloadingPdf ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={13} />} PDF
+          </button>
         </div>
       </div>
 

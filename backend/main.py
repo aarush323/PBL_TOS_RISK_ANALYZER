@@ -22,6 +22,7 @@ from fastapi import (
     BackgroundTasks,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +31,7 @@ from extraction.input_handler import handle_input
 from analysis.analyzer import analyze_document
 from analysis.summary_generator import generate_executive_summary
 from analysis.report_generator import generate_full_report
+from analysis.latex_report import LatexBuildError, build_report_pdf
 from analysis.cancellation import cancel_job, clear_job
 from chat.chatbot import chat_with_document, chat_with_document_rag
 from chat.indexer import index_document, get_index_status, reindex_document
@@ -1283,3 +1285,48 @@ async def get_report(
     if not job.result or not job.result.get("_report_cache"):
         raise HTTPException(status_code=404, detail="Report not yet generated. POST /report/generate/{job_id} first.")
     return {"status": "complete", "report": job.result["_report_cache"]}
+
+
+@app.get("/report/{job_id}/pdf")
+async def download_report_pdf(
+    job_id: str,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+):
+    """Generate a PDF from the cached report using LaTeX and return it as a download."""
+    job = await crud.get_analysis_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status.value != "complete":
+        raise HTTPException(status_code=400, detail="Analysis not yet complete")
+
+    report = (job.result or {}).get("_report_cache")
+    if not report:
+        source_info = {
+            "value": job.source or "Unknown",
+            "type": job.source_type or "text",
+        }
+        try:
+            report = await asyncio.to_thread(generate_full_report, job.result or {}, source_info)
+            if job.result is not None:
+                job.result["_report_cache"] = report
+                await db.commit()
+        except Exception as e:
+            logger.error(f"Report generation failed for PDF job {job_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
+
+    try:
+        pdf_path, output_dir = await asyncio.to_thread(build_report_pdf, report)
+    except LatexBuildError as e:
+        logger.error(f"LaTeX PDF generation failed for job {job_id}: {e}")
+        raise HTTPException(status_code=503, detail=f"PDF generation unavailable: {str(e)}")
+
+    background_tasks.add_task(shutil.rmtree, output_dir, ignore_errors=True)
+    filename = f"{report.get('report_metadata', {}).get('report_id', job_id)}.pdf"
+    return FileResponse(
+        path=pdf_path,
+        media_type="application/pdf",
+        filename=filename,
+        background=background_tasks,
+    )
