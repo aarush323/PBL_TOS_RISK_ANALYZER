@@ -14,15 +14,12 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 # ─── CORS ───
 FRONTEND_URL = os.getenv("FRONTEND_URL", "")
 CORS_ORIGINS_RAW = os.getenv("CORS_ORIGINS", "")
-CORS_ORIGINS = (
-    [origin.strip() for origin in CORS_ORIGINS_RAW.split(",") if origin.strip()]
-    if CORS_ORIGINS_RAW
-    else (
-        [FRONTEND_URL]
-        if FRONTEND_URL
-        else ["http://localhost:5173", "http://127.0.0.1:5173"]
-    )
-)
+if CORS_ORIGINS_RAW:
+    CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_RAW.split(",") if origin.strip()]
+elif FRONTEND_URL:
+    CORS_ORIGINS = [FRONTEND_URL]
+else:
+    CORS_ORIGINS = ["*"]
 
 # ─── LLM Providers ───
 CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
@@ -68,8 +65,9 @@ def validate_production_environment():
             "DATABASE_URL": os.getenv("DATABASE_URL"),
             "SECRET_KEY": os.getenv("SECRET_KEY"),
             "CEREBRAS_API_KEY": os.getenv("CEREBRAS_API_KEY"),
-            "FRONTEND_URL": os.getenv("FRONTEND_URL"),
         }
+        if not os.getenv("CORS_ORIGINS") and not os.getenv("FRONTEND_URL"):
+            required["CORS_ORIGINS or FRONTEND_URL"] = None
         missing = [k for k, v in required.items() if not v]
         if missing:
             raise RuntimeError(

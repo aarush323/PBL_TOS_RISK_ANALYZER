@@ -2,17 +2,7 @@ import { getAccessToken } from './auth-storage';
 
 const isDev = import.meta.env.DEV || false;
 
-export const API_BASE_URL = (() => {
-  const url = import.meta.env.VITE_API_URL;
-  if (!url) {
-    if (isDev) {
-      console.warn('VITE_API_URL not set. Defaulting to http://localhost:8000 for development.');
-      return 'http://localhost:8000';
-    }
-    throw new Error('VITE_API_URL environment variable is required in production. Set it in your deployment configuration.');
-  }
-  return url.replace(/\/$/, '');
-})();
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 export const buildApiUrl = (path) => {
   if (!path) return API_BASE_URL;
@@ -68,3 +58,13 @@ export const apiFetchJson = async (path, options = {}) => {
   const data = await res.json().catch(() => null);
   return { res, data };
 };
+
+// Runtime validation — warns but doesn't throw at module level
+if (!import.meta.env.VITE_API_URL) {
+  if (!isDev) {
+    console.error(
+      '[Jurist AI] VITE_API_URL is not set. Set this environment variable to your backend URL in production. ' +
+      'Falling back to http://localhost:8000 — API calls will fail if this is incorrect.'
+    );
+  }
+}

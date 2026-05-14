@@ -22,7 +22,8 @@ from fastapi import (
     status,
     BackgroundTasks,
 )
-from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,15 +57,27 @@ from settings import ENVIRONMENT, FRONTEND_URL, CORS_ORIGINS, validate_productio
 
 validate_production_environment()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+logger.info(f"Running in {ENVIRONMENT} mode | Frontend URL: {FRONTEND_URL} | CORS origins: {CORS_ORIGINS}")
 
-logger.info(f"Running in {ENVIRONMENT} mode, CORS origins: {CORS_ORIGINS}")
+
+@app.middleware("http")
+async def cors_middleware(request, call_next):
+    response = await call_next(request)
+    origin = request.headers.get("origin", "")
+    if origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Max-Age"] = "600"
+    return response
+
+
+@app.api_route("/{rest:path}", methods=["OPTIONS"])
+async def preflight_handler():
+    return Response(status_code=200, headers={
+        "Access-Control-Max-Age": "600",
+    })
 
 
 @app.on_event("startup")
