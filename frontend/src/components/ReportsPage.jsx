@@ -1,734 +1,364 @@
-import React from 'react';
-import {
-  FileText, Printer, Copy, Check, AlertTriangle,
-  Shield, Scale, Zap, BrainCircuit, Activity,
-  ChevronDown, ChevronRight, Download, Clock, Hash,
-  Target, ShieldCheck, BookOpen, List, AlertOctagon
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  FileText, Download, Activity, Target, Shield, 
+  Check, AlertOctagon, Zap, List, BrainCircuit,
+  ArrowLeft, ChevronRight, Loader2, Share2, Printer
 } from 'lucide-react';
-import EmptyState from './EmptyState.jsx';
-import { useTheme } from './ThemeProvider.jsx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { apiFetchJson } from '@/shared/api/client';
 import { getAccessToken } from '@/shared/api/auth-storage';
-import { buildFallbackReport } from '@/features/reports/model/buildFallbackReport';
-
-const CATEGORY_COLORS = {
-  'Privacy Risk': { bg: 'bg-purple-500', text: 'text-purple-500', border: 'border-purple-500/30', light: 'text-purple-700' },
-  'Legal Risk': { bg: 'bg-red-500', text: 'text-red-500', border: 'border-red-500/30', light: 'text-red-700' },
-  'Financial Risk': { bg: 'bg-green-500', text: 'text-green-500', border: 'border-green-500/30', light: 'text-green-700' },
-  'Security Risk': { bg: 'bg-blue-500', text: 'text-blue-500', border: 'border-blue-500/30', light: 'text-blue-700' },
-  'User Rights Risk': { bg: 'bg-amber-500', text: 'text-amber-500', border: 'border-amber-500/30', light: 'text-amber-700' },
-  'General': { bg: 'bg-slate-500', text: 'text-slate-500', border: 'border-slate-500/30', light: 'text-slate-700' }
-};
+import { useTheme } from './ThemeProvider.jsx';
+import EmptyState from './EmptyState.jsx';
 
 const SECTION_LABELS = [
-  { id: 'executive-dashboard', label: 'Risk Snapshot', icon: Activity },
-  { id: 'executive-summary', label: 'Summary', icon: BookOpen },
-  { id: 'key-findings', label: 'Key Findings', icon: Target },
-  { id: 'category-deep-dive', label: 'Category Review', icon: Shield },
-  { id: 'compliance', label: 'Compliance Assessment', icon: Check },
-  { id: 'critical-clauses', label: 'Critical Clauses', icon: AlertOctagon },
-  { id: 'risk-distribution', label: 'Risk Distribution', icon: Activity },
-  { id: 'action-plan', label: 'Action Plan', icon: Zap },
-  { id: 'transparency', label: 'Analysis Details', icon: BrainCircuit },
-  { id: 'appendix', label: 'Appendix', icon: List },
+  { id: 'summary', label: 'Executive Summary', icon: FileText },
+  { id: 'findings', label: 'Key Findings', icon: Target },
+  { id: 'categories', label: 'Risk Categories', icon: Shield },
+  { id: 'clauses', label: 'Critical Clauses', icon: AlertOctagon },
+  { id: 'compliance', label: 'Compliance Status', icon: Check },
+  { id: 'action', label: 'Action Plan', icon: Zap },
 ];
 
-function renderValue(value) {
-  if (value == null) return '';
-  if (typeof value === 'string' || typeof value === 'number') return String(value);
-  if (Array.isArray(value)) return value.map(renderValue).filter(Boolean).join(', ');
-  if (typeof value === 'object') {
-    return (
-      value.finding ||
-      value.issue ||
-      value.top_concern ||
-      value.text ||
-      value.category ||
-      JSON.stringify(value)
-    );
-  }
-  return String(value);
-}
-
-export default function ReportsPage({ analysisResult, sourceInfo, calculateScore, onNewAnalysis, analysisJobId, token }) {
+export default function ReportsPage({ 
+  analysisResult, 
+  sourceInfo, 
+  onNewAnalysis, 
+  analysisJobId, 
+  token 
+}) {
   const { theme } = useTheme();
-  const [copied, setCopied] = React.useState(false);
-  const [report, setReport] = React.useState(null);
-  const [isGenerating, setIsGenerating] = React.useState(false);
-  const [activeSection, setActiveSection] = React.useState(null);
-  const [expandedSections, setExpandedSections] = React.useState({});
+  const [report, setReport] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [activeSection, setActiveSection] = useState('summary');
+  const reportRef = useRef(null);
 
-  const textClass = theme === 'light' ? 'text-gray-900' : 'text-white';
-  const subTextClass = theme === 'light' ? 'text-gray-500' : 'text-white/60';
-  const mutedTextClass = theme === 'light' ? 'text-gray-400' : 'text-white/40';
+  const riskScore = report?.report_metadata?.risk_score ?? analysisResult?.risk_score ?? 0;
+  
+  const getRiskColor = (score) => {
+    if (score >= 60) return 'text-red-500';
+    if (score >= 30) return 'text-amber-500';
+    return 'text-emerald-500';
+  };
 
-  // Auto-load cached report on mount
-  React.useEffect(() => {
+  const getRiskBg = (score) => {
+    if (score >= 60) return 'bg-red-500/10 border-red-500/20';
+    if (score >= 30) return 'bg-amber-500/10 border-amber-500/20';
+    return 'bg-emerald-500/10 border-emerald-500/20';
+  };
+
+  useEffect(() => {
     if (analysisJobId && !report && !isGenerating) {
       const activeToken = token || getAccessToken();
       apiFetchJson(`/report/${analysisJobId}`, { token: activeToken })
         .then(({ res, data }) => {
           if (res.ok && data?.status === 'complete' && data.report) {
             setReport(data.report);
-            const initExpanded = {};
-            SECTION_LABELS.forEach(s => { initExpanded[s.id] = true; });
-            setExpandedSections(initExpanded);
           }
         })
-        .catch(() => { }); // 404 is fine, just means no cached report
+        .catch(() => { });
     }
-  }, [analysisJobId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  React.useEffect(() => {
-    if (report?.report_metadata?.generated_at) {
-      const sections = document.querySelectorAll('[data-section-id]');
-      const observer = new IntersectionObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.getAttribute('data-section-id'));
-          }
-        }
-      }, { rootMargin: '-80px 0px -80% 0px' });
-      sections.forEach(s => observer.observe(s));
-      return () => observer.disconnect();
-    }
-  }, [report]);
+  }, [analysisJobId, token]);
 
   const generateReport = async () => {
-    if (!analysisResult) return;
+    if (!analysisJobId) return;
     setIsGenerating(true);
+    const activeToken = token || getAccessToken();
     try {
-      const activeToken = token || getAccessToken();
-      const jobId = analysisJobId || '';
-      if (!jobId) {
-        const fallback = buildFallbackReport({ analysisResult, sourceInfo });
-        setReport(fallback);
-        setIsGenerating(false);
-        return;
-      }
-      const { res, data } = await apiFetchJson(`/report/generate/${jobId}`, {
+      const { res, data } = await apiFetchJson(`/report/generate/${analysisJobId}`, {
         method: 'POST',
         token: activeToken
       });
-      if (res.ok && data?.status === 'complete' && data.report) {
+      if (res.ok && data.report) {
         setReport(data.report);
-        const initExpanded = {};
-        SECTION_LABELS.forEach(s => { initExpanded[s.id] = true; });
-        setExpandedSections(initExpanded);
-      } else {
-        const fallback = buildFallbackReport({ analysisResult, sourceInfo });
-        setReport(fallback);
       }
-    } catch {
-      const fallback = buildFallbackReport({ analysisResult, sourceInfo });
-      setReport(fallback);
+    } catch (err) {
+      console.error('Report generation failed', err);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  if (!analysisResult) {
-    return <EmptyState view="reports" onNewAnalysis={onNewAnalysis} />;
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current) return;
+    
+    const element = reportRef.current;
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      windowWidth: element.scrollWidth,
+      onclone: (clonedDoc) => {
+        const clonedEl = clonedDoc.getElementById('report-content');
+        if (clonedEl) {
+          clonedEl.style.color = '#000000';
+          clonedEl.style.padding = '40px';
+          // Ensure all text is black for PDF
+          const allText = clonedEl.querySelectorAll('*');
+          allText.forEach(el => {
+             if (el.classList.contains('text-white/60')) el.style.color = '#666666';
+             else if (el.classList.contains('text-white')) el.style.color = '#000000';
+          });
+        }
+      }
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`Jurist_Report_${report?.report_metadata?.report_id || 'analysis'}.pdf`);
+  };
+
+  if (!analysisResult && !report) {
+    return <EmptyState title="No Analysis Found" description="Run an analysis first to generate a report." />;
   }
 
-  const handlePrint = () => window.print();
-  const handleCopy = () => {
-    let text = `JURIST AI — DETAILED RISK REPORT\n`;
-    text += `Report ID: ${report?.report_metadata?.report_id || 'N/A'}\n`;
-    text += `Generated: ${new Date(report?.report_metadata?.generated_at || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}\n`;
-    text += `Document: ${report?.report_metadata?.document_source || sourceInfo?.value || 'Unknown'}\n`;
-    text += `Risk Level: ${report?.executive_dashboard?.overall_risk_level || analysisResult?.overall_risk || 'Low'}\n\n`;
+  if (!report && !isGenerating) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
+        <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
+          <FileText className="w-10 h-10 text-blue-500" />
+        </div>
+        <h2 className="text-2xl font-semibold mb-2">Generate Risk Report</h2>
+        <p className="text-white/60 max-w-md mb-8">
+          Create a detailed, LLM-powered legal report summarizing critical risks, compliance status, and action plans.
+        </p>
+        <button 
+          onClick={generateReport}
+          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+        >
+          <Zap className="w-4 h-4" />
+          Generate Professional Report
+        </button>
+      </div>
+    );
+  }
 
-    if (report?.executive_summary || analysisResult?.executive_summary) {
-      text += `EXECUTIVE SUMMARY:\n${report?.executive_summary || analysisResult?.executive_summary}\n\n`;
-    }
-    if (report?.key_findings?.length) {
-      text += `KEY FINDINGS:\n`;
-      report.key_findings.forEach(f => {
-        const severityText = renderValue(f?.severity).toUpperCase();
-        const categoryText = renderValue(f?.category);
-        const findingText = renderValue(f?.finding || f?.issue);
-        text += `- [${severityText}] ${categoryText}: ${findingText}\n`;
-      });
-      text += '\n';
-    }
-    if (report?.critical_clauses?.length) {
-      text += `TOP CRITICAL CLAUSES:\n`;
-      report.critical_clauses.forEach((c, i) => {
-        text += `[${c.rank}] SEV: ${c.severity_score} | ${c.category}\n`;
-        text += `  ${c.explanation}\n`;
-        text += `  Negotiation: ${c.negotiation_suggestion}\n\n`;
-      });
-    }
-
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const toggleSection = (id) => {
-    setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const scrollToSection = (id) => {
-    const el = document.querySelector(`[data-section-id="${id}"]`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const complianceIcon = (status) => {
-    if (status === '✅') return <span className="text-green-500 text-lg">✅</span>;
-    if (status === '⚠️') return <span className="text-amber-500 text-lg">⚠️</span>;
-    return <span className="text-red-500 text-lg">❌</span>;
-  };
+  if (isGenerating) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
+        <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-6" />
+        <h2 className="text-xl font-medium mb-2">Analyzing legal nuances...</h2>
+        <p className="text-white/60">This usually takes about 20-30 seconds.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 print:m-0 print:p-0">
-      <div className="flex items-center justify-between print:hidden">
-        <h1 className={`text-2xl font-bold ${textClass}`}>Detailed Report</h1>
-        <div className="flex gap-3">
-          <button
-            onClick={handleCopy}
-            disabled={!report}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${theme === 'light' ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'} disabled:opacity-50`}
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Header Actions */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <button 
+            onClick={() => window.history.back()}
+            className="flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-2 text-sm"
           >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            {copied ? 'Copied' : 'Copy Report'}
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </button>
-          <button
-            onClick={handlePrint}
-            disabled={!report}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white font-semibold disabled:opacity-50"
+          <h1 className="text-3xl font-bold font-serif italic text-white">Risk Analysis Report</h1>
+          <p className="text-white/60 text-sm mt-1">ID: {report.report_metadata.report_id} • Generated {new Date(report.report_metadata.generated_at).toLocaleDateString()}</p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleDownloadPDF}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors text-sm"
           >
-            <Printer size={16} />
-            Download PDF
+            <Download className="w-4 h-4" /> Download PDF
+          </button>
+          <button 
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors text-sm"
+          >
+            <Printer className="w-4 h-4" /> Print
           </button>
         </div>
       </div>
 
-      {!report && !isGenerating && (
-        <div className={`glass-card p-12 text-center ${theme === 'light' ? 'bg-white' : ''}`}>
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#007AFF]/20 to-purple-500/20 flex items-center justify-center mx-auto mb-6">
-            <FileText size={32} className="text-[#007AFF]" />
-          </div>
-          <h2 className={`text-xl font-bold mb-3 ${textClass}`}>Generate Detailed Report</h2>
-          <p className={`${subTextClass} max-w-lg mx-auto mb-8`}>
-            Build a longer report from the current analysis, including flagged clauses, category summaries, and follow-up actions.
-          </p>
-          <button
-            onClick={generateReport}
-            className="px-8 py-4 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white font-bold text-sm hover:shadow-lg hover:shadow-[#007AFF]/30 transition-all"
-          >
-            <Zap size={18} className="inline mr-2" />
-            Generate Detailed Report
-          </button>
-        </div>
-      )}
-
-      {isGenerating && (
-        <div className={`glass-card p-12 text-center ${theme === 'light' ? 'bg-white' : ''}`}>
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-6">
-            <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          </div>
-          <h2 className={`text-xl font-bold mb-3 ${textClass}`}>Generating Report...</h2>
-          <p className={`${subTextClass} max-w-lg mx-auto`}>
-            Building the summary, category sections, and clause appendix from the current analysis. This may take a moment.
-          </p>
-        </div>
-      )}
-
-      {report && (
-        <div className="flex gap-6 print:block">
-          <div className="w-56 shrink-0 hidden lg:block print:hidden">
-            <div className="sticky top-6 space-y-1">
-              <p className={`text-[10px] font-black uppercase tracking-widest mb-3 ${mutedTextClass}`}>Sections</p>
-              {SECTION_LABELS.map(s => {
-                const Icon = s.icon;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => scrollToSection(s.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all text-left ${activeSection === s.id
-                      ? (theme === 'light' ? 'bg-blue-50 text-blue-700' : 'bg-[#007AFF]/10 text-[#007AFF]')
-                      : (theme === 'light' ? 'text-gray-500 hover:bg-gray-50' : 'text-white/50 hover:bg-white/5')
-                      }`}
-                  >
-                    <Icon size={14} />
-                    <span className="truncate">{s.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-0" id="report-document">
-            <div className={`glass-card p-10 print:bg-white print:text-black print:border-none print:shadow-none print:p-8 ${theme === 'light' ? 'bg-white border-gray-100' : ''}`}>
-
-              {/* Report Header */}
-              <div className={`flex items-start justify-between border-b-2 ${theme === 'light' ? 'border-gray-100' : 'border-white/5'} pb-6 mb-8`}>
-                <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-xl ${theme === 'light' ? 'bg-blue-50' : 'bg-[#007AFF]/10'}`}>
-                    <Scale size={32} className="text-[#007AFF]" />
-                  </div>
-                  <div>
-                    <h2 className={`text-2xl font-extrabold tracking-tight ${textClass}`}>Detailed Risk Report</h2>
-                    <p className={`${mutedTextClass} font-bold uppercase text-[10px] tracking-widest mt-1`}>
-                      {new Date(report.report_metadata.generated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest mb-1`}>Report ID</p>
-                  <p className={`text-xs font-mono font-bold ${textClass}`}>{report.report_metadata.report_id}</p>
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full mt-2 text-xs font-black uppercase tracking-wider ${report.executive_dashboard.overall_risk_level === 'High' ? 'bg-red-500/10 text-red-500' :
-                      report.executive_dashboard.overall_risk_level === 'Medium' ? 'bg-amber-500/10 text-amber-500' :
-                        'bg-green-500/10 text-green-500'
-                    }`}>
-                    <AlertTriangle size={12} />
-                    <span>{report.executive_dashboard.overall_risk_level}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 1: Executive Dashboard */}
-              <div data-section-id="executive-dashboard" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('executive-dashboard')}>
-                  <div className="w-8 h-8 rounded-lg bg-[#007AFF]/20 flex items-center justify-center">
-                    <Activity size={16} className="text-[#007AFF]" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§1 Risk Snapshot</h3>
-                  {expandedSections['executive-dashboard'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['executive-dashboard'] !== false && (
-                  <>
-                    <div className="grid grid-cols-4 gap-4 mb-6">
-                      <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                        <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Risk Score</p>
-                        <p className={`text-2xl font-black mt-1 ${textClass}`}>{report.executive_dashboard.safety_score}/100</p>
-                      </div>
-                      <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                        <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Total Clauses</p>
-                        <p className={`text-2xl font-black mt-1 ${textClass}`}>{report.executive_dashboard.total_clauses_analyzed}</p>
-                      </div>
-                      <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                        <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Flagged</p>
-                        <p className={`text-2xl font-black mt-1 text-red-500`}>{report.executive_dashboard.total_flagged}</p>
-                      </div>
-                      <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                        <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Model-Reviewed</p>
-                        <p className={`text-2xl font-black mt-1 text-emerald-500`}>{report.executive_dashboard.ai_deep_scan_coverage}</p>
-                      </div>
-                    </div>
-                    {report.executive_dashboard.quick_verdict && (
-                      <div className={`p-5 rounded-xl border-l-4 border-[#007AFF] ${theme === 'light' ? 'bg-blue-50 border-blue-200' : 'bg-blue-500/10 border-blue-500/30'}`}>
-                        <p className={`text-sm font-medium leading-relaxed italic ${theme === 'light' ? 'text-blue-900' : 'text-blue-200'}`}>
-                          {report.executive_dashboard.quick_verdict}
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Section 2: Executive Summary */}
-              <div data-section-id="executive-summary" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('executive-summary')}>
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                    <BookOpen size={16} className="text-indigo-500" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§2 Summary</h3>
-                  {expandedSections['executive-summary'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['executive-summary'] !== false && (
-                  <p className={`text-base leading-relaxed ${theme === 'light' ? 'text-gray-700' : 'text-white/80'}`}>
-                    {report.executive_summary || analysisResult?.executive_summary || 'No summary available.'}
-                  </p>
-                )}
-              </div>
-
-              {/* Section 3: Key Findings */}
-              <div data-section-id="key-findings" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('key-findings')}>
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                    <Target size={16} className="text-amber-500" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§3 Key Findings</h3>
-                  {expandedSections['key-findings'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['key-findings'] !== false && (
-                  <div className="space-y-3">
-                    {(report.key_findings || analysisResult?.key_findings || []).length > 0 ? (
-                      (report.key_findings || analysisResult?.key_findings || []).map((f, i) => {
-                        const severity = renderValue(f?.severity).toLowerCase();
-                        const category = renderValue(f?.category);
-                        const findingText = renderValue(f?.finding || f?.issue);
-                        const sevColor = severity === 'critical' ? 'border-red-500 bg-red-500/10' :
-                          severity === 'high' ? 'border-orange-500 bg-orange-500/10' :
-                            severity === 'medium' ? 'border-amber-500 bg-amber-500/10' :
-                              'border-green-500 bg-green-500/10';
-                        const sevLabel = severity === 'critical' ? 'CRITICAL' :
-                          severity === 'high' ? 'HIGH' :
-                            severity === 'medium' ? 'MEDIUM' : 'LOW';
-                        return (
-                          <div key={i} className={`flex items-start gap-4 p-4 rounded-xl border-l-4 ${sevColor} ${theme === 'light' ? 'bg-opacity-50' : ''}`}>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-xs font-black uppercase tracking-widest ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{category}</span>
-                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${severity === 'critical' ? 'bg-red-500/20 text-red-500' :
-                                    severity === 'high' ? 'bg-orange-500/20 text-orange-500' :
-                                      severity === 'medium' ? 'bg-amber-500/20 text-amber-500' :
-                                        'bg-green-500/20 text-green-500'
-                                  }`}>{sevLabel}</span>
-                              </div>
-                              <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-white/60'}`}>{findingText}</p>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className={`${subTextClass} text-sm`}>No key findings available.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Section 4: Category Deep Dive */}
-              <div data-section-id="category-deep-dive" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('category-deep-dive')}>
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                    <Shield size={16} className="text-purple-500" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§4 Risk Category Deep Dive</h3>
-                  {expandedSections['category-deep-dive'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['category-deep-dive'] !== false && (
-                  <div className="space-y-6">
-                    {Object.keys(report.category_deep_dives || {}).length > 0 ? (
-                      Object.entries(report.category_deep_dives).map(([cat, data]) => {
-                        const styles = CATEGORY_COLORS[cat] || CATEGORY_COLORS.General;
-                        return (
-                          <div key={cat} className={`p-6 rounded-2xl border-l-4 ${styles.border} ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5'}`}>
-                            <h4 className={`text-sm font-black uppercase tracking-widest mb-3 ${styles.text}`}>{cat}</h4>
-                            <p className={`text-sm leading-relaxed mb-4 ${theme === 'light' ? 'text-gray-700' : 'text-white/70'}`}>{data.assessment}</p>
-                            {data.specific_concerns?.length > 0 && (
-                              <div className="mb-4">
-                                <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${mutedTextClass}`}>Specific Concerns</p>
-                                <ul className="space-y-1">
-                                  {data.specific_concerns.map((c, i) => (
-                                    <li key={i} className={`text-sm flex items-start gap-2 ${theme === 'light' ? 'text-gray-600' : 'text-white/60'}`}>
-                                      <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                                      {c}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            {data.recommendation && (
-                              <div className={`p-3 rounded-lg border ${theme === 'light' ? 'bg-green-50 border-green-100' : 'bg-green-500/10 border-green-500/20'}`}>
-                                <p className={`text-xs font-bold ${theme === 'light' ? 'text-green-800' : 'text-green-300'}`}>Recommendation: {data.recommendation}</p>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className={`${subTextClass} text-sm`}>No category deep dives available. Run the analysis to generate them.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Section 5: Compliance Assessment */}
-              <div data-section-id="compliance" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('compliance')}>
-                  <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                    <Check size={16} className="text-green-500" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§5 Compliance Assessment</h3>
-                  {expandedSections['compliance'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['compliance'] !== false && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {['gdpr', 'ccpa', 'best_practices'].map(reg => {
-                      const data = report.compliance_assessment?.[reg] || {};
-                      const title = reg === 'gdpr' ? 'GDPR' : reg === 'ccpa' ? 'CCPA' : 'Best Practices';
-                      return (
-                        <div key={reg} className={`p-6 rounded-2xl border ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'}`}>
-                          <h4 className={`text-xs font-black uppercase tracking-widest mb-4 ${textClass}`}>{title}</h4>
-                          <div className="space-y-3">
-                            {Object.entries(data).filter(([k]) => k !== 'notes').map(([key, val]) => (
-                              <div key={key} className="flex items-center justify-between">
-                                <span className={`text-xs font-medium capitalize ${subTextClass}`}>{key.replace(/_/g, ' ')}</span>
-                                {complianceIcon(val)}
-                              </div>
-                            ))}
-                          </div>
-                          {data.notes && (
-                            <p className={`text-[10px] mt-4 pt-3 border-t ${theme === 'light' ? 'border-gray-200 text-gray-500' : 'border-white/10 text-white/40'}`}>
-                              {data.notes}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Section 6: Critical Clauses */}
-              <div data-section-id="critical-clauses" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('critical-clauses')}>
-                  <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
-                    <AlertOctagon size={16} className="text-red-500" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§6 Critical Clauses Report</h3>
-                  {expandedSections['critical-clauses'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['critical-clauses'] !== false && (
-                  <div className="space-y-6">
-                    {(report.critical_clauses || []).length > 0 ? (
-                      report.critical_clauses.map((clause, i) => {
-                        const styles = CATEGORY_COLORS[clause.category] || CATEGORY_COLORS.General;
-                        return (
-                          <div key={i} className={`p-6 rounded-2xl border ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-black/20 border-white/5'}`}>
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <span className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-black ${theme === 'light' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>{clause.rank}</span>
-                                <span className={`text-xs font-black uppercase tracking-widest ${styles.text}`}>{clause.category}</span>
-                              </div>
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest ${clause.severity_score >= 8 ? 'bg-red-500 text-white' :
-                                  clause.severity_score >= 5 ? 'bg-amber-500 text-white' :
-                                    'bg-[#007AFF] text-white'
-                                }`}>
-                                SEV: {clause.severity_score?.toFixed(1)}
-                              </span>
-                            </div>
-                            <p className={`text-xs leading-relaxed italic mb-4 line-clamp-3 font-serif border-l-4 pl-4 ${theme === 'light' ? 'text-gray-500 border-gray-200' : 'text-white/40 border-white/10'}`}>
-                              "{clause.text}"
-                            </p>
-                            <div className={`p-4 rounded-xl text-sm leading-relaxed ${theme === 'light' ? 'bg-gray-50 text-gray-700' : 'bg-white/5 text-white/70'}`}>
-                              <p className="mb-3"><span className="font-black">Risk: </span>{clause.explanation}</p>
-                              <p className="mb-3"><span className="font-black">Why it matters: </span>{clause.why_it_matters}</p>
-                              <p className={`p-3 rounded-lg border ${theme === 'light' ? 'bg-amber-50 border-amber-100 text-amber-800' : 'bg-amber-500/10 border-amber-500/20 text-amber-200'}`}>
-                                <span className="font-black">Negotiation: </span>{clause.negotiation_suggestion}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className={`${subTextClass} text-sm`}>No critical clauses identified.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Section 7: Risk Distribution Analysis */}
-              <div data-section-id="risk-distribution" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('risk-distribution')}>
-                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-                    <Activity size={16} className="text-cyan-500" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§7 Risk Distribution Analysis</h3>
-                  {expandedSections['risk-distribution'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['risk-distribution'] !== false && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className={`p-6 rounded-2xl border ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'}`}>
-                      <h4 className={`text-[10px] font-black uppercase tracking-widest mb-4 ${mutedTextClass}`}>Severity Distribution</h4>
-                      {['critical', 'high', 'medium', 'low'].map(sev => {
-                        const count = report.risk_distribution_analysis?.severity_distribution?.[sev] || 0;
-                        const colors = { critical: 'bg-red-500', high: 'bg-orange-500', medium: 'bg-amber-500', low: 'bg-green-500' };
-                        const maxCount = Math.max(...Object.values(report.risk_distribution_analysis?.severity_distribution || {}), 1);
-                        return (
-                          <div key={sev} className="flex items-center gap-3 mb-2">
-                            <span className={`text-[10px] font-bold uppercase w-16 ${mutedTextClass}`}>{sev}</span>
-                            <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full ${colors[sev]}`} style={{ width: `${(count / maxCount) * 100}%` }} />
-                            </div>
-                            <span className={`text-xs font-black ${textClass}`}>{count}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className={`p-6 rounded-2xl border ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'}`}>
-                      <h4 className={`text-[10px] font-black uppercase tracking-widest mb-4 ${mutedTextClass}`}>Risk Concentration</h4>
-                      <p className={`text-sm leading-relaxed ${theme === 'light' ? 'text-gray-700' : 'text-white/70'}`}>
-                        {report.risk_distribution_analysis?.risk_concentration?.verdict || 'No concentration data available.'}
-                      </p>
-                      <div className="mt-4 space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className={subTextClass}>Front-loaded: {report.risk_distribution_analysis?.risk_concentration?.front_loaded_pct || 0}%</span>
-                          <span className={subTextClass}>Back-loaded: {report.risk_distribution_analysis?.risk_concentration?.back_loaded_pct || 0}%</span>
-                        </div>
-                      </div>
-                      <div className="mt-4">
-                        <h4 className={`text-[10px] font-black uppercase tracking-widest mb-3 ${mutedTextClass}`}>Confidence Distribution</h4>
-                        {['High', 'Medium', 'Low'].map(level => {
-                          const count = report.risk_distribution_analysis?.confidence_distribution?.[level] || 0;
-                          return (
-                            <div key={level} className="flex items-center gap-3 mb-1">
-                              <span className={`text-[10px] font-bold uppercase w-14 ${mutedTextClass}`}>{level}</span>
-                              <span className={`text-xs font-black ${textClass}`}>{count}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Section 8: Action Plan */}
-              <div data-section-id="action-plan" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('action-plan')}>
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                    <Zap size={16} className="text-amber-500" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§8 Action Plan</h3>
-                  {expandedSections['action-plan'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['action-plan'] !== false && (
-                  <div className="space-y-6">
-                    <div className={`p-6 rounded-2xl border-l-4 border-red-500 ${theme === 'light' ? 'bg-red-50 border-red-200' : 'bg-red-500/10'}`}>
-                      <h4 className={`text-xs font-black uppercase tracking-widest mb-3 text-red-500`}>🔴 Immediate Actions</h4>
-                      <ul className="space-y-2">
-                        {(report.action_plan?.immediate_actions || []).map((action, i) => (
-                          <li key={i} className={`flex items-start gap-2 text-sm ${theme === 'light' ? 'text-gray-700' : 'text-white/70'}`}>
-                            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                            {action}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className={`p-6 rounded-2xl border-l-4 border-amber-500 ${theme === 'light' ? 'bg-amber-50 border-amber-200' : 'bg-amber-500/10'}`}>
-                      <h4 className={`text-xs font-black uppercase tracking-widest mb-3 text-amber-500`}>🟡 Negotiate Before Signing</h4>
-                      <ul className="space-y-2">
-                        {(report.action_plan?.negotiate_before_signing || []).map((action, i) => (
-                          <li key={i} className={`flex items-start gap-2 text-sm ${theme === 'light' ? 'text-gray-700' : 'text-white/70'}`}>
-                            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                            {action}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className={`p-6 rounded-2xl border-l-4 border-green-500 ${theme === 'light' ? 'bg-green-50 border-green-200' : 'bg-green-500/10'}`}>
-                      <h4 className={`text-xs font-black uppercase tracking-widest mb-3 text-green-500`}>🟢 Monitor / Accept with Awareness</h4>
-                      <ul className="space-y-2">
-                        {(report.action_plan?.monitor_and_accept || []).map((action, i) => (
-                          <li key={i} className={`flex items-start gap-2 text-sm ${theme === 'light' ? 'text-gray-700' : 'text-white/70'}`}>
-                            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-                            {action}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className={`p-6 rounded-2xl text-center border ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'}`}>
-                      <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${mutedTextClass}`}>Overall Recommendation</p>
-                      <p className={`text-xl font-black ${report.action_plan?.overall_recommendation === 'Sign' ? 'text-green-500' : report.action_plan?.overall_recommendation === 'Negotiate' ? 'text-amber-500' : 'text-red-500'}`}>
-                        {report.action_plan?.overall_recommendation || 'Review'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Section 9: Analysis Transparency */}
-              <div data-section-id="transparency" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('transparency')}>
-                  <div className="w-8 h-8 rounded-lg bg-slate-500/20 flex items-center justify-center">
-                    <BrainCircuit size={16} className="text-slate-400" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§9 Analysis Transparency</h3>
-                  {expandedSections['transparency'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['transparency'] !== false && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                      <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Total Clauses</p>
-                      <p className={`text-lg font-black mt-1 ${textClass}`}>{report.analysis_transparency?.total_clauses || 0}</p>
-                    </div>
-                    <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                      <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>NLP Pre-Filtered</p>
-                      <p className={`text-lg font-black mt-1 ${textClass}`}>{report.analysis_transparency?.nlp_pre_filtered || 0}</p>
-                    </div>
-                    <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                      <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>LLM Deep Scanned</p>
-                      <p className={`text-lg font-black mt-1 text-[#007AFF]`}>{report.analysis_transparency?.llm_deep_scanned || 0}</p>
-                    </div>
-                    <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                      <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>High Confidence</p>
-                      <p className={`text-lg font-black mt-1 text-green-500`}>{report.analysis_transparency?.high_confidence_flags || 0}</p>
-                    </div>
-                    <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                      <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Medium Confidence</p>
-                      <p className={`text-lg font-black mt-1 text-amber-500`}>{report.analysis_transparency?.medium_confidence_flags || 0}</p>
-                    </div>
-                    <div className={`p-4 rounded-xl ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border border-white/10'}`}>
-                      <p className={`${mutedTextClass} text-[10px] font-bold uppercase tracking-widest`}>Low Confidence</p>
-                      <p className={`text-lg font-black mt-1 text-red-500`}>{report.analysis_transparency?.low_confidence_flags || 0}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Section 10: Appendix */}
-              <div data-section-id="appendix" className="mb-12 scroll-mt-20">
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={() => toggleSection('appendix')}>
-                  <div className="w-8 h-8 rounded-lg bg-slate-500/20 flex items-center justify-center">
-                    <List size={16} className="text-slate-400" />
-                  </div>
-                  <h3 className={`text-lg font-black uppercase tracking-wider ${textClass}`}>§10 Appendix: All Flagged Clauses</h3>
-                  {expandedSections['appendix'] ? <ChevronDown size={16} className={subTextClass} /> : <ChevronRight size={16} className={subTextClass} />}
-                </div>
-                {expandedSections['appendix'] !== false && (
-                  <div className="space-y-4">
-                    {(report.appendix_all_flagged || []).length > 0 ? (
-                      report.appendix_all_flagged.map((clause, i) => {
-                        const styles = CATEGORY_COLORS[clause.categories?.[0]] || CATEGORY_COLORS.General;
-                        return (
-                          <div key={i} className={`p-4 rounded-xl border ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'}`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-black ${mutedTextClass}`}>#{clause.id}</span>
-                                {clause.categories?.map((cat, ci) => {
-                                  const s = CATEGORY_COLORS[cat] || CATEGORY_COLORS.General;
-                                  return <span key={ci} className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${s.text} ${s.border}`}>{cat}</span>;
-                                })}
-                              </div>
-                              <span className={`text-[10px] font-black ${clause.confidence === 'High' ? 'text-green-500' : clause.confidence === 'Medium' ? 'text-amber-500' : 'text-red-500'}`}>
-                                {clause.confidence}
-                              </span>
-                            </div>
-                            <p className={`text-xs line-clamp-2 mb-2 ${theme === 'light' ? 'text-gray-500' : 'text-white/40'}`}>{clause.text}</p>
-                            <p className={`text-xs ${theme === 'light' ? 'text-gray-700' : 'text-white/70'}`}>{clause.explanation}</p>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <p className={`${subTextClass} text-sm`}>No flagged clauses to display.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Report Footer */}
-              <div className="mt-16 pt-8 border-t border-white/5 text-center">
-                <p className={`${mutedTextClass} text-[10px] font-black tracking-[0.4em] uppercase`}>
-                  End of Comprehensive Legal Risk Assessment
-                </p>
-                <div className="flex items-center justify-center gap-4 mt-4 opacity-50">
-                  <Scale size={14} className={mutedTextClass} />
-                  <Activity size={14} className={mutedTextClass} />
-                  <BrainCircuit size={14} className={mutedTextClass} />
-                </div>
-                <p className="text-[8px] text-white/10 mt-6 font-bold uppercase tracking-widest">
-                  Jurist AI — Enterprise Intelligence Engine | Report ID: {report.report_metadata.report_id}
-                </p>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Sticky Sidebar Navigation */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-24 space-y-1">
+            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl mb-4">
+              <div className="text-sm text-white/40 mb-1">Document Risk Score</div>
+              <div className={`text-4xl font-bold ${getRiskColor(riskScore)}`}>{riskScore}/100</div>
+              <div className="w-full bg-white/5 h-2 rounded-full mt-3 overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-1000 ${riskScore >= 60 ? 'bg-red-500' : riskScore >= 30 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                  style={{ width: `${riskScore}%` }}
+                />
               </div>
             </div>
+
+            {SECTION_LABELS.map((section) => (
+              <button
+                key={section.id}
+                onClick={() => {
+                  setActiveSection(section.id);
+                  document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                  activeSection === section.id 
+                    ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20' 
+                    : 'text-white/60 hover:bg-white/5'
+                }`}
+              >
+                <section.icon className="w-4 h-4" />
+                <span className="text-sm font-medium">{section.label}</span>
+                {activeSection === section.id && <ChevronRight className="w-4 h-4 ml-auto" />}
+              </button>
+            ))}
           </div>
         </div>
-      )}
+
+        {/* Report Content */}
+        <div className="lg:col-span-3 space-y-12 pb-20" id="report-content" ref={reportRef}>
+          
+          {/* Summary Section */}
+          <section id="summary" className="scroll-mt-24">
+            <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
+              <FileText className="w-5 h-5 text-blue-400" /> Executive Summary
+            </h2>
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6 leading-relaxed text-white/80 text-lg italic font-serif">
+              "{report.executive_summary}"
+            </div>
+          </section>
+
+          {/* Key Findings */}
+          <section id="findings" className="scroll-mt-24">
+            <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
+              <Target className="w-5 h-5 text-purple-400" /> Key Findings
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {report.key_findings.map((finding, idx) => (
+                <div key={idx} className="bg-white/5 border border-white/10 p-5 rounded-2xl flex gap-4">
+                  <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-bold shrink-0">
+                    {idx + 1}
+                  </div>
+                  <p className="text-sm text-white/80">{finding}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Risk Categories */}
+          <section id="categories" className="scroll-mt-24">
+            <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
+              <Shield className="w-5 h-5 text-amber-400" /> Category Breakdown
+            </h2>
+            <div className="space-y-4">
+              {Object.entries(report.category_analysis).map(([name, data]) => (
+                <div key={name} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                  <div className="px-6 py-4 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
+                    <h3 className="font-semibold">{name}</h3>
+                    <span className="text-xs px-2 py-1 bg-white/10 rounded text-white/60">Risk Category</span>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-sm text-white/70 mb-4 leading-relaxed">{data.assessment}</p>
+                    <div className="flex items-start gap-3 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl">
+                      <Zap className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">Recommendation</div>
+                        <p className="text-sm text-white/80">{data.recommendation}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Critical Clauses */}
+          <section id="clauses" className="scroll-mt-24">
+            <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
+              <AlertOctagon className="w-5 h-5 text-red-500" /> Top Critical Clauses
+            </h2>
+            <div className="space-y-6">
+              {report.critical_clauses.map((clause) => (
+                <div key={clause.rank} className="relative bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-red-500/30 transition-all">
+                  <div className="absolute -top-3 -left-3 w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center font-bold shadow-lg shadow-red-500/20">
+                    {clause.rank}
+                  </div>
+                  <div className="ml-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xs px-2 py-1 bg-red-500/20 text-red-400 rounded-md font-bold uppercase tracking-tighter">
+                        High Severity
+                      </span>
+                      <span className="text-xs text-white/40 uppercase tracking-widest">{clause.category}</span>
+                    </div>
+                    <div className="p-4 bg-black/40 rounded-xl border border-white/5 mb-4 font-mono text-sm text-white/90 leading-relaxed italic border-l-2 border-l-red-500">
+                      "{clause.text}"
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <div className="text-xs font-bold text-white/40 uppercase mb-2">Why this is risky</div>
+                        <p className="text-sm text-white/70">{clause.reason}</p>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-emerald-500/60 uppercase mb-2">Mitigation Strategy</div>
+                        <p className="text-sm text-white/70">{clause.mitigation}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Compliance */}
+          <section id="compliance" className="scroll-mt-24">
+            <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
+              <Check className="w-5 h-5 text-emerald-400" /> Compliance Status
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Object.entries(report.compliance_check).map(([reg, note]) => (
+                <div key={reg} className="bg-white/5 border border-white/10 p-5 rounded-2xl">
+                  <h3 className="text-xs font-bold text-white/40 uppercase mb-3 tracking-widest">{reg}</h3>
+                  <p className="text-sm text-white/90">{note}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Action Plan */}
+          <section id="action" className="scroll-mt-24">
+            <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
+              <Zap className="w-5 h-5 text-blue-400" /> Recommended Action Plan
+            </h2>
+            <div className="bg-blue-600/5 border border-blue-500/20 rounded-3xl p-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-4">
+                  <div className="text-xs font-bold text-red-400 uppercase tracking-widest">Immediate Actions</div>
+                  <ul className="space-y-2">
+                    {report.action_plan.immediate.map((item, i) => (
+                      <li key={i} className="text-sm text-white/80 flex gap-2"><span className="text-red-400">•</span> {item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="space-y-4">
+                  <div className="text-xs font-bold text-amber-400 uppercase tracking-widest">Negotiation Points</div>
+                  <ul className="space-y-2">
+                    {report.action_plan.negotiate.map((item, i) => (
+                      <li key={i} className="text-sm text-white/80 flex gap-2"><span className="text-amber-400">•</span> {item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="space-y-4">
+                  <div className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Final Verdict</div>
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                    <p className="text-sm font-semibold text-emerald-400">{report.action_plan.final_verdict}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
     </div>
   );
 }

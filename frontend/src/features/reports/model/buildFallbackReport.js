@@ -62,7 +62,7 @@ export const buildFallbackReport = ({ analysisResult, sourceInfo }) => {
       analysis_engine: 'Jurist AI',
     },
     executive_dashboard: {
-      safety_score: analysisResult?.total_severity_score || 0,
+      risk_score: analysisResult?.risk_score ?? 0,
       overall_risk_level: riskLevel,
       total_clauses_analyzed: totalClauses,
       total_flagged: totalFlagged,

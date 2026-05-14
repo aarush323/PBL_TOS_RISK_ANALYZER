@@ -390,7 +390,7 @@ async def _run_analysis_background(job_id: str, extraction: dict):
             result["action_required"] = summary.get("action_required", False)
             result["top_concern"] = summary.get("top_concern", "")
             result["recommendation"] = summary.get("recommendation", "")
-            result["safety_score"] = _calc_score_from_result(result)
+            result["risk_score"] = result.get("risk_score", 0)
             await crud.update_analysis_complete(db, job_id, result)
             logger.info(f"Job {job_id} complete, saved to DB.")
         except Exception as e:
@@ -877,14 +877,14 @@ async def _handle_comparison(
                 "risk": result_data_a.get("overall_risk", "Unknown"),
                 "risky_clause_count": result_data_a.get("risky_clause_count", 0),
                 "total_clauses": result_data_a.get("total_clauses", 0),
-                "score": _calc_score_from_result(result_data_a),
+                "score": result_data_a.get("risk_score", 0),
             },
             "doc_b": {
                 "label": source_b,
                 "risk": result_data_b.get("overall_risk", "Unknown"),
                 "risky_clause_count": result_data_b.get("risky_clause_count", 0),
                 "total_clauses": result_data_b.get("total_clauses", 0),
-                "score": _calc_score_from_result(result_data_b),
+                "score": result_data_b.get("risk_score", 0),
             },
             "categories": result.get("pairs", []),
             "overall_winner": overall.lower() if overall else "",
@@ -907,8 +907,8 @@ async def _handle_comparison(
 def _build_comparison_structured(
     result_a: dict, result_b: dict, label_a: str, label_b: str
 ) -> dict:
-    score_a = _calc_score_from_result(result_a)
-    score_b = _calc_score_from_result(result_b)
+    score_a = result_a.get("risk_score", 0)
+    score_b = result_b.get("risk_score", 0)
 
     categories = [
         "Privacy Risk",
@@ -946,11 +946,11 @@ def _build_comparison_structured(
 
     diff_pct = abs(score_a - score_b)
     verdict = (
-        f"{label_b} is {diff_pct}% safer"
-        if score_b > score_a
+        f"{label_b} has lower risk"
+        if score_a > score_b
         else (
-            f"{label_a} is {diff_pct}% safer"
-            if score_a > score_b
+            f"{label_a} has lower risk"
+            if score_b > score_a
             else "Both have equal risk"
         )
     )
@@ -976,38 +976,8 @@ def _build_comparison_structured(
     }
 
 
-def _calc_score_from_result(result: dict) -> int:
-    if not result:
-        return 50
-    severity = result.get("total_severity_score", 0)
-    risky = result.get("risky_clause_count", 0)
-    total = result.get("total_clauses", 1)
-    risk = result.get("overall_risk", "Low")
 
-    score = 100
-    if severity <= 2:
-        score = 95
-    elif severity <= 5:
-        score = 90 - int((severity - 2) * 6.67)
-    elif severity <= 10:
-        score = 80 - int((severity - 5) * 4)
-    elif severity <= 20:
-        score = 60 - int((severity - 10) * 3)
-    else:
-        score = max(10, 25 - int((severity - 40) * 0.5))
 
-    if risk == "High":
-        score = max(10, score - 15)
-    elif risk == "Medium":
-        score = max(20, score - 8)
-
-    ratio = risky / max(1, total)
-    if ratio > 0.5:
-        score = max(10, score - 15)
-    elif ratio > 0.3:
-        score = max(20, score - 8)
-
-    return score
 
 
 @app.get("/chat/{session_id}/history")
@@ -1161,14 +1131,14 @@ async def compare_documents(
                 "risk": analysis_a.get("overall_risk", "Unknown"),
                 "risky_clause_count": analysis_a.get("risky_clause_count", 0),
                 "total_clauses": analysis_a.get("total_clauses", 0),
-                "score": _calc_score_from_result(analysis_a),
+                "score": analysis_a.get("risk_score", 0),
             },
             "doc_b": {
                 "label": result.get("source_b", "Document B"),
                 "risk": analysis_b.get("overall_risk", "Unknown"),
                 "risky_clause_count": analysis_b.get("risky_clause_count", 0),
                 "total_clauses": analysis_b.get("total_clauses", 0),
-                "score": _calc_score_from_result(analysis_b),
+                "score": analysis_b.get("risk_score", 0),
             },
             "categories": result.get("pairs", []),
             "overall_winner": overall_winner,

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { marked } from 'marked';
 import { apiFetch, apiFetchJson, withJsonHeaders } from '@/shared/api/client';
 import { getAccessToken } from '@/shared/api/auth-storage';
-import { calculateSafetyScore } from '@/features/analysis/model/score';
+import { getRiskScore } from '@/features/analysis/model/score';
 import { useAuthActions } from '@/features/auth/hooks/useAuthActions';
 import { useHistoryActions } from '@/features/history/hooks/useHistoryActions';
 
@@ -503,9 +503,9 @@ export function AppProvider({ children }) {
         setChatMessages(prev => [...prev, { role: 'bot', content: chatDetail, html: parseMarkdown(chatDetail) }]);
     };
 
-    // ─── Score ───
+    // ─── Score (reads server-computed risk_score) ───
 
-    const calculateScore = () => calculateSafetyScore(analysisResult);
+    const calculateScore = () => getRiskScore(analysisResult);
 
     const value = {
         // Auth

@@ -1,33 +1,26 @@
-export const calculateSafetyScore = (analysisResult) => {
-  if (!analysisResult) return 100;
-  if (analysisResult.safety_score != null) return analysisResult.safety_score;
-
-  const riskyCount = analysisResult.risky_clause_count || 0;
-  const totalCount = analysisResult.total_clauses || 1;
-
-  if (riskyCount === 0) return 100;
-
-  const avgSeverity =
-    analysisResult.avg_severity_score ||
-    ((analysisResult.total_severity_score || 0) / (riskyCount || 1));
-  const overallRisk = analysisResult.overall_risk || 'Low';
-
-  let score = 100;
-  if (avgSeverity <= 1) score = 95;
-  else if (avgSeverity <= 2) score = 90 - ((avgSeverity - 1) * 5);
-  else if (avgSeverity <= 3) score = 85 - ((avgSeverity - 2) * 5);
-  else if (avgSeverity <= 5) score = 75 - ((avgSeverity - 3) * 5);
-  else if (avgSeverity <= 8) score = 60 - ((avgSeverity - 5) * 3);
-  else if (avgSeverity <= 12) score = 45 - ((avgSeverity - 8) * 3);
-  else score = Math.max(10, 30 - ((avgSeverity - 12) * 2));
-
-  if (overallRisk === 'High') score = Math.max(15, score - 12);
-  else if (overallRisk === 'Medium') score = Math.max(25, score - 6);
-
-  const riskyRatio = riskyCount / totalCount;
-  if (riskyRatio > 0.5) score = Math.max(15, score - 12);
-  else if (riskyRatio > 0.3) score = Math.max(25, score - 6);
-  else if (riskyRatio > 0.15) score = Math.max(35, score - 3);
-
-  return Math.floor(Math.max(10, Math.min(100, score)));
+/**
+ * getRiskScore — reads the pre-computed risk_score from the analysis result.
+ *
+ * The score is computed server-side by backend/analysis/scoring.py using
+ * Weighted Risk Density (WRD). It is a 0-100 integer where:
+ *   0   = no risk (clean document)
+ *   100 = maximum possible risk
+ *
+ * Higher score = RISKIER (inverted from the old "safety score" convention).
+ *
+ * @param {object|null} analysisResult - The analysis result object from the API.
+ * @returns {number} Integer 0-100.
+ */
+export const getRiskScore = (analysisResult) => {
+  if (!analysisResult) return 0;
+  // Prefer the server-computed value (set by scoring.py via analyzer.py)
+  if (analysisResult.risk_score != null) return analysisResult.risk_score;
+  // Fallback: 0 (no score available — do NOT compute client-side)
+  return 0;
 };
+
+/**
+ * @deprecated Use getRiskScore instead. Kept temporarily to avoid import errors
+ * in files that haven't been updated yet.
+ */
+export const calculateSafetyScore = (analysisResult) => getRiskScore(analysisResult);

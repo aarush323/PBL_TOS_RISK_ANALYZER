@@ -3,14 +3,14 @@
  */
 
 /**
- * Returns a hex color string based on the safety score.
- * @param {number} score - The safety score (0-100)
+ * Returns a hex color string based on the risk score.
+ * @param {number} score - The risk score (0-100). Higher = riskier.
  * @returns {string} Hex color string
  */
 export const getScoreColor = (score) => {
-    if (score >= 75) return '#22c55e'; // Green
-    if (score >= 50) return '#f59e0b'; // Amber
-    return '#ef4444'; // Red
+    if (score <= 30) return '#22c55e'; // Green  — low risk
+    if (score <= 60) return '#f59e0b'; // Amber  — medium risk
+    return '#ef4444';                  // Red    — high risk
 };
 
 /**

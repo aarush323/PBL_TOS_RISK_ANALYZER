@@ -71,10 +71,10 @@ export default function OverviewPage({
 
 
   const getScoreDescription = () => {
-    if (score >= 85) return "Few issues were flagged in this document.";
-    if (score >= 70) return "Some issues were flagged and are worth reviewing.";
-    if (score >= 50) return "Several clauses were flagged for review.";
-    return "Many clauses were flagged. Review carefully before agreeing.";
+    if (score <= 20) return "Very few issues were flagged. This document appears low-risk.";
+    if (score <= 40) return "Some issues were flagged and are worth reviewing.";
+    if (score <= 65) return "Several clauses were flagged. Review carefully before agreeing.";
+    return "Many high-severity clauses were flagged. Review with caution before signing.";
   };
 
   const renderRadarChart = () => {

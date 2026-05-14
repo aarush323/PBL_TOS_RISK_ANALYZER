@@ -2,6 +2,7 @@ from .segmenter import segment_clauses
 from .nlp_features import extract_features, is_likely_risky
 from .classifier import classify_clause, classify_batch
 from .cancellation import is_cancelled
+from .scoring import compute_risk_score
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -36,53 +37,12 @@ CRITICAL_PHRASES = {
 }
 
 
-def compute_clause_severity(clause: dict) -> float:
-    """Compute severity score for a single clause based on multiple factors."""
-    severity = 0.0
-    
-    confidence_weights = {"High": 1.0, "Medium": 0.6, "Low": 0.3}
-    severity += confidence_weights.get(clause.get("confidence", "Low"), 0.3)
-    
-    categories = clause.get("risk_categories", [])
-    for cat in categories:
-        severity += CATEGORY_WEIGHTS.get(cat, 1.0)
-    
-    text_lower = clause.get("text", "").lower()
-    for phrase, weight in CRITICAL_PHRASES.items():
-        if phrase in text_lower:
-            severity += weight
-    
-    return round(severity, 2)
-
-
-def compute_overall_risk(risky_clauses: list[dict], total: int) -> str:
-    if not risky_clauses:
-        return "Low"
-    
-    high_count = sum(1 for c in risky_clauses if c["confidence"] == "High")
-    medium_count = sum(1 for c in risky_clauses if c["confidence"] == "Medium")
-    low_count = sum(1 for c in risky_clauses if c["confidence"] == "Low")
-    
-    ratio = len(risky_clauses) / total if total > 0 else 0
-    
-    total_severity = sum(compute_clause_severity(c) for c in risky_clauses)
-    avg_severity = total_severity / len(risky_clauses) if risky_clauses else 0
-    
-    privacy_count = sum(1 for c in risky_clauses if "Privacy Risk" in c.get("risk_categories", []))
-    legal_count = sum(1 for c in risky_clauses if "Legal Risk" in c.get("risk_categories", []))
-    
-    if (high_count >= 3 and avg_severity >= 3.5) or (total_severity >= 15 and high_count >= 3):
+def compute_overall_risk(risk_score: int) -> str:
+    """Label risk based on the 0-100 risk_score."""
+    if risk_score >= 60:
         return "High"
-    if high_count >= 2:
-        if privacy_count >= 1 and legal_count >= 1:
-            return "High"
-    if high_count >= 2 or ratio >= 0.30 or total_severity >= 8.0:
-        return "High"
-    if high_count >= 1 or ratio >= 0.15 or total_severity >= 4.0:
+    if risk_score >= 30:
         return "Medium"
-    if medium_count >= 3 or ratio >= 0.08 or avg_severity >= 2.0:
-        return "Medium"
-    
     return "Low"
 
 
@@ -232,9 +192,10 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
             if cat in risk_breakdown:
                 risk_breakdown[cat] += 1
 
-    overall_risk = compute_overall_risk(risky, len(clauses))
+    risk_score = compute_risk_score(risky, len(clauses))
+    overall_risk = compute_overall_risk(risk_score)
 
-    total_severity = sum(compute_clause_severity(c) for c in risky)
+    total_severity = sum(c.get("severity_score", 0) for c in risky)
     avg_severity = total_severity / len(risky) if risky else 0
 
     for i, clause in enumerate(results):
@@ -242,7 +203,7 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
 
     logger.info(
         f"Analysis complete: {len(risky)}/{len(clauses)} risky, "
-        f"overall={overall_risk}, severity={avg_severity:.2f}, skipped={skipped}"
+        f"overall={overall_risk}, score={risk_score}, skipped={skipped}"
     )
 
     return {
@@ -252,10 +213,10 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
         "risky_clause_count": len(risky),
         "skipped_llm_count": skipped,
         "overall_risk": overall_risk,
-        "total_severity_score": round(total_severity, 2),
-        "avg_severity_score": round(avg_severity, 2),
+        "risk_score": risk_score,
         "risk_breakdown": risk_breakdown,
         "clauses": results,
+        "avg_severity_score": round(avg_severity, 2),
         "aggregated_signals": aggregate_signals(results, risky)
     }
 
