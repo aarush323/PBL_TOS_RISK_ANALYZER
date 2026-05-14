@@ -293,15 +293,17 @@ export default function ClausesPage({
                                     </div>
                                   </div>
                                   <div className="space-y-6">
-                                    <div className="space-y-3">
-                                      <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Zap size={12} />
-                                        Review note
-                                      </h4>
-                                      <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-sm text-amber-100/70 leading-relaxed shadow-inner">
-                                        Use the source text and explanation as a starting point. Check the exact wording before relying on the score.
+                                    {(clause.review_note || clause.recommendation) && (
+                                      <div className="space-y-3">
+                                        <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                                          <Zap size={12} />
+                                          Recommendation
+                                        </h4>
+                                        <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-sm text-amber-100/70 leading-relaxed shadow-inner">
+                                          {clause.review_note || clause.recommendation}
+                                        </div>
                                       </div>
-                                    </div>
+                                    )}
                                     <div className="grid grid-cols-2 gap-4">
                                       <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 transition-colors hover:bg-blue-500/10">
                                         <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Risk category</p>
