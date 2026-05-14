@@ -182,9 +182,9 @@ export function AppProvider({ children }) {
         try {
             const { res, data } = await apiFetchJson(`/compare/${compareId}`, { token });
             if (!res.ok || !data) { addToast('Failed to load comparison', true); return; }
-            let result = data.result || data.structured || data.comparison || data;
+            let result = data.structured || data.result || data.comparison || data;
             if (result && !result.doc_a && !result.document_a) {
-                const nested = result.comparison || result.result || result.data;
+                const nested = data.structured || result.structured || result.comparison || result.result || result.data;
                 if (nested) result = nested;
             }
             if (result && (result.doc_a || result.document_a)) {
