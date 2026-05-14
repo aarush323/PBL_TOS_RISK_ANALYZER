@@ -9,7 +9,7 @@ export default function ComparePage({
   const { theme } = useTheme();
   const isDark = theme !== 'light';
   const s = {
-    font: 'Geist, system-ui, sans-serif',
+    font: 'Inter, system-ui, sans-serif',
     mono: 'DM Mono, monospace',
     serif: 'DM Serif Display, serif',
     border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',

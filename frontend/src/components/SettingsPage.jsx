@@ -8,7 +8,7 @@ export default function SettingsPage({ settings, setSettings, user }) {
   const isDark = theme !== 'light';
 
   const s = {
-    font: 'Geist, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
+    font: 'Inter, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
     border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
     surface: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
     surfaceCard: 'var(--bg-surface)',

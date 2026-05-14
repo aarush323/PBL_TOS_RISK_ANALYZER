@@ -28,7 +28,7 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
   const getRiskColor = (sc) => sc >= 50 ? '#ef4444' : sc >= 20 ? '#f59e0b' : '#22c55e';
 
   const s = {
-    font: 'Geist, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
+    font: 'Inter, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
     border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
     surface: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     surfaceCard: 'var(--bg-surface)',

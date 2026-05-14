@@ -34,7 +34,7 @@ export default function OverviewPage({ analysisResult, sourceInfo, calculateScor
   const analysisTransparency = React.useMemo(() => getAnalysisTransparency(analysisResult), [analysisResult]);
 
   const s = {
-    font: 'Geist, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
+    font: 'Inter, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
     border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
     surface: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     surfaceCard: 'var(--bg-surface)',
