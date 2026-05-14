@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap");
+
 @import "tailwindcss";
 
 @theme {
@@ -34,8 +36,8 @@
   --color-warning: #f59e0b;
   --color-error: #ef4444;
 
-  --font-family-sans: 'Inter', system-ui, sans-serif;
-  --font-family-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-family-sans: 'Geist', system-ui, sans-serif;
+  --font-family-mono: 'DM Mono', 'JetBrains Mono', ui-monospace, monospace;
 }
 
 :root {

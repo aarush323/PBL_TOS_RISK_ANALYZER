@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Lock, Zap, BookOpen } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context.js';
 import { useTheme } from './theme-context.js';
@@ -103,7 +104,7 @@ export default function DashboardPage() {
             </em>
           </h1>
           <p style={{
-            fontFamily: 'Geist, system-ui, sans-serif',
+            fontFamily: 'var(--font-family-sans)',
             fontWeight: '300',
             fontSize: '15px',
             color: 'var(--text-secondary)',
@@ -158,7 +159,7 @@ export default function DashboardPage() {
                   border: 'none',
                   background: inputMode === tab.id ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)') : 'transparent',
                   color: inputMode === tab.id ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                  fontFamily: 'Geist, system-ui, sans-serif',
+                  fontFamily: 'var(--font-family-sans)',
                   fontSize: '13px',
                   fontWeight: inputMode === tab.id ? '500' : '400',
                   cursor: 'pointer',
@@ -222,7 +223,7 @@ export default function DashboardPage() {
                       background: 'transparent',
                       border: 'none',
                       padding: '8px 12px',
-                      fontFamily: 'Geist, system-ui, sans-serif',
+                      fontFamily: 'var(--font-family-sans)',
                       fontSize: '15px',
                       color: 'var(--text-primary)',
                       outline: 'none',
@@ -262,7 +263,7 @@ export default function DashboardPage() {
                     border: 'none',
                     padding: '8px 12px',
                     resize: 'none',
-                    fontFamily: 'Geist, system-ui, sans-serif',
+                    fontFamily: 'var(--font-family-sans)',
                     fontWeight: '300',
                     fontSize: '15px',
                     lineHeight: '1.6',
@@ -356,7 +357,7 @@ export default function DashboardPage() {
 
                 <div style={{ textAlign: 'center' }}>
                   <p style={{
-                    fontFamily: 'Geist, system-ui, sans-serif',
+                    fontFamily: 'var(--font-family-sans)',
                     fontSize: '14px',
                     fontWeight: '500',
                     color: uploadedFile ? 'var(--accent)' : isDragging ? 'var(--accent)' : 'var(--text-primary)',
@@ -369,7 +370,7 @@ export default function DashboardPage() {
                         : 'Drop PDF here'}
                   </p>
                   <p style={{
-                    fontFamily: 'Geist, system-ui, sans-serif',
+                    fontFamily: 'var(--font-family-sans)',
                     fontWeight: '300',
                     fontSize: '12px',
                     color: 'var(--text-tertiary)',
@@ -394,7 +395,7 @@ export default function DashboardPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <span style={{
-                fontFamily: 'Geist, system-ui, sans-serif',
+                fontFamily: 'var(--font-family-sans)',
                 fontWeight: '300',
                 fontSize: '12px',
                 color: 'var(--text-tertiary)',
@@ -439,7 +440,7 @@ export default function DashboardPage() {
                     border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
                     borderRadius: '6px',
                     color: 'var(--text-secondary)',
-                    fontFamily: 'Geist, system-ui, sans-serif',
+                    fontFamily: 'var(--font-family-sans)',
                     fontSize: '12px',
                     cursor: 'pointer',
                     transition: 'all 0.15s',
@@ -460,7 +461,7 @@ export default function DashboardPage() {
                   border: 'none',
                   borderRadius: '8px',
                   color: hasInput ? (isDark ? '#000' : '#fff') : (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'),
-                  fontFamily: 'Geist, system-ui, sans-serif',
+                  fontFamily: 'var(--font-family-sans)',
                   fontSize: '13px',
                   fontWeight: '500',
                   cursor: hasInput ? 'pointer' : 'not-allowed',
@@ -486,9 +487,9 @@ export default function DashboardPage() {
             marginTop: '16px',
           }}>
             {[
-              { icon: '\uD83D\uDD12', text: 'Not stored' },
-              { icon: '\u26A1', text: 'Analysis in ~8s' },
-              { icon: '\u00A7', text: 'Trained on legal corpus' },
+              { icon: <Lock size={12} />, text: 'Not stored' },
+              { icon: <Zap size={12} />, text: 'Analysis in ~8s' },
+              { icon: <BookOpen size={12} />, text: 'Trained on legal corpus' },
             ].map(item => (
               <span
                 key={item.text}
@@ -496,7 +497,7 @@ export default function DashboardPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '5px',
-                  fontFamily: 'Geist, system-ui, sans-serif',
+                  fontFamily: 'var(--font-family-sans)',
                   fontWeight: '300',
                   fontSize: '12px',
                   color: 'var(--text-tertiary)',

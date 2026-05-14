@@ -77,7 +77,7 @@ export default function Sidebar({
             background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
             border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
             color: 'var(--text-primary)',
-            fontFamily: 'Geist, system-ui, sans-serif',
+            fontFamily: 'var(--font-family-sans)',
             fontSize: '13px',
             fontWeight: '500',
             cursor: 'pointer',
@@ -123,7 +123,7 @@ export default function Sidebar({
           ) : historyItems.length === 0 ? (
             <div style={{ padding: '12px 12px' }}>
               <p style={{
-                fontFamily: 'Geist, system-ui, sans-serif',
+                fontFamily: 'var(--font-family-sans)',
                 fontSize: '12px',
                 fontWeight: '300',
                 color: 'var(--text-tertiary)',
@@ -154,7 +154,7 @@ export default function Sidebar({
                         ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
                         : 'transparent',
                       color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      fontFamily: 'Geist, system-ui, sans-serif',
+                      fontFamily: 'var(--font-family-sans)',
                       fontSize: '13px',
                       fontWeight: isSelected ? '500' : '400',
                       cursor: 'pointer',
@@ -201,7 +201,7 @@ export default function Sidebar({
             border: 'none',
             background: 'transparent',
             color: 'var(--text-secondary)',
-            fontFamily: 'Geist, system-ui, sans-serif',
+            fontFamily: 'var(--font-family-sans)',
             fontSize: '13px',
             fontWeight: '500',
             cursor: 'pointer',
@@ -240,7 +240,7 @@ export default function Sidebar({
             border: 'none',
             background: 'transparent',
             color: 'var(--text-secondary)',
-            fontFamily: 'Geist, system-ui, sans-serif',
+            fontFamily: 'var(--font-family-sans)',
             fontSize: '13px',
             fontWeight: '500',
             cursor: 'pointer',
@@ -265,7 +265,7 @@ export default function Sidebar({
             border: 'none',
             background: 'transparent',
             color: 'var(--text-secondary)',
-            fontFamily: 'Geist, system-ui, sans-serif',
+            fontFamily: 'var(--font-family-sans)',
             fontSize: '13px',
             fontWeight: '500',
             cursor: 'pointer',
@@ -305,7 +305,7 @@ export default function Sidebar({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{
-              fontFamily: 'Geist, system-ui, sans-serif',
+              fontFamily: 'var(--font-family-sans)',
               fontSize: '13px',
               fontWeight: '500',
               color: 'var(--text-primary)',

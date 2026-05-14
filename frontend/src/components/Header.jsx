@@ -62,10 +62,10 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          fontFamily: 'Geist, system-ui, sans-serif',
+          fontFamily: 'var(--font-family-sans)',
           fontSize: '13px',
         }}>
-          <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>🏠</span>
+          <span style={{ color: 'var(--text-tertiary)', fontWeight: '500' }}>Jurist</span>
           <span style={{ color: 'var(--text-tertiary)', fontSize: '10px' }}>/</span>
           <span style={{
             color: 'var(--text-primary)',
@@ -84,7 +84,7 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
                 style={{
                   padding: '6px 12px',
                   borderRadius: '6px',
-                  fontFamily: 'Geist, system-ui, sans-serif',
+                  fontFamily: 'var(--font-family-sans)',
                   fontSize: '13px',
                   fontWeight: '500',
                   border: 'none',
@@ -134,7 +134,7 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
               borderRadius: '8px',
               background: 'transparent',
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'}`,
-              fontFamily: 'Geist, system-ui, sans-serif',
+              fontFamily: 'var(--font-family-sans)',
               fontSize: '12px',
               color: 'var(--text-primary)',
               outline: 'none',
@@ -189,7 +189,7 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
                     width: '100%',
                     padding: '8px 14px',
                     textAlign: 'left',
-                    fontFamily: 'Geist, system-ui, sans-serif',
+                    fontFamily: 'var(--font-family-sans)',
                     fontSize: '12px',
                     color: 'var(--text-secondary)',
                     background: 'transparent',
