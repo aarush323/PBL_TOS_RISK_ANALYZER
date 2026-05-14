@@ -7,8 +7,7 @@ import { useAppContext } from '@/context/app-context.js';
 // Layout
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
 
-// Landing
-import LandingPage from '@/components/landing/LandingPage';
+// Landing removed
 
 // Pages
 import OverviewPage from '@/components/OverviewPage.jsx';
@@ -144,7 +143,7 @@ function AuthPage() {
 
   // If already logged in, redirect to app
   if (token) {
-    return <LandingPage onGetStarted={() => navigate('/app')} onAnalyze={() => navigate('/app')} />;
+    return <Navigate to="/app" replace />;
   }
 
   return (
@@ -204,28 +203,11 @@ function AuthPage() {
   );
 }
 
-// ─── Landing page wrapper ───
+// ─── Root wrapper (Redirects to /app or /auth) ───
 
-function LandingWrapper() {
-  const { token, navigate } = useAppContext();
-
-  if (token) {
-    return <Navigate to="/app" replace />;
-  }
-
-  const handleGetStarted = () => {
-    navigate(token ? '/app' : '/auth');
-  };
-
-  const handleAnalyze = () => {
-    if (token) {
-      navigate('/app');
-    } else {
-      navigate('/auth');
-    }
-  };
-
-  return <LandingPage onGetStarted={handleGetStarted} onAnalyze={handleAnalyze} />;
+function RootWrapper() {
+  const { token } = useAppContext();
+  return <Navigate to={token ? "/app" : "/auth"} replace />;
 }
 
 // ─── Main App with Routes ───
@@ -233,7 +215,7 @@ function LandingWrapper() {
 export default function AppRouter() {
   return (
     <Routes>
-      <Route path="/" element={<LandingWrapper />} />
+      <Route path="/" element={<RootWrapper />} />
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/app" element={<ProtectedLayout />}>
         <Route index element={<DashboardPage />} />
