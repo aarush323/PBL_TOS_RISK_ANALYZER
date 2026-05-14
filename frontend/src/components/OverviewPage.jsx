@@ -7,6 +7,11 @@ import {
 import { useTheme } from './ThemeProvider.jsx';
 import { motion } from 'framer-motion';
 import { getScoreColor } from '../utils/colorUtils';
+import {
+  normalizeRiskBreakdown,
+  getHealthCheckItems,
+  getAnalysisTransparency,
+} from '@/features/analysis/model/selectors';
 
 const CATEGORY_COLORS = {
   'Legal': { color: '#ef4444', bg: 'bg-red-500' },
@@ -49,61 +54,20 @@ export default function OverviewPage({
   const totalRiskScore = analysisResult?.total_severity_score || 0;
   const overallRisk = analysisResult?.overall_risk || 'Low';
 
-  // Fix: Convert risk_breakdown from dict to array for rendering
-  const breakdownArray = React.useMemo(() => {
-    if (!analysisResult?.risk_breakdown) return [];
-    if (Array.isArray(analysisResult.risk_breakdown)) {
-      return [...analysisResult.risk_breakdown].sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0));
-    }
-    return Object.entries(analysisResult.risk_breakdown)
-      .map(([category, count]) => ({ category, count: Number(count) || 0 }))
-      .sort((a, b) => b.count - a.count);
-  }, [analysisResult]);
+  const breakdownArray = React.useMemo(
+    () => normalizeRiskBreakdown(analysisResult),
+    [analysisResult]
+  );
 
-  const riskyClauseList = React.useMemo(() => {
-    if (!Array.isArray(analysisResult?.clauses)) return [];
-    return analysisResult.clauses
-      .filter(c => c.is_risky)
-      .sort((a, b) => (b.severity_score || 0) - (a.severity_score || 0))
-      .slice(0, 3);
-  }, [analysisResult]);
+  const healthCheckItems = React.useMemo(
+    () => getHealthCheckItems(breakdownArray),
+    [breakdownArray]
+  );
 
-  const healthCheckItems = React.useMemo(() => {
-    const checks = [
-      { key: 'legal', name: 'No legal flags', passed: true },
-      { key: 'privacy', name: 'No privacy flags', passed: true },
-      { key: 'security', name: 'No security flags', passed: true },
-      { key: 'financial', name: 'No financial flags', passed: true },
-      { key: 'user', name: 'No user-rights flags', passed: true },
-    ];
-
-    breakdownArray.forEach(item => {
-      if (item.count > 0) {
-        const checkItem = checks.find(h => h.key === item.category?.toLowerCase().split(' ')[0]);
-        if (checkItem) checkItem.passed = false;
-      }
-    });
-    return checks;
-  }, [breakdownArray]);
-
-  const analysisTransparency = React.useMemo(() => {
-    if (!analysisResult) return null;
-    const total = analysisResult.total_clauses || 0;
-    const nlpFiltered = analysisResult.skipped_llm_count || 0;
-    const deepAnalyzed = total - nlpFiltered;
-    const riskyFound = analysisResult.risky_clause_count || 0;
-    const safeFromDeep = deepAnalyzed - riskyFound;
-
-    return {
-      total,
-      nlpFiltered,
-      deepAnalyzed,
-      riskyFound,
-      safeFromDeep,
-      nlpPercent: total > 0 ? ((nlpFiltered / total) * 100).toFixed(0) : 0,
-      deepPercent: total > 0 ? ((deepAnalyzed / total) * 100).toFixed(0) : 0,
-    };
-  }, [analysisResult]);
+  const analysisTransparency = React.useMemo(
+    () => getAnalysisTransparency(analysisResult),
+    [analysisResult]
+  );
 
 
   const getScoreDescription = () => {

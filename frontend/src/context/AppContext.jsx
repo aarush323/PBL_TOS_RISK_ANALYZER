@@ -1,22 +1,11 @@
-import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { marked } from 'marked';
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
-
-// Retry wrapper for cold-start resilience
-const fetchWithRetry = async (url, options, retries = 3, delayMs = 3000) => {
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            const res = await fetch(url, options);
-            return res;
-        } catch (err) {
-            console.warn(`Fetch attempt ${attempt}/${retries} failed:`, err.message);
-            if (attempt === retries) throw err;
-            await new Promise(r => setTimeout(r, delayMs));
-        }
-    }
-};
+import { apiFetch, apiFetchJson, withJsonHeaders } from '@/shared/api/client';
+import { getAccessToken } from '@/shared/api/auth-storage';
+import { calculateSafetyScore } from '@/features/analysis/model/score';
+import { useAuthActions } from '@/features/auth/hooks/useAuthActions';
+import { useHistoryActions } from '@/features/history/hooks/useHistoryActions';
 
 const parseMarkdown = (content) => {
     try { return marked.parse(content || ''); }
@@ -35,7 +24,7 @@ export function AppProvider({ children }) {
     const navigate = useNavigate();
 
     // Auth state
-    const [token, setToken] = useState(localStorage.getItem('tos_token'));
+    const [token, setToken] = useState(() => getAccessToken());
     const [user, setUser] = useState(null);
     const [isAuthLoading, setIsAuthLoading] = useState(false);
     const [authMode, setAuthMode] = useState('login');
@@ -89,6 +78,32 @@ export function AppProvider({ children }) {
 
     const pollRetryCount = useRef(0);
 
+    // ─── Toasts ───
+
+    const addToast = (message, isError = false) => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, isError }]);
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 5000);
+    };
+
+    const { fetchUser, loginUser, registerUser, logout } = useAuthActions({
+        token,
+        setToken,
+        setUser,
+        setHistoryItems,
+        addToast,
+        navigate,
+    });
+
+    const { loadHistory, fetchHistoryItem } = useHistoryActions({
+        token,
+        setHistoryItems,
+        setIsHistoryLoading,
+        addToast,
+    });
+
     // ─── Effects ───
 
     useEffect(() => {
@@ -115,22 +130,6 @@ export function AppProvider({ children }) {
 
     // ─── Auth ───
 
-    const fetchUser = async () => {
-        try {
-            const res = await fetch(`${API}/auth/me`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setUser(data);
-            } else if (res.status === 401) {
-                logout();
-            }
-        } catch (error) {
-            console.error('Fetch user failed', error);
-        }
-    };
-
     const handleAuth = async (e) => {
         e.preventDefault();
         const form = e.currentTarget;
@@ -149,37 +148,19 @@ export function AppProvider({ children }) {
         setIsAuthLoading(true);
         try {
             if (authMode === 'login') {
-                const formData = new URLSearchParams();
-                formData.append('username', email);
-                formData.append('password', password);
-                const res = await fetch(`${API}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: formData
-                });
-                const data = await res.json();
+                const { res, data } = await loginUser({ email, password });
                 if (res.ok) {
-                    localStorage.setItem('tos_token', data.access_token);
-                    setToken(data.access_token);
                     form.reset();
-                    addToast('Logged in successfully');
-                    navigate('/app');
                 } else {
-                    addToast(data.detail || 'Login failed', true);
+                    addToast(data?.detail || 'Login failed', true);
                 }
             } else {
-                const res = await fetch(`${API}/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, email, password })
-                });
-                const data = await res.json();
+                const { res, data } = await registerUser({ username, email, password });
                 if (res.ok) {
                     form.reset();
-                    addToast('Registration successful!');
                     setAuthMode('login');
                 } else {
-                    addToast(data.detail || 'Registration failed', true);
+                    addToast(data?.detail || 'Registration failed', true);
                 }
             }
         } catch (error) {
@@ -190,57 +171,15 @@ export function AppProvider({ children }) {
         }
     };
 
-    const logout = useCallback(() => {
-        localStorage.removeItem('tos_token');
-        setToken(null);
-        setUser(null);
-        setHistoryItems([]);
-        addToast('Logged out');
-        navigate('/');
-    }, [navigate]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // ─── Toasts ───
-
-    const addToast = (message, isError = false) => {
-        const id = Date.now();
-        setToasts(prev => [...prev, { id, message, isError }]);
-        setTimeout(() => {
-            setToasts(prev => prev.filter(t => t.id !== id));
-        }, 5000);
-    };
-
     // ─── History ───
-
-    const loadHistory = async () => {
-        setIsHistoryLoading(true);
-        try {
-            const res = await fetch(`${API}/analyses?limit=50`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setHistoryItems(Array.isArray(data) ? data : []);
-            } else {
-                addToast(data.detail || 'Failed to load history', true);
-            }
-        } catch (error) {
-            console.error('Load history error:', error);
-            addToast('History service unavailable', true);
-        } finally {
-            setIsHistoryLoading(false);
-        }
-    };
 
     const loadCompareHistory = async (targetSessionId) => {
         setIsCompareHistoryLoading(true);
         try {
             const query = targetSessionId ? `?session_id=${encodeURIComponent(targetSessionId)}` : '';
-            const res = await fetch(`${API}/compare/history${query}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const { res, data } = await apiFetchJson(`/compare/history${query}`, { token });
             if (res.ok) {
-                const data = await res.json();
-                setCompareHistory(data.compares || []);
+                setCompareHistory(data?.compares || []);
             }
         } catch (err) { console.error(err); }
         finally { setIsCompareHistoryLoading(false); }
@@ -248,15 +187,10 @@ export function AppProvider({ children }) {
 
     const openCompareHistory = async (compareId) => {
         try {
-            const res = await fetch(`${API}/compare/${compareId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.result) {
-                    setComparisonData(data.result);
-                    navigate('/app/compare');
-                }
+            const { res, data } = await apiFetchJson(`/compare/${compareId}`, { token });
+            if (res.ok && data?.result) {
+                setComparisonData(data.result);
+                navigate('/app/compare');
             }
         } catch (err) { addToast('Failed to load comparison', true); }
     };
@@ -265,11 +199,8 @@ export function AppProvider({ children }) {
 
     const loadChatHistory = async (targetSessionId) => {
         try {
-            const res = await fetch(`${API}/chat/${targetSessionId}/history`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const { res, data } = await apiFetchJson(`/chat/${targetSessionId}/history`, { token });
             if (!res.ok) return false;
-            const data = await res.json();
             if (!Array.isArray(data) || data.length === 0) return false;
 
             const mapped = data.map((m) => ({
@@ -285,25 +216,20 @@ export function AppProvider({ children }) {
     const openHistoryAnalysis = async (jobId) => {
         setIsHistoryItemLoading(true);
         try {
-            const res = await fetch(`${API}/analyses/${jobId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (!res.ok) return addToast(data.detail || 'Failed to load analysis', true);
+            const { res, data } = await fetchHistoryItem(jobId);
+            if (!res.ok) return addToast(data?.detail || 'Failed to load analysis', true);
             if (!data.result) return addToast('Selected analysis is not complete yet.', true);
 
             const restored = await loadChatHistory(data.job_id);
             if (!restored) {
                 try {
-                    const statusRes = await fetch(`${API}/chat/${data.job_id}/index/status`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                    const statusRes = await apiFetch(`/chat/${data.job_id}/index/status`, { token });
                     if (statusRes.ok) {
                         setSessionId(data.job_id);
                     } else {
-                        const restoreRes = await fetch(`${API}/chat/restore/${data.job_id}`, {
+                        await apiFetch(`/chat/restore/${data.job_id}`, {
                             method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
+                            token
                         });
                         setSessionId(data.job_id);
                     }
@@ -337,11 +263,8 @@ export function AppProvider({ children }) {
 
     const pollAnalysisResults = async (jobId) => {
         try {
-            const res = await fetch(`${API}/analyze/status/${jobId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const { res, data } = await apiFetchJson(`/analyze/status/${jobId}`, { token });
             if (!res.ok) throw new Error(`Server returned ${res.status}`);
-            const data = await res.json();
             pollRetryCount.current = 0;
 
             if (data.status === 'complete') {
@@ -378,9 +301,9 @@ export function AppProvider({ children }) {
     const stopAnalysis = async () => {
         if (!analysisJobId) return;
         try {
-            await fetch(`${API}/analyze/stop/${analysisJobId}`, {
+            await apiFetch(`/analyze/stop/${analysisJobId}`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                token
             });
             setIsProcessing(false);
             addToast('Analysis stopped by user.', true);
@@ -394,13 +317,11 @@ export function AppProvider({ children }) {
         const newSessionId = targetSessionId || crypto.randomUUID();
         setSessionId(newSessionId);
         try {
-            await fetch(`${API}/chat/store`, {
+            await apiFetch('/chat/store', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ session_id: newSessionId, document_text: text })
+                headers: withJsonHeaders(),
+                body: JSON.stringify({ session_id: newSessionId, document_text: text }),
+                token
             });
         } catch (e) {
             console.error('Chat init fail', e);
@@ -429,10 +350,10 @@ export function AppProvider({ children }) {
                 const formData = new FormData();
                 formData.append('file', uploadedFile);
                 pdfFileName = uploadedFile.name;
-                const extractRes = await fetch(`${API}/extract/pdf`, {
+                const extractRes = await apiFetch('/extract/pdf', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData
+                    body: formData,
+                    token
                 });
                 if (!extractRes.ok) throw new Error('File extraction failed. Ensure it is a valid PDF.');
                 const extractData = await extractRes.json();
@@ -447,13 +368,11 @@ export function AppProvider({ children }) {
             const requestBody = { input_type: analyzeType, content: analyzeContent };
             if (inputMode === 'upload') requestBody.source_label = pdfFileName;
 
-            const res = await fetch(`${API}/analyze/async`, {
+            const res = await apiFetch('/analyze/async', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(requestBody)
+                headers: withJsonHeaders(),
+                body: JSON.stringify(requestBody),
+                token
             });
             if (!res.ok) throw new Error('Analysis initialization failed');
             const data = await res.json();
@@ -482,13 +401,13 @@ export function AppProvider({ children }) {
         setChatMessages(newChat);
         setIsChatTyping(true);
         try {
-            const res = await fetchWithRetry(`${API}/chat`, {
+            const res = await apiFetch('/chat', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ session_id: sessionId, message: msg, history: [] })
+                headers: withJsonHeaders(),
+                body: JSON.stringify({ session_id: sessionId, message: msg, history: [] }),
+                token,
+                retries: 3,
+                retryDelayMs: 3000
             });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
@@ -523,18 +442,18 @@ export function AppProvider({ children }) {
 
     const performComparison = async (sessionIdA, sessionIdB) => {
         try {
-            const res = await fetchWithRetry(`${API}/chat/compare`, {
+            const res = await apiFetch('/chat/compare', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: withJsonHeaders(),
                 body: JSON.stringify({
                     session_id_a: sessionIdA,
                     session_id_b: sessionIdB,
                     question: "Compare the risk profiles of both documents",
                     history: []
-                })
+                }),
+                token,
+                retries: 3,
+                retryDelayMs: 3000
             });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
@@ -586,30 +505,7 @@ export function AppProvider({ children }) {
 
     // ─── Score ───
 
-    const calculateScore = () => {
-        if (!analysisResult) return 100;
-        if (analysisResult.safety_score != null) return analysisResult.safety_score;
-        const riskyCount = analysisResult.risky_clause_count || 0;
-        const totalCount = analysisResult.total_clauses || 1;
-        if (riskyCount === 0) return 100;
-        const avgSeverity = analysisResult.avg_severity_score || ((analysisResult.total_severity_score || 0) / (riskyCount || 1));
-        const overallRisk = analysisResult.overall_risk || 'Low';
-        let score = 100;
-        if (avgSeverity <= 1) score = 95;
-        else if (avgSeverity <= 2) score = 90 - ((avgSeverity - 1) * 5);
-        else if (avgSeverity <= 3) score = 85 - ((avgSeverity - 2) * 5);
-        else if (avgSeverity <= 5) score = 75 - ((avgSeverity - 3) * 5);
-        else if (avgSeverity <= 8) score = 60 - ((avgSeverity - 5) * 3);
-        else if (avgSeverity <= 12) score = 45 - ((avgSeverity - 8) * 3);
-        else score = Math.max(10, 30 - ((avgSeverity - 12) * 2));
-        if (overallRisk === 'High') score = Math.max(15, score - 12);
-        else if (overallRisk === 'Medium') score = Math.max(25, score - 6);
-        const riskyRatio = riskyCount / totalCount;
-        if (riskyRatio > 0.5) score = Math.max(15, score - 12);
-        else if (riskyRatio > 0.3) score = Math.max(25, score - 6);
-        else if (riskyRatio > 0.15) score = Math.max(35, score - 3);
-        return Math.floor(Math.max(10, Math.min(100, score)));
-    };
+    const calculateScore = () => calculateSafetyScore(analysisResult);
 
     const value = {
         // Auth

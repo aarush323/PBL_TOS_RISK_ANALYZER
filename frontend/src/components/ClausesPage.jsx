@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Filter, AlertTriangle, Shield, Lock, Eye, DollarSign, UserCheck, Scale, MessageSquare, Check, Activity, FileText, BrainCircuit, Zap, Info } from 'lucide-react';
 import { useTheme } from './ThemeProvider.jsx';
+import {
+  filterClauses,
+  getSeveritySeries,
+  getConfidenceCounts,
+} from '@/features/analysis/model/selectors';
 
 export default function ClausesPage({
   analysisResult,
@@ -17,20 +22,8 @@ export default function ClausesPage({
   const [selectedClause, setSelectedClause] = useState(null);
   const [expandedCardId, setExpandedCardId] = useState(null); // NEW: expandable state
 
-  const clauses = useMemo(() => {
-    if (!Array.isArray(analysisResult?.clauses)) return [];
-    return analysisResult.clauses.filter(c => {
-      if (filters.riskLevel !== 'all' && c.is_risky !== (filters.riskLevel === 'risky')) return false;
-      if (filters.confidence !== 'all' && c.confidence !== filters.confidence) return false;
-      if (filters.severity !== 'all') {
-        const severityScore = c.severity_score || 0;
-        if (filters.severity === 'high' && severityScore < 5) return false;
-        if (filters.severity === 'medium' && (severityScore < 2 || severityScore >= 5)) return false;
-        if (filters.severity === 'low' && severityScore >= 2) return false;
-      }
-      return true;
-    });
-  }, [analysisResult, filters]);
+  const clauses = useMemo(() => filterClauses(analysisResult, filters), [analysisResult, filters]);
+  const severitySeries = useMemo(() => getSeveritySeries(analysisResult), [analysisResult]);
 
   const totalClauses = analysisResult?.clauses?.length || 0;
   const filteredCount = clauses.length;
@@ -90,13 +83,7 @@ export default function ClausesPage({
   };
 
   const renderSeverityBar = () => {
-    const allClauses = analysisResult?.clauses || [];
-    const data = allClauses.map((c, i) => ({
-      position: c.position_weight || (i / allClauses.length) * 100,
-      severity: Number(c.severity_score) || 0,
-      isRisky: c.is_risky
-    }));
-
+    const data = severitySeries;
     if (data.length === 0) {
       return (
         <div className="h-32 flex flex-col items-center justify-center border border-white/5 bg-white/5 rounded-lg">
@@ -153,15 +140,7 @@ export default function ClausesPage({
     );
   };
 
-  const selectedCategoryCounts = useMemo(() => {
-    const counts = { High: 0, Medium: 0, Low: 0 };
-    if (Array.isArray(analysisResult?.clauses)) {
-      analysisResult.clauses.forEach(c => {
-        if (c.confidence) counts[c.confidence] = (counts[c.confidence] || 0) + 1;
-      });
-    }
-    return counts;
-  }, [analysisResult]);
+  const selectedCategoryCounts = useMemo(() => getConfidenceCounts(analysisResult), [analysisResult]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

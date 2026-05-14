@@ -2,8 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { MessageSquare, Minimize2, Maximize2, X } from 'lucide-react';
 import TypingDots from './TypingDots.jsx';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
-
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+import { apiFetchJson } from '@/shared/api/client';
 
 export default function ChatPopup({
   isOpen,
@@ -17,9 +16,6 @@ export default function ChatPopup({
   user,
 }) {
   const messagesEndRef = useRef(null);
-  const token = localStorage.getItem('tos_token');
-  const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
   const [indexStatus, setIndexStatus] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -34,11 +30,8 @@ export default function ChatPopup({
     if (sessionId) {
       const pollStatus = async () => {
         try {
-          const res = await fetch(`${API}/chat/${sessionId}/index/status`, { headers });
-          if (res.ok) {
-            const data = await res.json();
-            setIndexStatus(data);
-          }
+          const { res, data } = await apiFetchJson(`/chat/${sessionId}/index/status`);
+          if (res.ok) setIndexStatus(data);
         } catch {
           // ignore polling errors
         }

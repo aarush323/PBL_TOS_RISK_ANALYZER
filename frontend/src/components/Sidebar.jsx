@@ -31,6 +31,14 @@ export default function Sidebar({
             <p className="text-[10px] text-white/50 uppercase tracking-wider">Free Policy Analyzer</p>
           </div>
         </div>
+
+        <button
+          onClick={onNewAnalysis}
+          className="mt-6 w-full flex items-center justify-center gap-2 h-10 rounded-lg bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white text-sm font-semibold hover:shadow-lg hover:shadow-[#007AFF]/30 transition-all"
+        >
+          <Plus size={16} />
+          New Analysis
+        </button>
       </div>
 
       <nav className="flex-1 px-3 overflow-y-auto">
@@ -67,15 +75,6 @@ export default function Sidebar({
             </div>
           )}
 
-          <div className="px-4 mt-3">
-            <button
-              onClick={onNewAnalysis}
-              className="flex items-center gap-2 text-xs text-[#007AFF] hover:text-white transition-colors"
-            >
-              <Plus size={14} />
-              New Analysis
-            </button>
-          </div>
         </div>
       </nav>
 
