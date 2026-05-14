@@ -3,7 +3,7 @@ import { Check, AlertTriangle, FileText, Link, Share2, Download, ArrowRight, Bra
 import { useTheme } from './theme-context.js';
 import { motion as Motion } from 'framer-motion';
 import { getScoreColor } from '../utils/colorUtils';
-import { normalizeRiskBreakdown, getHealthCheckItems, getAnalysisTransparency } from '@/features/analysis/model/selectors';
+import { normalizeRiskBreakdown, getHealthCheckItems } from '@/features/analysis/model/selectors';
 
 const CATEGORY_COLORS = {
   'Legal': { color: '#ef4444', bg: 'bg-red-500' },
@@ -31,8 +31,6 @@ export default function OverviewPage({ analysisResult, sourceInfo, calculateScor
 
   const breakdownArray = React.useMemo(() => normalizeRiskBreakdown(analysisResult), [analysisResult]);
   const healthCheckItems = React.useMemo(() => getHealthCheckItems(breakdownArray), [breakdownArray]);
-  const analysisTransparency = React.useMemo(() => getAnalysisTransparency(analysisResult), [analysisResult]);
-
   const s = {
     font: 'Anthropic Sans, sans-serif', mono: 'Anthropic Mono, monospace', serif: 'Anthropic Serif, serif',
     border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
@@ -93,9 +91,9 @@ export default function OverviewPage({ analysisResult, sourceInfo, calculateScor
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px 80px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="overview-page" style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px 80px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+      <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
           <h1 style={{ fontFamily: s.serif, fontSize: '32px', fontWeight: '400', color: s.textPrimary, margin: '0 0 8px', letterSpacing: '-0.02em' }}>Summary</h1>
           {sourceInfo?.type && (
@@ -106,14 +104,14 @@ export default function OverviewPage({ analysisResult, sourceInfo, calculateScor
             </div>
           )}
         </div>
-        <button onClick={() => onNavigate && onNavigate('reports')} style={{
+        <button className="mobile-full-button" onClick={() => onNavigate && onNavigate('reports')} style={{
           display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px',
           background: s.surface, border: `1px solid ${s.border}`, color: s.textSecondary,
           fontFamily: s.font, fontSize: '13px', fontWeight: '400', cursor: 'pointer', transition: 'all 0.2s',
         }}><Share2 size={14} /> Open Report</button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      <div className="overview-hero-grid mobile-one-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         {/* Score Card */}
         <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', minHeight: '340px' }}>
           <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: s.textTertiary, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '32px' }}>Risk Score</h3>
@@ -162,7 +160,7 @@ export default function OverviewPage({ analysisResult, sourceInfo, calculateScor
       </div>
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+      <div className="overview-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
         {[
           { label: 'Total Clauses', value: totalClauses, icon: FileText },
           { label: 'Flagged Clauses', value: riskyClauses, icon: ShieldAlert, color: '#ef4444' },
@@ -180,7 +178,7 @@ export default function OverviewPage({ analysisResult, sourceInfo, calculateScor
       </div>
 
       {/* Breakdown */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+      <div className="overview-breakdown-grid mobile-one-col" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
         <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
             <div>
@@ -189,8 +187,8 @@ export default function OverviewPage({ analysisResult, sourceInfo, calculateScor
               </h3>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '40px', flex: 1 }}>
-            <div style={{ width: '240px', flexShrink: 0 }}>{renderRadarChart()}</div>
+          <div className="overview-radar-row" style={{ display: 'flex', alignItems: 'center', gap: '40px', flex: 1 }}>
+            <div className="overview-radar-chart" style={{ width: '240px', flexShrink: 0 }}>{renderRadarChart()}</div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {['Legal', 'Privacy', 'Security', 'Financial', 'User'].map((label, i) => {
                 const breakdown = breakdownArray.find(b => b.category?.toLowerCase().includes(label.toLowerCase()));

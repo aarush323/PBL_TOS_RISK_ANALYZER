@@ -1,10 +1,10 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Scale, Mail, Lock, User, ArrowRight, ShieldCheck, Zap, Command, ChevronRight } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 
 export default function AuthPage() {
-  const { token, isAuthLoading, authMode, setAuthMode, handleAuth, toasts, navigate } = useAppContext();
+  const { isAuthLoading, authMode, setAuthMode, handleAuth, toasts } = useAppContext();
   const isLoginMode = authMode === 'login';
 
   return (
@@ -15,7 +15,7 @@ export default function AuthPage() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[var(--color-primary)]/5 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
-      <motion.div 
+      <Motion.div 
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -25,14 +25,14 @@ export default function AuthPage() {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-primary)] to-transparent opacity-40" />
           
           <div className="flex flex-col items-center text-center mb-12">
-            <motion.div 
+            <Motion.div 
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.7 }}
               className="w-20 h-20 rounded-3xl bg-[var(--color-primary)] text-white flex items-center justify-center mb-8 shadow-2xl shadow-blue-500/40 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
               <Scale size={32} className="relative z-10" />
-            </motion.div>
+            </Motion.div>
             
             <div className="space-y-4">
               <div className="flex items-center justify-center gap-3">
@@ -52,7 +52,7 @@ export default function AuthPage() {
           <form key={authMode} className="space-y-6" onSubmit={handleAuth} autoComplete="on">
             <AnimatePresence mode="wait">
               {!isLoginMode && (
-                <motion.div 
+                <Motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
@@ -74,7 +74,7 @@ export default function AuthPage() {
                       maxLength={30} 
                     />
                   </div>
-                </motion.div>
+                </Motion.div>
               )}
             </AnimatePresence>
 
@@ -113,7 +113,7 @@ export default function AuthPage() {
             </div>
 
             {!isLoginMode && (
-              <motion.div 
+              <Motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 className="space-y-2 overflow-hidden"
@@ -132,7 +132,7 @@ export default function AuthPage() {
                     required 
                   />
                 </div>
-              </motion.div>
+              </Motion.div>
             )}
 
             <button 
@@ -171,7 +171,7 @@ export default function AuthPage() {
         <div className="fixed bottom-12 right-12 flex flex-col gap-4 pointer-events-none">
           <AnimatePresence>
             {toasts.map(t => (
-              <motion.div 
+              <Motion.div 
                 key={t.id}
                 initial={{ opacity: 0, x: 20, scale: 0.9 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -184,11 +184,11 @@ export default function AuthPage() {
                 <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-widest">
                   {t.message}
                 </span>
-              </motion.div>
+              </Motion.div>
             ))}
           </AnimatePresence>
         </div>
-      </motion.div>
+      </Motion.div>
     </div>
   );
 }

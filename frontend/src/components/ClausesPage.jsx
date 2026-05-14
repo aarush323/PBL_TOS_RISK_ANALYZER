@@ -19,7 +19,10 @@ export default function ClausesPage({
   const [expandedCardId, setExpandedCardId] = useState(null);
   const [visibleCount, setVisibleCount] = useState(50);
 
-  useEffect(() => { setVisibleCount(50); }, [filters, analysisResult]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setVisibleCount(50);
+  }, [filters, analysisResult]);
 
   const clauses = useMemo(() => filterClauses(analysisResult, filters), [analysisResult, filters]);
   const severitySeries = useMemo(() => getSeveritySeries(analysisResult), [analysisResult]);
@@ -110,12 +113,12 @@ export default function ClausesPage({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div className="clauses-page" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Severity map header */}
-      <div style={{ padding: '32px 32px 24px', borderBottom: `1px solid ${s.border}`,
+      <div className="clauses-hero" style={{ padding: '32px 32px 24px', borderBottom: `1px solid ${s.border}`,
         background: `linear-gradient(to bottom, ${isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.01)'}, transparent)` }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
             <div>
               <h2 style={{ fontFamily: s.serif, fontSize: '32px', fontWeight: '400', color: 'var(--text-primary)',
                 margin: '0 0 6px', letterSpacing: '-0.02em' }}>Clause Review</h2>
@@ -123,7 +126,7 @@ export default function ClausesPage({
                 Severity across the document — {sourceInfo?.value || 'Current Analysis'}
               </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div className="clauses-header-metrics" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
                   textTransform: 'uppercase', margin: '0 0 4px' }}>Filtered Scope</p>
@@ -147,9 +150,9 @@ export default function ClausesPage({
           </div>
 
           {/* Severity chart card */}
-          <div style={{ padding: '24px', borderRadius: '14px', background: 'var(--bg-surface)',
+          <div className="clauses-severity-card" style={{ padding: '24px', borderRadius: '14px', background: 'var(--bg-surface)',
             border: `1px solid ${s.border}`, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div className="clauses-chart-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
                 textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Activity size={13} style={{ color: 'var(--text-secondary)' }} /> Severity by position
@@ -168,10 +171,10 @@ export default function ClausesPage({
       </div>
 
       {/* Filters + clause list */}
-      <div style={{ flex: 1, padding: '24px 32px', overflowY: 'auto' }}>
+      <div className="clauses-list-region" style={{ flex: 1, padding: '24px 32px', overflowY: 'auto' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="clauses-filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+            <div className="clauses-filter-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Filter size={14} style={{ color: 'var(--text-tertiary)' }} />
               {['riskLevel', 'severity', 'confidence'].map(fk => (
                 <select key={fk} value={filters[fk]}
@@ -183,7 +186,7 @@ export default function ClausesPage({
                 </select>
               ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div className="clauses-filter-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '8px',
                 background: s.surfaceDim, border: `1px solid ${s.border}` }}>
                 <span style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Confidence:</span>
@@ -233,10 +236,10 @@ export default function ClausesPage({
                     border: `1px solid ${s.border}`, borderLeft, transition: 'all 0.3s ease',
                   }}>
                     {isRisky ? (
-                      <div style={{ padding: '20px 24px' }}>
+                      <div className="clause-card-body" style={{ padding: '20px 24px' }}>
                         {/* Risky header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div className="clause-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                          <div className="clause-badges" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <span style={{
                               fontFamily: s.mono, fontSize: '9px', fontWeight: '500', padding: '3px 10px', borderRadius: '6px',
                               letterSpacing: '0.06em', textTransform: 'uppercase',
@@ -251,7 +254,7 @@ export default function ClausesPage({
                               {clause.severity_score?.toFixed(1) || '0.0'}
                             </span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div className="clause-confidence" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ textAlign: 'right' }}>
                               <p style={{ fontFamily: s.mono, fontSize: '8px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
                                 textTransform: 'uppercase', margin: '0 0 2px' }}>Confidence</p>
@@ -273,7 +276,7 @@ export default function ClausesPage({
 
                         {/* Expanded details */}
                         {isExpanded && (
-                          <div style={{ paddingTop: '16px', marginTop: '16px', borderTop: `1px solid ${s.border}`,
+                          <div className="clause-expanded-grid" style={{ paddingTop: '16px', marginTop: '16px', borderTop: `1px solid ${s.border}`,
                             display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                             <div>
                               <h4 style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
@@ -300,7 +303,7 @@ export default function ClausesPage({
                                   </div>
                                 </div>
                               )}
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                              <div className="clause-meta-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                 <div style={{ padding: '12px', borderRadius: '8px', background: s.surfaceDim, border: `1px solid ${s.border}` }}>
                                   <p style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',
                                     textTransform: 'uppercase', margin: '0 0 4px' }}>Category</p>
@@ -321,12 +324,12 @@ export default function ClausesPage({
                         )}
 
                         {/* Footer actions */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        <div className="clause-card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                           marginTop: '16px', paddingTop: '14px', borderTop: `1px solid ${s.border}` }}>
                           <span style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                             Clause {idx + 1}
                           </span>
-                          <div style={{ display: 'flex', gap: '8px' }}>
+                          <div className="clause-actions" style={{ display: 'flex', gap: '8px' }}>
                             <button onClick={e => { e.stopPropagation(); onExplainRiskInChat?.(clause, idx); onToggleChat?.(); }}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 14px', borderRadius: '8px',
@@ -350,8 +353,8 @@ export default function ClausesPage({
                       </div>
                     ) : (
                       /* Safe clause */
-                      <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div className="safe-clause-row" style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div className="safe-clause-main" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div style={{
                             width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(34,197,94,0.08)',
                             border: '1px solid rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center',

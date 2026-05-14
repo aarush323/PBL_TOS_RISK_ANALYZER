@@ -4,12 +4,14 @@ import TypingDots from './TypingDots.jsx';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
 import { apiFetchJson } from '@/shared/api/client';
 import { useTheme } from './theme-context.js';
+import { useIsMobile } from '@/hooks/use-is-mobile.js';
 
 export default function ChatPopup({
   isOpen, onToggle, chatMessages, chatInput, onChatInputChange,
   onSendChat, isChatTyping, sessionId, user,
 }) {
   const { theme } = useTheme();
+  const isMobile = useIsMobile();
   const isDark = theme !== 'light';
   const messagesEndRef = useRef(null);
   const [indexStatus, setIndexStatus] = useState(null);
@@ -37,7 +39,7 @@ export default function ChatPopup({
         try {
           const { res, data } = await apiFetchJson(`/chat/${sessionId}/index/status`);
           if (res.ok) setIndexStatus(data);
-        } catch {}
+        } catch { /* ignore transient status polling failures */ }
       };
       pollStatus();
       interval = setInterval(pollStatus, 10000);
@@ -49,7 +51,7 @@ export default function ChatPopup({
 
   if (!isOpen) {
     return (
-      <button onClick={onToggle} style={{
+      <button className="chat-fab" onClick={onToggle} style={{
         position: 'fixed', bottom: '24px', right: '24px', width: '56px', height: '56px', borderRadius: '50%',
         background: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff', border: 'none',
         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -62,13 +64,16 @@ export default function ChatPopup({
   }
 
   return (
-    <div style={{
+    <div className="chat-popup" style={{
       position: 'fixed', zIndex: 50, display: 'flex', flexDirection: 'column',
       background: s.surface, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
       border: `1px solid ${s.border}`, borderRadius: '16px', overflow: 'hidden',
       transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
-      bottom: '24px', right: '24px',
-      ...(isExpanded
+      bottom: isMobile ? '0' : '24px',
+      right: isMobile ? '0' : '24px',
+      ...(isMobile
+        ? { left: '0', width: '100vw', height: 'calc(100dvh - 76px)', maxHeight: 'calc(100dvh - 76px)', borderRadius: '16px 16px 0 0' }
+        : isExpanded
         ? { width: 'calc(50vw - 48px)', height: 'calc(100vh - 48px)' }
         : { width: '380px', height: '600px', maxHeight: 'calc(100vh - 48px)' }
       )

@@ -95,13 +95,13 @@ function CompareWrapper() {
 function SettingsWrapper() {
   const { settings, setSettings } = useAppContext();
   return (
-    <div className="p-6">
+    <div className="settings-page p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Settings</h1>
         <p className="text-white/60">Customize behavior for analysis and results views.</p>
       </div>
-      <div className="glass-card p-6 max-w-xl">
-        <div className="flex justify-between items-center py-4 border-b border-white/10">
+      <div className="settings-card glass-card p-6 max-w-xl">
+        <div className="settings-row flex justify-between items-center py-4 border-b border-white/10">
           <div>
             <p className="text-white font-medium">Auto-open Results After Analysis</p>
             <p className="text-xs text-white/50">Switch to Risk Analysis view automatically when processing completes.</p>
@@ -114,7 +114,7 @@ function SettingsWrapper() {
             style={{ accentColor: 'var(--text-primary)' }}
           />
         </div>
-        <div className="flex justify-between items-center py-4">
+        <div className="settings-row flex justify-between items-center py-4">
           <div>
             <p className="text-white font-medium">Compact Risk Cards</p>
             <p className="text-xs text-white/50">Reduce spacing in risk cards for denser reading.</p>
@@ -135,7 +135,7 @@ function SettingsWrapper() {
 // ─── Auth Page (shown at / when not logged in) ───
 
 function AuthPage() {
-  const { token, isAuthLoading, authMode, setAuthMode, handleAuth, toasts, navigate } = useAppContext();
+  const { token, isAuthLoading, authMode, setAuthMode, handleAuth, toasts } = useAppContext();
   const isLoginMode = authMode === 'login';
 
   // If already logged in, redirect to app

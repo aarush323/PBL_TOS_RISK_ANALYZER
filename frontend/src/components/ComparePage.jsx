@@ -36,7 +36,7 @@ export default function ComparePage({
 
   if (!comparisonData) {
     return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 24px' }}>
+      <div className="compare-page compare-empty-page" style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 24px' }}>
         <div style={{ padding: '56px 32px', textAlign: 'center', borderRadius: '16px',
           border: `2px dashed ${s.border}`, background: s.surfaceCard }}>
           <div style={{ width: '56px', height: '56px', borderRadius: '14px', background: s.surface,
@@ -73,7 +73,7 @@ export default function ComparePage({
           <div style={{ marginTop: '40px' }}>
             <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
               textTransform: 'uppercase', margin: '0 0 16px' }}>Recent Comparisons</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="compare-history-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               {compareHistory.map(c => (
                 <button key={c.compare_id} onClick={() => onOpenCompareHistory(c.compare_id)} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px',
@@ -112,9 +112,9 @@ export default function ComparePage({
   const winner = overall_winner === 'a' ? 'A' : overall_winner === 'b' ? 'B' : 'tie';
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px 80px' }}>
+    <div className="compare-page" style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px 80px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
+      <div className="page-header-row compare-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
         <div>
           <button onClick={onNewComparison} style={{
             display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none',
@@ -123,7 +123,7 @@ export default function ComparePage({
           <h1 style={{ fontFamily: s.serif, fontSize: '32px', fontWeight: '400', fontStyle: 'italic',
             color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>Legal Differential</h1>
         </div>
-        <button onClick={onDiscussInChat} style={{
+        <button className="mobile-full-button" onClick={onDiscussInChat} style={{
           display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '10px',
           background: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)', border: 'none',
           color: isDark ? '#000' : '#fff', fontFamily: s.font, fontSize: '13px', fontWeight: '500',
@@ -132,9 +132,9 @@ export default function ComparePage({
       </div>
 
       {/* Verdict banner */}
-      <div style={{ padding: '28px', borderRadius: '16px', border: `1px solid ${s.border}`,
+      <div className="compare-verdict" style={{ padding: '28px', borderRadius: '16px', border: `1px solid ${s.border}`,
         background: winner === 'tie' ? s.surface : 'rgba(34,197,94,0.04)', marginBottom: '28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="compare-verdict-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: winner === 'tie' ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.1)',
@@ -158,7 +158,7 @@ export default function ComparePage({
       </div>
 
       {/* Head-to-head */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+      <div className="compare-doc-grid mobile-one-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
         {[doc_a, doc_b].map((doc, idx) => {
           const isDocA = idx === 0;
           const isWinner = (isDocA && winner === 'A') || (!isDocA && winner === 'B');
@@ -183,7 +183,7 @@ export default function ComparePage({
                 <span style={{ fontFamily: s.serif, fontSize: '48px', fontWeight: '400', color: getRiskColor(score) }}>{score}</span>
                 <span style={{ fontFamily: s.mono, fontSize: '11px', color: 'var(--text-tertiary)' }}>/ 100 risk</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="compare-doc-metrics" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 {[
                   { l: 'Risky Clauses', v: doc.risky_count || doc.risky_clause_count },
                   { l: 'Total Clauses', v: doc.total_clauses },
@@ -209,7 +209,7 @@ export default function ComparePage({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {categories?.map((cat, idx) => (
             <div key={idx} style={{ borderRadius: '14px', overflow: 'hidden', background: s.surfaceCard, border: `1px solid ${s.border}` }}>
-              <div style={{ padding: '16px 24px', borderBottom: `1px solid ${s.border}`,
+              <div className="compare-category-header" style={{ padding: '16px 24px', borderBottom: `1px solid ${s.border}`,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4 style={{ fontFamily: s.font, fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: 0 }}>{cat.category}</h4>
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -230,7 +230,7 @@ export default function ComparePage({
                     background: cat.winner === 'b' ? '#22c55e' : 'var(--text-tertiary)', opacity: cat.winner === 'b' ? 1 : 0.3,
                     width: `${(cat.b_count / (cat.a_count + cat.b_count || 1)) * 100}%` }} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px' }}>
+                <div className="compare-category-grid mobile-one-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px' }}>
                   {[{ l: 'A Summary', t: cat.clause_a_summary }, { l: 'B Summary', t: cat.clause_b_summary }].map(d => (
                     <div key={d.l}>
                       <div style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',

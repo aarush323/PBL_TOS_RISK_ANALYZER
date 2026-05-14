@@ -32,7 +32,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
     const { icon, title, description } = configs[view] || configs.overview;
 
     return (
-        <div style={{
+        <div className="empty-state" style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -76,7 +76,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
                 {description}
             </p>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="empty-state-actions" style={{ display: 'flex', gap: '12px' }}>
                 <button
                     onClick={onNewAnalysis}
                     style={{
@@ -121,7 +121,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
                 </button>
             </div>
 
-            <div style={{
+            <div className="empty-state-steps" style={{
                 marginTop: '56px',
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, 1fr)',

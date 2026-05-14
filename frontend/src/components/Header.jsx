@@ -27,7 +27,7 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
   ];
 
   return (
-    <header style={{
+    <header className="desktop-header" style={{
       position: 'sticky',
       top: 0,
       height: '52px',

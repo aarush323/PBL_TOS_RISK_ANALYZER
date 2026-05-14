@@ -135,7 +135,7 @@ export default function Sidebar({
               {historyItems.slice(0, 10).map((item) => {
                 let displayLabel = item.source_label || item.source || 'Untitled';
                 if (displayLabel.startsWith('http')) {
-                  try { displayLabel = new URL(displayLabel).hostname; } catch(e) {}
+                  try { displayLabel = new URL(displayLabel).hostname; } catch { /* keep original label */ }
                 }
                 const isSelected = selectedHistoryId === item.job_id;
                 return (

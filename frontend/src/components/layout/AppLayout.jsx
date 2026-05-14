@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { BarChart3, FileText, Home, LogOut, Menu, Moon, Plus, Scale, Settings, ShieldAlert, Sun, X } from 'lucide-react';
 import { useAppContext } from '@/context/app-context.js';
 import Sidebar from '@/components/Sidebar.jsx';
 import Header from '@/components/Header.jsx';
 import ChatPopup from '@/components/ChatPopup.jsx';
 import LoadingOverlay from '@/components/LoadingOverlay.jsx';
 import ErrorBoundary from '@/components/ErrorBoundary.jsx';
+import { useTheme } from '@/components/theme-context.js';
+import { useIsMobile } from '@/hooks/use-is-mobile.js';
+import { getRiskClass } from '@/utils/colorUtils.js';
 
 const viewMotion = {
     initial: { opacity: 0, y: 10 },
@@ -15,8 +18,154 @@ const viewMotion = {
     exit: { opacity: 0, y: 8, transition: { duration: 0.16, ease: 'easeIn' } },
 };
 
+const viewLabels = {
+    dashboard: 'Dashboard',
+    overview: 'Overview',
+    clauses: 'Clauses',
+    reports: 'Reports',
+    compare: 'Compare',
+    settings: 'Settings',
+};
+
+function normalizeHistoryLabel(item) {
+    let displayLabel = item.source_label || item.source || 'Untitled';
+    if (displayLabel.startsWith('http')) {
+        try { displayLabel = new URL(displayLabel).hostname; } catch { /* keep original label */ }
+    }
+    return displayLabel;
+}
+
+function MobileBottomNav({ activeView, analysisResult, hasActiveChat, onNavigate }) {
+    const navItems = [
+        { id: 'dashboard', label: 'Home', icon: Home },
+        { id: 'overview', label: 'Overview', icon: BarChart3, requiresAnalysis: true },
+        { id: 'clauses', label: 'Clauses', icon: ShieldAlert, requiresAnalysis: true },
+        { id: 'reports', label: 'Reports', icon: FileText, requiresChat: true },
+        { id: 'compare', label: 'Compare', icon: Scale },
+        { id: 'settings', label: 'Settings', icon: Settings },
+    ];
+
+    return (
+        <nav className="mobile-bottom-nav" aria-label="Primary mobile navigation">
+            {navItems.map((item) => {
+                const Icon = item.icon;
+                const isDisabled = (item.requiresAnalysis && !analysisResult) || (item.requiresChat && !hasActiveChat);
+                const isActive = activeView === item.id || (item.id === 'dashboard' && activeView === '');
+                return (
+                    <button
+                        key={item.id}
+                        type="button"
+                        className={`mobile-bottom-nav-item ${isActive ? 'is-active' : ''}`}
+                        aria-current={isActive ? 'page' : undefined}
+                        aria-disabled={isDisabled}
+                        onClick={() => onNavigate(item.id)}
+                    >
+                        <Icon size={18} />
+                        <span>{item.label}</span>
+                    </button>
+                );
+            })}
+        </nav>
+    );
+}
+
+function MobileHistoryDrawer({
+    open, onClose, user, onLogout, historyItems, onOpenHistory,
+    isHistoryLoading, selectedHistoryId, onNewAnalysis,
+}) {
+    const { theme, toggle } = useTheme();
+    const isDark = theme !== 'light';
+
+    return (
+        <AnimatePresence>
+            {open && (
+                <Motion.div
+                    className="mobile-drawer-backdrop"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={onClose}
+                >
+                    <Motion.aside
+                        className="mobile-history-drawer"
+                        initial={{ x: '-100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '-100%' }}
+                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="mobile-history-header">
+                            <div>
+                                <p className="mobile-history-kicker">Jurist AI</p>
+                                <h2>Recent Analyses</h2>
+                            </div>
+                            <button type="button" onClick={onClose} aria-label="Close history">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="mobile-history-primary"
+                            onClick={() => {
+                                onNewAnalysis();
+                                onClose();
+                            }}
+                        >
+                            New Analysis
+                        </button>
+
+                        <div className="mobile-history-list">
+                            {isHistoryLoading ? (
+                                [1, 2, 3].map((i) => <div key={i} className="mobile-history-skeleton" />)
+                            ) : historyItems.length === 0 ? (
+                                <p className="mobile-history-empty">No analyses yet. Start your first one.</p>
+                            ) : (
+                                historyItems.slice(0, 20).map((item) => {
+                                    const isSelected = selectedHistoryId === item.job_id;
+                                    return (
+                                        <button
+                                            key={item.job_id}
+                                            type="button"
+                                            className={`mobile-history-item ${isSelected ? 'is-selected' : ''}`}
+                                            onClick={() => {
+                                                onOpenHistory(item.job_id);
+                                                onClose();
+                                            }}
+                                        >
+                                            <span className={getRiskClass(item.overall_risk)} />
+                                            <span>{normalizeHistoryLabel(item)}</span>
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        <div className="mobile-history-footer">
+                            <button type="button" onClick={toggle}>
+                                {isDark ? <Sun size={16} /> : <Moon size={16} />}
+                                {isDark ? 'Light Mode' : 'Dark Mode'}
+                            </button>
+                            <button type="button" onClick={onLogout}>
+                                <LogOut size={16} />
+                                Logout
+                            </button>
+                            <div className="mobile-history-user">
+                                <span>{user?.email?.[0]?.toUpperCase() || 'U'}</span>
+                                <p>{user?.username || user?.email || 'User'}</p>
+                            </div>
+                        </div>
+                    </Motion.aside>
+                </Motion.div>
+            )}
+        </AnimatePresence>
+    );
+}
+
 export default function AppLayout() {
     const location = useLocation();
+    const isMobile = useIsMobile();
+    const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
     const {
         isProcessing, isHistoryItemLoading,
         showSourcePopup, setShowSourcePopup, sourceInfo,
@@ -38,8 +187,22 @@ export default function AppLayout() {
 
     const hasActiveChat = Boolean(analysisResult);
 
+    const handleNavigate = (view) => {
+        if (['overview', 'clauses', 'reports'].includes(view) && !analysisResult) {
+            navigate('/app');
+            addToast('Please select or run an analysis first.', true);
+        } else {
+            navigate(view === 'dashboard' ? '/app' : `/app/${view}`);
+        }
+    };
+
+    const handleNewAnalysis = () => {
+        navigate('/app');
+        setSelectedHistoryId(null);
+    };
+
     return (
-        <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
+        <div className="app-shell min-h-screen" style={{ background: 'var(--bg-base)' }}>
             <LoadingOverlay
                 show={isProcessing || isHistoryItemLoading}
                 title={isProcessing ? "Processing" : "Loading Analysis"}
@@ -57,7 +220,7 @@ export default function AppLayout() {
                     >
                             <Motion.div
                                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
-                                className="rounded-xl p-6 max-w-2xl w-full mx-4"
+                                className="mobile-sheet rounded-xl p-6 max-w-2xl w-full mx-4"
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 exit={{ y: 20, opacity: 0 }}
@@ -77,53 +240,56 @@ export default function AppLayout() {
                 )}
             </AnimatePresence>
 
-            <Sidebar
-                activeView={path}
-                onNavigate={(view) => {
-                    if (view === 'overview') {
-                        if (analysisResult) {
-                            navigate('/app/overview');
-                        } else {
-                            navigate('/app');
-                        }
-                    } else if (view === 'dashboard') {
-                        navigate('/app');
-                    } else {
-                        navigate(`/app/${view}`);
-                    }
-                }}
+            {!isMobile && (
+                <Sidebar
+                    activeView={path}
+                    onNavigate={handleNavigate}
+                    user={user}
+                    onLogout={logout}
+                    historyItems={historyItems}
+                    onOpenHistory={openHistoryAnalysis}
+                    isHistoryLoading={isHistoryLoading}
+                    selectedHistoryId={selectedHistoryId}
+                    onNewAnalysis={handleNewAnalysis}
+                />
+            )}
+
+            <MobileHistoryDrawer
+                open={isHistoryDrawerOpen}
+                onClose={() => setIsHistoryDrawerOpen(false)}
                 user={user}
                 onLogout={logout}
                 historyItems={historyItems}
                 onOpenHistory={openHistoryAnalysis}
                 isHistoryLoading={isHistoryLoading}
                 selectedHistoryId={selectedHistoryId}
-                onNewAnalysis={() => {
-                    navigate('/app');
-                    setSelectedHistoryId(null);
-                }}
+                onNewAnalysis={handleNewAnalysis}
             />
 
-            <div className="ml-64 flex flex-col min-h-screen">
+            <div className="app-main ml-64 flex flex-col min-h-screen">
+                {isMobile && (
+                    <header className="mobile-header">
+                        <button type="button" onClick={() => setIsHistoryDrawerOpen(true)} aria-label="Open history">
+                            <Menu size={20} />
+                        </button>
+                        <div>
+                            <p>Jurist AI</p>
+                            <h1>{viewLabels[path] || 'Dashboard'}</h1>
+                        </div>
+                        <button type="button" onClick={handleNewAnalysis} aria-label="New analysis">
+                            <Plus size={19} />
+                        </button>
+                    </header>
+                )}
                 <Header
                     activeView={path}
                     analysisResult={analysisResult}
                     hasActiveChat={hasActiveChat}
-                    onNavigate={(view) => {
-                        if (['overview', 'clauses', 'reports'].includes(view) && !analysisResult) {
-                            navigate('/app');
-                            addToast('Please select or run an analysis first.', true);
-                        } else {
-                            navigate(view === 'dashboard' ? '/app' : `/app/${view}`);
-                        }
-                    }}
-                    onNewAnalysis={() => {
-                        navigate('/app');
-                        setSelectedHistoryId(null);
-                    }}
+                    onNavigate={handleNavigate}
+                    onNewAnalysis={handleNewAnalysis}
                 />
 
-                <main className="flex-1 overflow-y-auto">
+                <main className="app-content flex-1 overflow-y-auto">
                     <ErrorBoundary>
                         <AnimatePresence mode="wait">
                             <Motion.section
@@ -140,7 +306,7 @@ export default function AppLayout() {
                             <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
                                 <Motion.div
                                     style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
-                                    className="rounded-xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+                                    className="mobile-sheet compare-selector-sheet rounded-xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto"
                                     initial={{ scale: 0.95, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
                                 >
@@ -196,7 +362,7 @@ export default function AppLayout() {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3 mt-6">
+                                    <div className="mobile-sheet-actions flex gap-3 mt-6">
                                         <button
                                             onClick={() => setShowCompareSelector(false)}
                                             style={{
@@ -250,7 +416,16 @@ export default function AppLayout() {
                 user={user}
             />
 
-            <div className={`fixed ${isChatPopupOpen ? 'bottom-28' : 'bottom-6'} right-6 flex flex-col gap-3 z-[9999]`}>
+            {isMobile && (
+                <MobileBottomNav
+                    activeView={path}
+                    analysisResult={analysisResult}
+                    hasActiveChat={hasActiveChat}
+                    onNavigate={handleNavigate}
+                />
+            )}
+
+            <div className={`app-toasts fixed ${isChatPopupOpen ? 'bottom-28' : 'bottom-6'} right-6 flex flex-col gap-3 z-[9999]`}>
                 {toasts.map(t => (
                     <div
                         key={t.id}

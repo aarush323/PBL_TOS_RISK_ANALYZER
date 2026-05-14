@@ -48,17 +48,17 @@ export default function DashboardPage() {
     : 0;
 
   return (
-    <div style={{
+    <div className="dashboard-page" style={{
       minHeight: '100vh',
       background: 'var(--bg-base)',
       backgroundImage: `radial-gradient(circle at 50% -20%, ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'} 0%, transparent 60%)`,
     }}>
-      <div style={{
+      <div className="dashboard-inner" style={{
         maxWidth: '720px',
         margin: '0 auto',
         padding: '80px 24px',
       }}>
-        <header style={{ marginBottom: '56px' }}>
+        <header className="dashboard-hero" style={{ marginBottom: '56px' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -82,7 +82,7 @@ export default function DashboardPage() {
               Jurist AI — Document Review
             </span>
           </div>
-          <h1 style={{
+          <h1 className="dashboard-title" style={{
             fontFamily: 'Anthropic Serif, serif',
             fontSize: '48px',
             fontWeight: '400',
@@ -128,7 +128,7 @@ export default function DashboardPage() {
               : (isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.05)'),
           }}
         >
-          <div style={{
+          <div className="dashboard-input-tabs" style={{
             display: 'flex',
             alignItems: 'center',
             padding: '8px',
@@ -197,6 +197,7 @@ export default function DashboardPage() {
           <AnimatePresence mode="wait">
             {inputMode === 'url' && (
               <Motion.div
+                className="dashboard-input-panel"
                 key="url"
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -237,6 +238,7 @@ export default function DashboardPage() {
 
             {inputMode === 'text' && (
               <Motion.div
+                className="dashboard-input-panel dashboard-text-panel"
                 key="text"
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -279,6 +281,7 @@ export default function DashboardPage() {
 
             {inputMode === 'upload' && (
               <Motion.div
+                className="dashboard-upload-panel"
                 key="upload"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -378,7 +381,7 @@ export default function DashboardPage() {
             )}
           </AnimatePresence>
 
-          <div style={{
+          <div className="dashboard-action-row" style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -386,7 +389,7 @@ export default function DashboardPage() {
             borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)'}`,
             background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="dashboard-enter-hint" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <span style={{
                 fontFamily: 'var(--font-family-sans)',
                 fontWeight: '300',
@@ -399,7 +402,7 @@ export default function DashboardPage() {
             </div>
 
             {isProcessing ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="dashboard-processing-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{
                   fontFamily: 'Anthropic Mono, monospace',
                   fontSize: '11px',
@@ -472,7 +475,7 @@ export default function DashboardPage() {
         </div>
 
         {!isProcessing && (
-          <div style={{
+          <div className="dashboard-trust-row" style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
