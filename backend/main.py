@@ -31,7 +31,7 @@ from analysis.analyzer import analyze_document
 from analysis.summary_generator import generate_executive_summary
 from analysis.report_generator import generate_full_report
 from analysis.cancellation import cancel_job, clear_job
-from chat.chatbot import chat_with_document, chat_with_document_rag, chat_comparison
+from chat.chatbot import chat_with_document, chat_with_document_rag
 from chat.indexer import index_document, get_index_status, reindex_document
 from chat.retriever import (
     retrieve_for_session,
