@@ -183,9 +183,24 @@ export function AppProvider({ children }) {
             const { res, data } = await apiFetchJson(`/compare/${compareId}`, { token });
             if (!res.ok || !data) { addToast('Failed to load comparison', true); return; }
             let result = data.result || data.structured || data.comparison || data;
-            if (result && !result.doc_a) result = result.comparison || result;
-            if (result && result.doc_a) {
-                setComparisonData(result);
+            if (result && !result.doc_a && !result.document_a) {
+                const nested = result.comparison || result.result || result.data;
+                if (nested) result = nested;
+            }
+            if (result && (result.doc_a || result.document_a)) {
+                const normalize = (d) => ({
+                    score: d.score ?? d.risk_score ?? 0,
+                    label: d.label || d.name || d.title || '',
+                    risky_count: d.risky_count ?? d.risky_clause_count ?? 0,
+                    total_clauses: d.total_clauses ?? 0,
+                });
+                setComparisonData({
+                    doc_a: normalize(result.doc_a || result.document_a),
+                    doc_b: normalize(result.doc_b || result.document_b),
+                    categories: result.categories || [],
+                    overall_winner: result.overall_winner || 'tie',
+                    verdict: result.verdict || '',
+                });
                 navigate('/app/compare');
             } else {
                 addToast('Comparison data is incomplete', true);

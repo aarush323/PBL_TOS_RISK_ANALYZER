@@ -230,7 +230,7 @@ body {
   padding: 16px 24px;
   font-size: 15px;
   font-weight: 600;
-  color: white;
+  color: var(--color-primary-foreground);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   margin-top: 8px;
@@ -238,7 +238,7 @@ body {
 
 .auth-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .auth-btn:disabled {
