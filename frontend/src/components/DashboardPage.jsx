@@ -53,14 +53,14 @@ export default function DashboardPage() {
     <div style={{
       minHeight: '100vh',
       background: 'var(--bg-base)',
-      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`,
+      backgroundImage: `radial-gradient(circle at 50% -20%, rgba(255,255,255,0.03) 0%, transparent 60%)`,
     }}>
       <div style={{
         maxWidth: '720px',
         margin: '0 auto',
-        padding: '48px 24px',
+        padding: '80px 24px',
       }}>
-        <header style={{ marginBottom: '48px' }}>
+        <header style={{ marginBottom: '56px' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -86,15 +86,15 @@ export default function DashboardPage() {
           </div>
           <h1 style={{
             fontFamily: 'DM Serif Display, serif',
-            fontSize: '42px',
+            fontSize: '48px',
             fontWeight: '400',
             color: 'var(--text-primary)',
-            lineHeight: '1.1',
-            letterSpacing: '-0.02em',
-            margin: '0 0 12px',
+            lineHeight: '1.05',
+            letterSpacing: '-0.03em',
+            margin: '0 0 16px',
           }}>
             What are you<br />
-            <em style={{ color: 'var(--accent)', fontStyle: 'italic' }}>
+            <em style={{ color: 'var(--text-secondary)', fontStyle: 'italic', opacity: 0.9 }}>
               reviewing today?
             </em>
           </h1>
@@ -111,55 +111,6 @@ export default function DashboardPage() {
           </p>
         </header>
 
-        <div style={{
-          display: 'inline-flex',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '10px',
-          padding: '3px',
-          marginBottom: '20px',
-          gap: '2px',
-        }}>
-          {[
-            { id: 'upload', icon: '\u2191', label: 'Upload PDF' },
-            { id: 'url', icon: '\u2192', label: 'Link' },
-            { id: 'text', icon: '\u00B6', label: 'Paste text' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setInputMode(tab.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '7px',
-                padding: '7px 16px',
-                borderRadius: '7px',
-                border: 'none',
-                background: inputMode === tab.id ? 'var(--bg-elevated)' : 'transparent',
-                color: inputMode === tab.id ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                fontFamily: 'Geist, system-ui, sans-serif',
-                fontSize: '13px',
-                fontWeight: inputMode === tab.id ? '500' : '400',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: inputMode === tab.id
-                  ? '0 1px 3px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.06)'
-                  : 'none',
-                outline: 'none',
-              }}
-            >
-              <span style={{
-                fontFamily: 'DM Mono, monospace',
-                fontSize: '13px',
-                opacity: inputMode === tab.id ? 1 : 0.4,
-              }}>
-                {tab.icon}
-              </span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
         <div
           ref={cardRef}
           onMouseEnter={() => setIsCardHovered(true)}
@@ -168,12 +119,68 @@ export default function DashboardPage() {
             position: 'relative',
             background: 'var(--bg-surface)',
             border: '1px solid',
-            borderColor: isCardActive ? 'var(--border-strong)' : 'var(--border-default)',
-            borderRadius: '12px',
+            borderColor: isCardActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+            borderRadius: '16px',
             overflow: 'hidden',
-            transition: 'border-color 0.2s ease',
+            transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+            boxShadow: isCardActive ? '0 8px 32px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0,0,0,0.2)',
           }}
         >
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '8px',
+            borderBottom: '1px solid rgba(255,255,255,0.03)',
+            gap: '4px',
+          }}>
+            {[
+              { id: 'upload', icon: '\u2191', label: 'Upload PDF' },
+              { id: 'url', icon: '\u2192', label: 'Link' },
+              { id: 'text', icon: '\u00B6', label: 'Paste text' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setInputMode(tab.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: inputMode === tab.id ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  color: inputMode === tab.id ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  fontFamily: 'Geist, system-ui, sans-serif',
+                  fontSize: '13px',
+                  fontWeight: inputMode === tab.id ? '500' : '400',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  outline: 'none',
+                }}
+              >
+                <span style={{
+                  fontFamily: 'DM Mono, monospace',
+                  fontSize: '12px',
+                  opacity: inputMode === tab.id ? 1 : 0.4,
+                }}>
+                  {tab.icon}
+                </span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 30%, rgba(255,255,255,0.1) 70%, transparent 100%)',
+            opacity: isCardActive ? 1 : 0.3,
+            transition: 'opacity 0.3s ease',
+            pointerEvents: 'none',
+          }} />
           <div style={{
             position: 'absolute',
             top: 0,
@@ -189,70 +196,57 @@ export default function DashboardPage() {
             {inputMode === 'url' && (
               <Motion.div
                 key="url"
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-                style={{ padding: '24px' }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                style={{ padding: '32px' }}
               >
-                <label style={{
-                  display: 'block',
-                  fontFamily: 'DM Mono, monospace',
-                  fontSize: '10px',
-                  color: 'var(--text-tertiary)',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  marginBottom: '10px',
-                }}>
-                  Policy URL
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://example.com/terms"
-                  value={urlInput}
-                  onChange={e => setUrlInput(e.target.value)}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    background: 'var(--bg-elevated)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    fontFamily: 'DM Mono, monospace',
-                    fontSize: '13px',
-                    color: 'var(--text-primary)',
-                    outline: 'none',
-                    transition: 'border-color 0.15s',
-                  }}
-                  onFocus={e => { e.target.style.borderColor = 'var(--border-strong)'; }}
-                  onBlur={e => { e.target.style.borderColor = 'var(--border-subtle)'; }}
-                />
-                <p style={{
-                  marginTop: '8px',
-                  fontFamily: 'Geist, system-ui, sans-serif',
-                  fontSize: '12px',
-                  color: 'var(--text-tertiary)',
-                  fontWeight: '300',
-                }}>
-                  Works best on static HTML policy pages. Some sites block scraping — try PDF upload if this fails.
-                </p>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="url"
+                    placeholder="Paste policy URL..."
+                    value={urlInput}
+                    onChange={e => setUrlInput(e.target.value)}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      background: 'transparent',
+                      border: 'none',
+                      padding: '8px 0',
+                      fontFamily: 'Geist, system-ui, sans-serif',
+                      fontSize: '15px',
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                    }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '-8px',
+                    left: 0,
+                    right: 0,
+                    height: '1px',
+                    background: urlInput ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    transition: 'background 0.2s ease',
+                  }} />
+                </div>
               </Motion.div>
             )}
 
             {inputMode === 'text' && (
               <Motion.div
                 key="text"
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-                style={{ padding: '24px', position: 'relative' }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                style={{ padding: '32px', position: 'relative' }}
               >
                 <textarea
-                  placeholder="Paste Terms of Service or Privacy Policy text here\u2026"
+                  placeholder="Paste Terms of Service or Privacy Policy text here..."
                   value={textInput}
                   onChange={e => setTextInput(e.target.value)}
-                  rows={10}
+                  rows={8}
                   style={{
                     width: '100%',
                     boxSizing: 'border-box',
@@ -261,19 +255,19 @@ export default function DashboardPage() {
                     resize: 'none',
                     fontFamily: 'Geist, system-ui, sans-serif',
                     fontWeight: '300',
-                    fontSize: '14px',
-                    lineHeight: '1.7',
+                    fontSize: '15px',
+                    lineHeight: '1.6',
                     color: 'var(--text-primary)',
                     outline: 'none',
                   }}
                 />
                 <span style={{
                   position: 'absolute',
-                  bottom: '16px',
-                  right: '20px',
+                  bottom: '24px',
+                  right: '32px',
                   fontFamily: 'DM Mono, monospace',
                   fontSize: '11px',
-                  color: 'var(--text-muted)',
+                  color: 'rgba(255,255,255,0.2)',
                 }}>
                   {wordCount > 0 ? `${wordCount} words` : ''}
                 </span>
@@ -382,100 +376,98 @@ export default function DashboardPage() {
           </AnimatePresence>
         </div>
 
-        {isProcessing ? (
-          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '14px',
-              padding: '14px 20px',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)',
-              borderRadius: '10px',
-            }}>
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                {[0, 1, 2].map(i => (
-                  <div
-                    key={i}
-                    style={{
-                      width: '3px',
-                      height: '14px',
-                      background: 'var(--accent)',
-                      borderRadius: '2px',
-                      animation: `pulse-bar 1s ease-in-out ${i * 0.15}s infinite`,
-                      opacity: 0.7,
-                    }}
-                  />
-                ))}
-              </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 24px',
+            borderTop: '1px solid rgba(255,255,255,0.03)',
+            background: 'rgba(0,0,0,0.2)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <span style={{
-                fontFamily: 'DM Mono, monospace',
+                fontFamily: 'Geist, system-ui, sans-serif',
+                fontWeight: '300',
                 fontSize: '12px',
-                color: 'var(--text-secondary)',
-                letterSpacing: '0.05em',
+                color: 'var(--text-tertiary)',
               }}>
-                ANALYZING DOCUMENT
+                <span style={{ fontFamily: 'DM Mono, monospace', marginRight: '6px', opacity: 0.7 }}>{'\u21B5'}</span>
+                Press Enter to Analyze
               </span>
             </div>
-            <button
-              onClick={stopAnalysis}
-              style={{
-                padding: '14px 20px',
-                background: 'var(--red-dim)',
-                border: '1px solid rgba(255,68,68,0.2)',
-                borderRadius: '10px',
-                color: 'var(--red)',
-                fontFamily: 'Geist, system-ui, sans-serif',
-                fontSize: '13px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
-            >
-              Cancel
-            </button>
+
+            {isProcessing ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{
+                  fontFamily: 'DM Mono, monospace',
+                  fontSize: '11px',
+                  color: 'var(--text-secondary)',
+                  letterSpacing: '0.05em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', gap: '3px' }}>
+                    {[0, 1, 2].map(i => (
+                      <div
+                        key={i}
+                        style={{
+                          width: '3px',
+                          height: '10px',
+                          background: 'rgba(255,255,255,0.4)',
+                          borderRadius: '2px',
+                          animation: `pulse-bar 1s ease-in-out ${i * 0.15}s infinite`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  ANALYZING
+                </span>
+                <button
+                  onClick={stopAnalysis}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '6px',
+                    color: 'var(--text-secondary)',
+                    fontFamily: 'Geist, system-ui, sans-serif',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => e.target.style.color = 'var(--text-primary)'}
+                  onMouseLeave={e => e.target.style.color = 'var(--text-secondary)'}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={startAnalysis}
+                disabled={!hasInput}
+                style={{
+                  padding: '8px 16px',
+                  background: hasInput ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.05)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: hasInput ? '#000' : 'rgba(255,255,255,0.2)',
+                  fontFamily: 'Geist, system-ui, sans-serif',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: hasInput ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                Analyze
+                <span style={{ opacity: hasInput ? 0.6 : 0.3 }}>{'\u2192'}</span>
+              </button>
+            )}
           </div>
-        ) : (
-          <div style={{ marginTop: '20px' }}>
-            <button
-              onClick={startAnalysis}
-              disabled={!hasInput}
-              style={{
-                width: '100%',
-                padding: '15px 24px',
-                background: hasInput ? 'var(--accent)' : 'var(--bg-elevated)',
-                border: '1px solid',
-                borderColor: hasInput ? 'var(--accent)' : 'var(--border-subtle)',
-                borderRadius: '10px',
-                color: hasInput ? '#0A0A0B' : 'var(--text-tertiary)',
-                fontFamily: 'Geist, system-ui, sans-serif',
-                fontSize: '14px',
-                fontWeight: '600',
-                letterSpacing: '0.01em',
-                cursor: hasInput ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-              onMouseEnter={e => { if (hasInput) e.currentTarget.style.opacity = '0.9'; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-            >
-              {hasInput ? (
-                <>
-                  <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '13px' }}>
-                    {'\u2303'}
-                  </span>
-                  Analyze document
-                </>
-              ) : (
-                'Paste or upload a document to continue'
-              )}
-            </button>
-          </div>
-        )}
+        </div>
 
         {!isProcessing && (
           <div style={{

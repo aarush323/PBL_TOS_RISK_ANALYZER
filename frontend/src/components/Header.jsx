@@ -69,7 +69,7 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
 
       <div className="flex items-center gap-4">
         <div className="relative" ref={searchRef}>
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
           <input
             type="text"
             placeholder="Search clauses..."
@@ -79,12 +79,12 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
               setShowDropdown(e.target.value.length > 0);
             }}
             onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
-            className="w-64 h-9 pl-9 pr-4 rounded-full bg-white/5 border border-white/10 text-sm text-white placeholder-white/40 focus:outline-none focus:border-[#007AFF]/50 transition-colors"
+            className="w-56 focus:w-64 h-8 pl-8 pr-4 rounded-md bg-transparent border border-white/5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-white/20 focus:bg-white/[0.02] transition-all"
           />
           {searchQuery && (
             <button
               onClick={() => { setSearchQuery(''); setShowDropdown(false); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
             >
               <X size={14} />
             </button>

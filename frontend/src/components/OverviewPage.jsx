@@ -193,33 +193,19 @@ export default function OverviewPage({
         </div>
 
         {/* Generated summary */}
-        <div className="col-span-12 lg:col-span-7 relative group overflow-hidden rounded-3xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-[0.08] dark:opacity-[0.15]" />
-          <Motion.div
-            animate={{
-              scale: [1, 1.1, 1],
-              rotate: [0, 5, 0],
-            }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-20 -right-20 w-80 h-80 bg-[#6366f1]/20 rounded-full blur-[80px]"
-          />
-
-          <div className={`glass-card h-full p-8 relative z-10 border-none flex flex-col justify-between ${theme === 'light' ? 'bg-white/40' : 'bg-black/20 text-white'}`}>
+        <div className="col-span-12 lg:col-span-7">
+          <div className="glass-card h-full p-8 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-indigo-500 rounded-lg blur-lg opacity-40 animate-pulse" />
-                    <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-                      <Zap size={20} className="text-white fill-white" />
-                    </div>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'}`}>
+                    <BrainCircuit size={16} className={theme === 'light' ? 'text-gray-700' : 'text-white/70'} />
                   </div>
                   <div>
-                    <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Generated Summary</h3>
-                    <p className={`text-[9px] font-bold uppercase tracking-widest ${mutedTextClass}`}>Based on the current analysis output</p>
+                    <h3 className={`text-xs font-semibold uppercase tracking-widest ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Analysis Summary</h3>
                   </div>
                 </div>
-                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest border shadow-sm ${theme === 'light' ? 'bg-white border-indigo-100 text-indigo-600' : 'bg-white/5 border-white/10 text-white/60'}`}>
+                <div className={`px-2.5 py-1 rounded text-[10px] font-semibold tracking-widest border ${theme === 'light' ? 'bg-gray-100 border-gray-200 text-gray-500' : 'bg-white/5 border-white/10 text-white/40'}`}>
                   CONFIDENCE: {analysisResult?.confidence_level || 'HIGH'}
                 </div>
               </div>
@@ -229,22 +215,22 @@ export default function OverviewPage({
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-4"
               >
-                <p className={`text-xl font-medium leading-relaxed italic tracking-tight font-serif ${theme === 'light' ? 'text-gray-800' : 'text-indigo-50/90'}`}>
-                  "{analysisResult?.professional_summary || analysisResult?.executive_summary || "Analysis is complete. Review the flagged clauses and their wording before relying on the score."}"
+                <p className={`text-[15px] font-medium leading-relaxed ${theme === 'light' ? 'text-gray-800' : 'text-white/80'}`}>
+                  {analysisResult?.professional_summary || analysisResult?.executive_summary || "Analysis is complete. Review the flagged clauses and their wording before relying on the score."}
                 </p>
               </Motion.div>
 
               {(analysisResult?.key_findings || []).length > 0 && (
-                <div className="mt-6 flex flex-wrap gap-2">
+                <div className="mt-8 flex flex-wrap gap-2">
                   {analysisResult.key_findings.slice(0, 5).map((finding, i) => {
                     const findingCategory = renderValue(finding?.category);
                     const findingSeverity = renderValue(finding?.severity);
-                    const sevColor = finding.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                      finding.severity === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                      finding.severity === 'medium' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
-                      'bg-green-500/20 text-green-400 border-green-500/30';
+                    const sevColor = finding.severity === 'critical' ? 'text-red-400 border-red-500/20 bg-red-500/10' :
+                      finding.severity === 'high' ? 'text-orange-400 border-orange-500/20 bg-orange-500/10' :
+                      finding.severity === 'medium' ? 'text-amber-400 border-amber-500/20 bg-amber-500/10' :
+                      'text-green-400 border-green-500/20 bg-green-500/10';
                     return (
-                      <span key={i} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${sevColor}`}>
+                      <span key={i} className={`px-2.5 py-1 rounded text-[10px] font-medium uppercase tracking-wider border ${sevColor}`}>
                         {findingCategory}: {findingSeverity}
                       </span>
                     );
@@ -253,29 +239,25 @@ export default function OverviewPage({
               )}
 
               {analysisResult?.top_concern && (
-                <div className={`mt-4 p-3 rounded-xl border ${theme === 'light' ? 'bg-red-50 border-red-100' : 'bg-red-500/10 border-red-500/20'}`}>
-                  <p className={`text-[10px] font-black uppercase tracking-widest ${theme === 'light' ? 'text-red-700' : 'text-red-400'}`}>Top Concern</p>
-                  <p className={`text-sm font-medium mt-1 ${theme === 'light' ? 'text-red-900' : 'text-red-300'}`}>{renderValue(analysisResult.top_concern)}</p>
+                <div className={`mt-6 p-5 rounded-xl border ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/[0.02] border-white/5'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldAlert size={14} className={theme === 'light' ? 'text-gray-500' : 'text-white/40'} />
+                    <p className={`text-[10px] font-semibold uppercase tracking-widest ${theme === 'light' ? 'text-gray-500' : 'text-white/40'}`}>Top Concern</p>
+                  </div>
+                  <p className={`text-sm ${theme === 'light' ? 'text-gray-700' : 'text-white/70'}`}>{renderValue(analysisResult.top_concern)}</p>
                 </div>
               )}
             </div>
 
-            <div className="mt-8 pt-6 border-t border-indigo-500/10 flex items-center justify-between whitespace-nowrap">
-              <div className="flex gap-6">
-                <div>
-                  <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Critical Risks</p>
-                  <p className="text-xl font-black text-red-500">{totalRisky}</p>
-                </div>
-                <div className="w-px h-10 bg-indigo-500/10" />
-                <div>
-                  <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Score</p>
-                  <p className="text-xl font-black text-emerald-500">{score}%</p>
-                </div>
+            <div className={`mt-8 pt-6 flex items-center gap-8 border-t ${theme === 'light' ? 'border-gray-200' : 'border-white/5'}`}>
+              <div>
+                <p className={`text-[10px] font-medium uppercase tracking-widest mb-1 ${mutedTextClass}`}>Critical Risks</p>
+                <p className={`text-lg font-semibold ${textClass}`}>{totalRisky}</p>
               </div>
-              <div className="flex -space-x-2">
-                <div className="w-8 h-8 rounded-full border-2 border-indigo-500 bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-700 z-30">AI</div>
-                <div className="w-8 h-8 rounded-full border-2 border-purple-500 bg-purple-100 flex items-center justify-center text-[10px] font-bold text-purple-700 z-20">LGL</div>
-                <div className="w-8 h-8 rounded-full border-2 border-pink-500 bg-pink-100 flex items-center justify-center text-[10px] font-bold text-pink-700 z-10">RISK</div>
+              <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
+              <div>
+                <p className={`text-[10px] font-medium uppercase tracking-widest mb-1 ${mutedTextClass}`}>Score</p>
+                <p className={`text-lg font-semibold ${textClass}`}>{score}%</p>
               </div>
             </div>
           </div>
@@ -484,34 +466,33 @@ export default function OverviewPage({
 
         {/* Hero Narrative Recap */}
         <div className="col-span-12 lg:col-span-4 glass-card p-0 overflow-hidden group">
-          <div className={`h-full p-8 flex flex-col justify-between relative ${theme === 'light' ? 'bg-indigo-50/50' : 'bg-gradient-to-br from-indigo-500/10 to-transparent'}`}>
-            <div className="absolute top-0 right-0 p-4">
-              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <Zap size={16} className="text-white fill-white" />
-              </div>
-            </div>
-
+          <div className="h-full p-8 flex flex-col justify-between">
             <div>
-              <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>Summary</h3>
-              <p className={`text-lg font-medium leading-relaxed italic font-serif ${theme === 'light' ? 'text-gray-800' : 'text-white/90'}`}>
-                "{analysisResult?.executive_summary || analysisResult?.professional_summary || "Analysis complete. Review the flagged clauses to see which terms drove the score."}"
+              <div className="flex items-center gap-3 mb-8">
+                <div className={`w-8 h-8 rounded flex items-center justify-center border ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'}`}>
+                  <FileText size={16} className={theme === 'light' ? 'text-gray-700' : 'text-white/70'} />
+                </div>
+                <h3 className={`text-xs font-semibold uppercase tracking-widest ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Takeaway</h3>
+              </div>
+              <p className={`text-[15px] font-medium leading-relaxed ${theme === 'light' ? 'text-gray-800' : 'text-white/80'}`}>
+                {analysisResult?.executive_summary || analysisResult?.professional_summary || "Analysis complete. Review the flagged clauses to see which terms drove the score."}
               </p>
             </div>
 
-            <div className="mt-8 pt-8 border-t border-white/5">
+            <div className={`mt-8 pt-8 border-t ${theme === 'light' ? 'border-gray-200' : 'border-white/5'}`}>
               <div className="flex items-center gap-4 mb-6">
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0a0a0a] bg-white/5 flex items-center justify-center overflow-hidden">
-                      <Activity size={12} className="text-white/20" />
+                    <div key={i} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center overflow-hidden ${theme === 'light' ? 'border-white bg-gray-50' : 'border-[#0a0a0a] bg-white/5'}`}>
+                      <Activity size={12} className={theme === 'light' ? 'text-gray-400' : 'text-white/20'} />
                     </div>
                   ))}
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Analysis Complete</span>
+                <span className={`text-[10px] font-semibold uppercase tracking-widest ${mutedTextClass}`}>Analysis Complete</span>
               </div>
               <button
                 onClick={() => onNavigate && onNavigate('reports')}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all active:scale-95"
+                className={`w-full py-4 rounded-xl font-semibold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${theme === 'light' ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-white text-black hover:bg-gray-200'}`}
               >
                 Open Report
               </button>
