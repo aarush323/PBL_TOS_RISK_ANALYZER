@@ -1,5 +1,5 @@
 import React from 'react';
-import { Scale, LogOut, HelpCircle, Plus, Sun, Moon } from 'lucide-react';
+import { Scale, LogOut, Plus, Sun, Moon } from 'lucide-react';
 import { useTheme } from './theme-context.js';
 import { getRiskClass } from '../utils/colorUtils';
 
@@ -227,30 +227,6 @@ export default function Sidebar({
             }} />
           </div>
           {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-        </button>
-
-        <button
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '8px 14px',
-            borderRadius: '8px',
-            border: 'none',
-            background: 'transparent',
-            color: 'var(--text-secondary)',
-            fontFamily: 'var(--font-family-sans)',
-            fontSize: '13px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-        >
-          <HelpCircle size={15} />
-          Support
         </button>
 
         <button
