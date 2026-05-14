@@ -203,7 +203,7 @@ export default function Sidebar({
             color: 'var(--text-secondary)',
             fontFamily: 'Geist, system-ui, sans-serif',
             fontSize: '13px',
-            fontWeight: '400',
+            fontWeight: '500',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
@@ -242,7 +242,7 @@ export default function Sidebar({
             color: 'var(--text-secondary)',
             fontFamily: 'Geist, system-ui, sans-serif',
             fontSize: '13px',
-            fontWeight: '400',
+            fontWeight: '500',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
@@ -267,7 +267,7 @@ export default function Sidebar({
             color: 'var(--text-secondary)',
             fontFamily: 'Geist, system-ui, sans-serif',
             fontSize: '13px',
-            fontWeight: '400',
+            fontWeight: '500',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}

@@ -86,7 +86,7 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
                   borderRadius: '6px',
                   fontFamily: 'Geist, system-ui, sans-serif',
                   fontSize: '13px',
-                  fontWeight: isActive ? '500' : '400',
+                  fontWeight: '500',
                   border: 'none',
                   background: 'transparent',
                   color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
