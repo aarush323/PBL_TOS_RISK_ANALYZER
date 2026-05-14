@@ -807,6 +807,20 @@ body {
   color: var(--color-text) !important;
 }
 
+/* ─── Reports & Compare Page Overrides ─── */
+[data-theme="light"] .text-white\/90,
+[data-theme="light"] .text-white\/95 {
+  color: var(--color-text) !important;
+}
+
+[data-theme="light"] .bg-black\/40 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .hover\:bg-white\/90:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
 /* ─── Additional Missing Overrides ─── */
 [data-theme="light"] .bg-white\/\[0\.02\] {
   background-color: rgba(0, 0, 0, 0.02) !important;
