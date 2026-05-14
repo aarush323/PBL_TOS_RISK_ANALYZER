@@ -22,6 +22,31 @@
   --font-family-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
+:root {
+  --bg-base: #0A0A0B;
+  --bg-surface: #111113;
+  --bg-elevated: #18181B;
+  --bg-hover: #1E1E22;
+  --border-subtle: #232327;
+  --border-default: #2E2E34;
+  --border-strong: #3F3F47;
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #52525B;
+  --text-muted: #3F3F47;
+  --accent: #E8D5B7;
+  --accent-dim: rgba(232, 213, 183, 0.08);
+  --accent-border: rgba(232, 213, 183, 0.18);
+  --red: #FF4444;
+  --red-dim: rgba(255, 68, 68, 0.08);
+  --success: #4ADE80;
+}
+
+@keyframes pulse-bar {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.4; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
 html {
   background: var(--color-surface);
   color: var(--color-text);
