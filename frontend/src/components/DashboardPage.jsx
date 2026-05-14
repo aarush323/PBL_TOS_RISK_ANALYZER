@@ -374,7 +374,6 @@ export default function DashboardPage() {
               </Motion.div>
             )}
           </AnimatePresence>
-        </div>
 
           <div style={{
             display: 'flex',
