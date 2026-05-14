@@ -19,14 +19,7 @@ export default function DashboardPage() {
   const [isCardHovered, setIsCardHovered] = useState(false);
   const cardRef = useRef(null);
 
-  useEffect(() => {
-    if (!document.querySelector('link[href*="DM+Serif+Display"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap';
-      document.head.appendChild(link);
-    }
-  }, []);
+  // Anthropic fonts are loaded via CSS import in index.css
 
   useEffect(() => {
     const el = cardRef.current;
@@ -80,7 +73,7 @@ export default function DashboardPage() {
               boxShadow: '0 0 8px var(--accent)',
             }} />
             <span style={{
-              fontFamily: 'DM Mono, monospace',
+              fontFamily: 'Anthropic Mono, monospace',
               fontSize: '11px',
               color: 'var(--text-tertiary)',
               letterSpacing: '0.12em',
@@ -90,7 +83,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <h1 style={{
-            fontFamily: 'DM Serif Display, serif',
+            fontFamily: 'Anthropic Serif, serif',
             fontSize: '48px',
             fontWeight: '400',
             color: 'var(--text-primary)',
@@ -168,7 +161,7 @@ export default function DashboardPage() {
                 }}
               >
                 <span style={{
-                  fontFamily: 'DM Mono, monospace',
+                  fontFamily: 'Anthropic Mono, monospace',
                   fontSize: '12px',
                   opacity: inputMode === tab.id ? 1 : 0.4,
                 }}>
@@ -275,7 +268,7 @@ export default function DashboardPage() {
                   position: 'absolute',
                   bottom: '24px',
                   right: '32px',
-                  fontFamily: 'DM Mono, monospace',
+                  fontFamily: 'Anthropic Mono, monospace',
                   fontSize: '11px',
                   color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.3)',
                 }}>
@@ -400,7 +393,7 @@ export default function DashboardPage() {
                 fontSize: '12px',
                 color: 'var(--text-tertiary)',
               }}>
-                <span style={{ fontFamily: 'DM Mono, monospace', marginRight: '6px', opacity: 0.7 }}>{'\u21B5'}</span>
+                <span style={{ fontFamily: 'Anthropic Mono, monospace', marginRight: '6px', opacity: 0.7 }}>{'\u21B5'}</span>
                 Press Enter to Analyze
               </span>
             </div>
@@ -408,7 +401,7 @@ export default function DashboardPage() {
             {isProcessing ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{
-                  fontFamily: 'DM Mono, monospace',
+                  fontFamily: 'Anthropic Mono, monospace',
                   fontSize: '11px',
                   color: 'var(--text-secondary)',
                   letterSpacing: '0.05em',
@@ -503,7 +496,7 @@ export default function DashboardPage() {
                   color: 'var(--text-tertiary)',
                 }}
               >
-                <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '11px' }}>
+                <span style={{ fontFamily: 'Anthropic Mono, monospace', fontSize: '11px' }}>
                   {item.icon}
                 </span>
                 {item.text}

@@ -56,7 +56,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
             </div>
 
             <h2 style={{
-                fontFamily: 'DM Serif Display, serif',
+                fontFamily: 'Anthropic Serif, serif',
                 fontSize: '28px',
                 fontWeight: '400',
                 color: 'var(--text-primary)',
@@ -142,7 +142,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
                         textAlign: 'left',
                     }}>
                         <span style={{
-                            fontFamily: 'DM Mono, monospace',
+                            fontFamily: 'Anthropic Mono, monospace',
                             fontSize: '10px',
                             color: 'var(--text-tertiary)',
                             letterSpacing: '0.08em',

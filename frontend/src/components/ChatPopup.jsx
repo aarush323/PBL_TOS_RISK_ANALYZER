@@ -16,7 +16,7 @@ export default function ChatPopup({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const s = {
-    font: 'Inter, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
+    font: 'Anthropic Sans, sans-serif', mono: 'Anthropic Mono, monospace', serif: 'Anthropic Serif, serif',
     border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
     surface: isDark ? 'rgba(20,20,22,0.95)' : 'rgba(255,255,255,0.95)',
     msgBot: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',

@@ -28,9 +28,9 @@ export default function ClausesPage({
   const selectedCategoryCounts = useMemo(() => getConfidenceCounts(analysisResult), [analysisResult]);
 
   const s = {
-    font: 'Inter, system-ui, sans-serif',
-    mono: 'DM Mono, monospace',
-    serif: 'DM Serif Display, serif',
+    font: 'Anthropic Sans, sans-serif',
+    mono: 'Anthropic Mono, monospace',
+    serif: 'Anthropic Serif, serif',
     border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
     borderStrong: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
     surfaceDim: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',

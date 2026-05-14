@@ -204,7 +204,7 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
                   onMouseLeave={e => e.target.style.background = 'transparent'}
                 >
                   <span style={{
-                    fontFamily: 'DM Mono, monospace',
+                    fontFamily: 'Anthropic Mono, monospace',
                     fontSize: '10px',
                     color: 'var(--text-tertiary)',
                     marginRight: '6px',

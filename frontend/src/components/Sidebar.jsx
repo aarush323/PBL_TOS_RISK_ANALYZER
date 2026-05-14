@@ -45,7 +45,7 @@ export default function Sidebar({
           </div>
           <div>
             <h1 style={{
-              fontFamily: 'DM Serif Display, serif',
+              fontFamily: 'Anthropic Serif, serif',
               fontSize: '18px',
               fontWeight: '400',
               color: 'var(--text-primary)',
@@ -53,7 +53,7 @@ export default function Sidebar({
               letterSpacing: '-0.02em',
             }}>Jurist AI</h1>
             <p style={{
-              fontFamily: 'DM Mono, monospace',
+              fontFamily: 'Anthropic Mono, monospace',
               fontSize: '9px',
               color: 'var(--text-tertiary)',
               letterSpacing: '0.1em',
@@ -100,7 +100,7 @@ export default function Sidebar({
         <div style={{ marginTop: '8px' }}>
           <div style={{ padding: '8px 12px' }}>
             <h3 style={{
-              fontFamily: 'DM Mono, monospace',
+              fontFamily: 'Anthropic Mono, monospace',
               fontSize: '9px',
               color: 'var(--text-tertiary)',
               letterSpacing: '0.1em',
@@ -297,7 +297,7 @@ export default function Sidebar({
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--text-secondary)',
-            fontFamily: 'DM Mono, monospace',
+            fontFamily: 'Anthropic Mono, monospace',
             fontSize: '11px',
             fontWeight: '500',
           }}>

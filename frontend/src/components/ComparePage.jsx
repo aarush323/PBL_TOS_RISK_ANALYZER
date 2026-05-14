@@ -9,9 +9,9 @@ export default function ComparePage({
   const { theme } = useTheme();
   const isDark = theme !== 'light';
   const s = {
-    font: 'Inter, system-ui, sans-serif',
-    mono: 'DM Mono, monospace',
-    serif: 'DM Serif Display, serif',
+    font: 'Anthropic Sans, sans-serif',
+    mono: 'Anthropic Mono, monospace',
+    serif: 'Anthropic Serif, serif',
     border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
     surface: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     surfaceCard: 'var(--bg-surface)',
