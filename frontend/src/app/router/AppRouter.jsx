@@ -115,7 +115,8 @@ function SettingsWrapper() {
             type="checkbox"
             checked={settings.autoOpenResults}
             onChange={(e) => setSettings(prev => ({ ...prev, autoOpenResults: e.target.checked }))}
-            className="w-5 h-5 accent-[#007AFF]"
+            className="w-5 h-5"
+            style={{ accentColor: 'var(--text-primary)' }}
           />
         </div>
         <div className="flex justify-between items-center py-4">
@@ -127,7 +128,8 @@ function SettingsWrapper() {
             type="checkbox"
             checked={settings.compactRiskCards}
             onChange={(e) => setSettings(prev => ({ ...prev, compactRiskCards: e.target.checked }))}
-            className="w-5 h-5 accent-[#007AFF]"
+            className="w-5 h-5"
+            style={{ accentColor: 'var(--text-primary)' }}
           />
         </div>
       </div>

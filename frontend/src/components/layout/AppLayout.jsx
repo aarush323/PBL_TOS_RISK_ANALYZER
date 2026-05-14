@@ -39,7 +39,7 @@ export default function AppLayout() {
     const hasActiveChat = Boolean(analysisResult);
 
     return (
-        <div className="min-h-screen bg-[#050505]">
+        <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
             <LoadingOverlay
                 show={isProcessing || isHistoryItemLoading}
                 title={isProcessing ? "Processing" : "Loading Analysis"}
@@ -55,22 +55,23 @@ export default function AppLayout() {
                         exit={{ opacity: 0 }}
                         onClick={() => setShowSourcePopup(false)}
                     >
-                        <Motion.div
-                            className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 max-w-2xl w-full mx-4"
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 20, opacity: 0 }}
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold text-white">Source Content</h3>
-                                <button onClick={() => setShowSourcePopup(false)} className="text-white/60 hover:text-white">
-                                    <X size={20} />
-                                </button>
-                            </div>
-                            <div className="bg-black/20 p-4 rounded-lg text-sm text-white/60 font-mono max-h-96 overflow-y-auto">
-                                {sourceInfo.value || 'No content loaded.'}
-                            </div>
+                            <Motion.div
+                                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+                                className="rounded-xl p-6 max-w-2xl w-full mx-4"
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 20, opacity: 0 }}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 style={{ fontFamily: 'var(--font-family-sans)', color: 'var(--text-primary)' }} className="text-lg font-semibold">Source Content</h3>
+                                    <button onClick={() => setShowSourcePopup(false)} style={{ color: 'var(--text-secondary)' }}>
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                                <div style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', fontFamily: 'var(--font-family-mono)' }} className="p-4 rounded-lg text-sm max-h-96 overflow-y-auto">
+                                    {sourceInfo.value || 'No content loaded.'}
+                                </div>
                         </Motion.div>
                     </Motion.div>
                 )}
@@ -136,53 +137,60 @@ export default function AppLayout() {
                         </AnimatePresence>
 
                         {showCompareSelector && (
-                            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] flex items-center justify-center p-4">
+                            <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
                                 <Motion.div
-                                    className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+                                    style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+                                    className="rounded-xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto"
                                     initial={{ scale: 0.95, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
                                 >
                                     <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-lg font-semibold text-white">Select Documents to Compare</h3>
-                                        <button onClick={() => setShowCompareSelector(false)} className="text-white/60 hover:text-white">
+                                        <h3 style={{ fontFamily: 'var(--font-family-sans)', color: 'var(--text-primary)' }} className="text-lg font-semibold">Select Documents to Compare</h3>
+                                        <button onClick={() => setShowCompareSelector(false)} style={{ color: 'var(--text-secondary)' }}>
                                             <X size={20} />
                                         </button>
                                     </div>
                                     <div className="space-y-4">
                                         <div>
-                                            <h4 className="text-sm font-semibold text-white mb-2">Document A</h4>
+                                            <h4 style={{ fontFamily: 'var(--font-family-sans)', color: 'var(--text-primary)' }} className="text-sm font-semibold mb-2">Document A</h4>
                                             <div className="space-y-2 max-h-60 overflow-y-auto">
                                                 {historyItems.map((item) => (
                                                     <button
                                                         key={item.job_id}
                                                         onClick={() => setCompareDocA(item)}
-                                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${compareDocA?.job_id === item.job_id
-                                                            ? 'bg-[#007AFF]/20 text-white'
-                                                            : 'text-white/60 hover:text-white hover:bg-white/5'
-                                                            }`}
+                                                        style={{
+                                                            background: compareDocA?.job_id === item.job_id ? 'var(--bg-elevated)' : 'transparent',
+                                                            color: compareDocA?.job_id === item.job_id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                            fontFamily: 'var(--font-family-sans)',
+                                                            border: compareDocA?.job_id === item.job_id ? '1px solid var(--border-default)' : '1px solid transparent',
+                                                        }}
+                                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all`}
                                                     >
                                                         <div className={`w-2 h-2 rounded-full ${item.overall_risk === 'High' ? 'bg-red-500' : item.overall_risk === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'}`} />
                                                         <span className="truncate">{item.source_label || item.source}</span>
-                                                        <span className="text-xs text-white/50">{item.overall_risk} risk</span>
+                                                        <span style={{ color: 'var(--text-tertiary)' }} className="text-xs">{item.overall_risk} risk</span>
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
                                         <div>
-                                            <h4 className="text-sm font-semibold text-white mb-2">Document B</h4>
+                                            <h4 style={{ fontFamily: 'var(--font-family-sans)', color: 'var(--text-primary)' }} className="text-sm font-semibold mb-2">Document B</h4>
                                             <div className="space-y-2 max-h-60 overflow-y-auto">
                                                 {historyItems.map((item) => (
                                                     <button
                                                         key={item.job_id}
                                                         onClick={() => setCompareDocB(item)}
-                                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${compareDocB?.job_id === item.job_id
-                                                            ? 'bg-[#007AFF]/20 text-white'
-                                                            : 'text-white/60 hover:text-white hover:bg-white/5'
-                                                            }`}
+                                                        style={{
+                                                            background: compareDocB?.job_id === item.job_id ? 'var(--bg-elevated)' : 'transparent',
+                                                            color: compareDocB?.job_id === item.job_id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                            fontFamily: 'var(--font-family-sans)',
+                                                            border: compareDocB?.job_id === item.job_id ? '1px solid var(--border-default)' : '1px solid transparent',
+                                                        }}
+                                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all`}
                                                     >
                                                         <div className={`w-2 h-2 rounded-full ${item.overall_risk === 'High' ? 'bg-red-500' : item.overall_risk === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'}`} />
                                                         <span className="truncate">{item.source_label || item.source}</span>
-                                                        <span className="text-xs text-white/50">{item.overall_risk} risk</span>
+                                                        <span style={{ color: 'var(--text-tertiary)' }} className="text-xs">{item.overall_risk} risk</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -191,7 +199,13 @@ export default function AppLayout() {
                                     <div className="flex gap-3 mt-6">
                                         <button
                                             onClick={() => setShowCompareSelector(false)}
-                                            className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white/80 hover:bg-white/10"
+                                            style={{
+                                                fontFamily: 'var(--font-family-sans)',
+                                                background: 'transparent',
+                                                border: '1px solid var(--border-default)',
+                                                color: 'var(--text-secondary)',
+                                            }}
+                                            className="flex-1 px-4 py-2 rounded-lg text-sm transition-all"
                                         >
                                             Cancel
                                         </button>
@@ -205,7 +219,14 @@ export default function AppLayout() {
                                                 }
                                             }}
                                             disabled={!compareDocA || !compareDocB || compareDocA.job_id === compareDocB.job_id}
-                                            className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white text-sm font-semibold disabled:opacity-50"
+                                            style={{
+                                                fontFamily: 'var(--font-family-sans)',
+                                                background: 'var(--text-primary)',
+                                                border: 'none',
+                                                color: 'var(--bg-base)',
+                                                opacity: (!compareDocA || !compareDocB || compareDocA.job_id === compareDocB.job_id) ? 0.5 : 1,
+                                            }}
+                                            className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer disabled:cursor-not-allowed"
                                         >
                                             Compare Now
                                         </button>
