@@ -28,7 +28,7 @@ export default function Sidebar({
           </div>
           <div>
             <h1 className="text-lg font-bold text-white">Jurist AI</h1>
-            <p className="text-[10px] text-white/50 uppercase tracking-wider">Pro Audit Suite</p>
+            <p className="text-[10px] text-white/50 uppercase tracking-wider">Free Policy Analyzer</p>
           </div>
         </div>
       </div>
