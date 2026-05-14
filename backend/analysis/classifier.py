@@ -9,11 +9,598 @@ import itertools
 
 logger = logging.getLogger(__name__)
 
-from settings import CEREBRAS_API_URL, CEREBRAS_MODEL, GROQ_API_URL, GROQ_MODEL, OLLAMA_URL, OLLAMA_MODEL, get_enabled_llm_providers
+CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
+CEREBRAS_MODEL = "llama3.1-8b"
+
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.1-8b-instant"
+
+OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "phi3.5"
 
 cerebras_request_count = 0
 groq_request_count = 0
 
-_providers = get_enabled_llm_providers()
+_providers = []
+if os.getenv("CEREBRAS_API_KEY"):
+    _providers.append("cerebras")
+if os.getenv("GROQ_API_KEY"):
+    _providers.append("groq")
 
 _provider_cycle = itertools.cycle(_providers) if _providers else None
+
+RISK_DEFINITIONS = """
+- Privacy Risk: data collection, sharing, selling, tracking user data, cookies, profiling
+- Legal Risk: mandatory arbitration, class action waiver, liability waiver, jurisdiction clauses, indemnification
+- User Rights Risk: account termination without notice, content ownership transfer, irrevocable licenses, opt-out restrictions
+- Security Risk: data breach handling, no encryption guarantee, "as is" disclaimers, unauthorized access liability
+- Financial Risk: auto-renewal, non-refundable charges, automatic billing, price changes without notice
+"""
+
+PROMPT_TEMPLATE = """You are a legal risk analyst specializing in Terms of Service and Privacy Policy documents.
+
+Analyze the following clause and classify any risks present.
+
+CLAUSE:
+{clause_text}
+
+NLP SIGNALS DETECTED:
+- Modal verbs found: {modal_verbs}
+- Negation present: {has_negation}
+- Pre-flagged categories from keywords: {triggered_categories}
+- Named entity types: {entity_types}
+
+RISK CATEGORY DEFINITIONS:
+{risk_definitions}
+
+Respond ONLY with valid JSON. No explanation, no markdown, no extra text. Exactly this format:
+{{
+  "is_risky": true or false,
+  "risk_categories": ["Privacy Risk"] or [],
+  "confidence": "High" or "Medium" or "Low",
+  "explanation": "detailed 3-4 sentence explanation in plain English outlining exactly why this is risky and the potential consequences, or null if not risky"
+}}
+
+Rules:
+- risk_categories must only contain values from the 5 defined categories
+- confidence must be exactly "High", "Medium", or "Low"
+- explanation must be plain English a non-lawyer can understand
+- If not risky, return is_risky: false, empty risk_categories, and null explanation"""
+
+
+def build_prompt(clause: dict, features: dict) -> str:
+    return PROMPT_TEMPLATE.format(
+        clause_text=clause["text"],
+        modal_verbs=features["modal_verbs"] or "none",
+        has_negation=features["has_negation"],
+        triggered_categories=features["triggered_categories"] or "none",
+        entity_types=features["entity_types"] or "none",
+        risk_definitions=RISK_DEFINITIONS,
+    )
+
+
+def parse_llm_response(raw: str) -> dict:
+    # Strip markdown code fences if present
+    raw = re.sub(r"```json|```", "", raw).strip()
+
+    # Extract first JSON object found
+    match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not match:
+        raise ValueError(f"No JSON object found in LLM response: {raw[:200]}")
+
+    parsed = json.loads(match.group())
+
+    # Validate required fields
+    required = ["is_risky", "risk_categories", "confidence", "explanation"]
+    for field in required:
+        if field not in parsed:
+            raise ValueError(f"Missing field '{field}' in LLM response")
+
+    # Validate values
+    valid_categories = {
+        "Privacy Risk",
+        "Legal Risk",
+        "User Rights Risk",
+        "Security Risk",
+        "Financial Risk",
+    }
+    valid_confidence = {"High", "Medium", "Low"}
+
+    parsed["risk_categories"] = [
+        c for c in parsed["risk_categories"] if c in valid_categories
+    ]
+
+    if parsed["confidence"] not in valid_confidence:
+        parsed["confidence"] = "Low"
+
+    category_weights = {
+        "Privacy Risk": 2.0,
+        "Legal Risk": 1.8,
+        "Security Risk": 1.5,
+        "Financial Risk": 1.2,
+        "User Rights Risk": 1.0,
+    }
+    confidence_weight = {"High": 1.0, "Medium": 0.6, "Low": 0.3}.get(
+        parsed["confidence"], 0.3
+    )
+    severity = confidence_weight + sum(
+        category_weights.get(c, 1.0) for c in parsed["risk_categories"]
+    )
+    parsed["severity_score"] = round(severity, 2)
+
+    return parsed
+
+
+def classify_clause(clause: dict, features: dict) -> dict:
+    prompt = build_prompt(clause, features)
+
+    cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
+
+    if cerebras_api_key:
+        try:
+            logger.info(f"Classifying clause {clause['id']} via Cerebras...")
+            response = httpx.post(
+                CEREBRAS_API_URL,
+                headers={
+                    "Authorization": f"Bearer {cerebras_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": CEREBRAS_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.1,
+                    "max_completion_tokens": 600,
+                },
+                timeout=120.0,
+            )
+            response.raise_for_status()
+            raw_text = response.json()["choices"][0]["message"]["content"]
+            logger.debug(f"Cerebras RAW RESPONSE: {raw_text[:500]}")
+            result = parse_llm_response(raw_text)
+            logger.info(
+                f"Clause {clause['id']} classified (Cerebras): "
+                f"risky={result['is_risky']}, "
+                f"categories={result['risk_categories']}, "
+                f"confidence={result['confidence']}"
+            )
+            return result
+        except Exception as e:
+            logger.warning(
+                f"Clause {clause['id']}: Cerebras error — {str(e)}. Falling back to Groq..."
+            )
+    else:
+        logger.warning(f"CEREBRAS_API_KEY not found. Trying Groq fallback...")
+
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    if groq_api_key:
+        try:
+            logger.info(f"Classifying clause {clause['id']} via Groq...")
+            response = httpx.post(
+                GROQ_API_URL,
+                headers={"Authorization": f"Bearer {groq_api_key}"},
+                json={
+                    "model": GROQ_MODEL,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.1,
+                    "max_tokens": 600,
+                    "response_format": {"type": "json_object"},
+                },
+                timeout=30.0,
+            )
+            response.raise_for_status()
+            raw_text = response.json()["choices"][0]["message"]["content"]
+            logger.debug(f"Groq RAW RESPONSE: {raw_text[:500]}")
+            result = parse_llm_response(raw_text)
+            logger.info(
+                f"Clause {clause['id']} classified (Groq): "
+                f"risky={result['is_risky']}, "
+                f"categories={result['risk_categories']}, "
+                f"confidence={result['confidence']}"
+            )
+            return result
+        except Exception as e:
+            logger.warning(
+                f"Clause {clause['id']}: Groq error — {str(e)}. Falling back to Ollama..."
+            )
+    else:
+        logger.warning("GROQ_API_KEY not found. Skipping Groq fallback.")
+
+    try:
+        logger.info(f"Classifying clause {clause['id']} via Ollama...")
+        response = httpx.post(
+            OLLAMA_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "format": "json",
+                "options": {
+                    "temperature": 0.1,  # low temp = consistent structured output
+                    "num_predict": 600,  # JSON response needs space for longer explanation
+                },
+            },
+            timeout=120.0,
+        )
+        response.raise_for_status()
+        raw_text = response.json()["response"]
+        logger.debug(f"LLM RAW RESPONSE: {raw_text[:500]}")
+        result = parse_llm_response(raw_text)
+        logger.info(
+            f"Clause {clause['id']} classified (Ollama): "
+            f"risky={result['is_risky']}, "
+            f"categories={result['risk_categories']}, "
+            f"confidence={result['confidence']}"
+        )
+        return result
+
+    except httpx.TimeoutException:
+        logger.warning(f"Clause {clause['id']}: LLM timeout")
+        return {
+            "is_risky": False,
+            "risk_categories": [],
+            "confidence": "Low",
+            "explanation": None,
+            "error": "LLM timeout",
+        }
+    except Exception as e:
+        logger.warning(f"Clause {clause['id']}: LLM error — {str(e)}")
+        return {
+            "is_risky": False,
+            "risk_categories": [],
+            "confidence": "Low",
+            "explanation": None,
+            "error": str(e),
+        }
+
+
+BATCH_PROMPT_TEMPLATE = """You are a legal risk analyst specializing in Terms of Service and Privacy Policy documents.
+
+Analyze EACH of the following clauses and classify any risks present.
+
+CLAUSES:
+{clauses_block}
+
+RISK CATEGORY DEFINITIONS:
+{risk_definitions}
+
+IMPORTANT: Every result MUST include all fields. "confidence" must be exactly "High", "Medium", or "Low" — never omit it.
+
+Respond ONLY with valid JSON. No explanation, no markdown, no extra text. Exactly this format:
+{{
+  "results": [
+    {{
+      "clause_id": <integer>,
+      "is_risky": true or false,
+      "risk_categories": ["Privacy Risk"] or [],
+      "confidence": "High" or "Medium" or "Low",
+      "explanation": "detailed 3-4 sentence explanation in plain English outlining exactly why this is risky and the potential consequences, or null if not risky"
+    }}
+  ]
+}}
+
+Rules:
+- Return one result object per clause, in the same order
+- risk_categories must only contain values from the 5 defined categories
+- confidence MUST be exactly "High", "Medium", or "Low" — never omit it
+- explanation must be plain English a non-lawyer can understand
+- If not risky, return is_risky: false, empty risk_categories, and null explanation"""
+
+
+def build_batch_prompt(clauses: list[dict], features_list: list[dict]) -> str:
+    blocks = []
+    for clause, features in zip(clauses, features_list):
+        block = (
+            f"[Clause {clause['id']}]\n"
+            f"{clause['text']}\n"
+            f"NLP SIGNALS: modal_verbs={features['modal_verbs'] or 'none'}, "
+            f"negation={features['has_negation']}, "
+            f"categories={features['triggered_categories'] or 'none'}, "
+            f"entities={features['entity_types'] or 'none'}"
+        )
+        blocks.append(block)
+
+    return BATCH_PROMPT_TEMPLATE.format(
+        clauses_block="\n\n".join(blocks), risk_definitions=RISK_DEFINITIONS
+    )
+
+
+def parse_batch_response(raw: str, expected_count: int) -> list[dict]:
+    """Parse a batch LLM response into a list of validated results."""
+    raw = re.sub(r"```json|```", "", raw).strip()
+
+    match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not match:
+        raise ValueError(f"No JSON object found in batch LLM response: {raw[:300]}")
+
+    parsed = json.loads(match.group())
+
+    if "results" not in parsed or not isinstance(parsed["results"], list):
+        raise ValueError("Batch response missing 'results' array")
+
+    if len(parsed["results"]) != expected_count:
+        raise ValueError(
+            f"Expected {expected_count} results, got {len(parsed['results'])}"
+        )
+
+    valid_categories = {
+        "Privacy Risk",
+        "Legal Risk",
+        "User Rights Risk",
+        "Security Risk",
+        "Financial Risk",
+    }
+    valid_confidence = {"High", "Medium", "Low"}
+
+    validated = []
+    for item in parsed["results"]:
+        required = ["is_risky", "risk_categories", "confidence", "explanation"]
+        for field in required:
+            if field not in item:
+                raise ValueError(f"Missing field '{field}' in batch result item")
+
+        item["risk_categories"] = [
+            c for c in item["risk_categories"] if c in valid_categories
+        ]
+        if item["confidence"] not in valid_confidence:
+            item["confidence"] = "Low"
+
+        category_weights = {
+            "Privacy Risk": 2.0,
+            "Legal Risk": 1.8,
+            "Security Risk": 1.5,
+            "Financial Risk": 1.2,
+            "User Rights Risk": 1.0,
+        }
+        confidence_weight = {"High": 1.0, "Medium": 0.6, "Low": 0.3}.get(
+            item["confidence"], 0.3
+        )
+        severity = confidence_weight + sum(
+            category_weights.get(c, 1.0) for c in item["risk_categories"]
+        )
+        item["severity_score"] = round(severity, 2)
+
+        validated.append(item)
+
+    return validated
+
+
+def _get_next_provider():
+    if _provider_cycle:
+        return next(_provider_cycle)
+    return None
+
+
+async def _call_groq(
+    prompt: str,
+    model: str = GROQ_MODEL,
+    temperature: float = 0.1,
+    max_tokens: int = 600,
+) -> str:
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    if not groq_api_key:
+        raise ValueError("GROQ_API_KEY not set")
+
+    response = await httpx.AsyncClient().post(
+        GROQ_API_URL,
+        headers={"Authorization": f"Bearer {groq_api_key}"},
+        json={
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "response_format": {"type": "json_object"},
+        },
+        timeout=30.0,
+    )
+    response.raise_for_status()
+    global groq_request_count
+    groq_request_count += 1
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def _call_groq_sync(
+    prompt: str,
+    model: str = GROQ_MODEL,
+    temperature: float = 0.1,
+    max_tokens: int = 600,
+) -> str:
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    if not groq_api_key:
+        raise ValueError("GROQ_API_KEY not set")
+
+    max_retries = 3
+    delay = 1.0
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = httpx.post(
+                GROQ_API_URL,
+                headers={"Authorization": f"Bearer {groq_api_key}"},
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "response_format": {"type": "json_object"},
+                },
+                timeout=30.0,
+            )
+            if response.status_code == 429:
+                if attempt == max_retries:
+                    response.raise_for_status()
+                retry_after = response.headers.get("Retry-After")
+                wait_time = (
+                    float(retry_after)
+                    if retry_after and retry_after.isdigit()
+                    else delay
+                )
+                logger.warning(
+                    f"Groq 429 Too Many Requests. Retrying in {wait_time}s..."
+                )
+                import time
+
+                time.sleep(wait_time)
+                delay *= 2
+                continue
+
+            response.raise_for_status()
+            global groq_request_count
+            groq_request_count += 1
+            return response.json()["choices"][0]["message"]["content"]
+
+        except httpx.TimeoutException:
+            if attempt == max_retries:
+                raise
+            logger.warning(f"Groq Timeout. Retrying in {delay}s...")
+            import time
+
+            time.sleep(delay)
+            delay *= 2
+
+        except Exception as e:
+            if attempt == max_retries:
+                raise
+            logger.warning(f"Groq attempt {attempt + 1} failed: {e}. Retrying...")
+            import time
+
+            time.sleep(delay)
+            delay *= 2
+
+    raise Exception("Groq failed after all retries")
+
+
+def _call_cerebras_sync(
+    prompt: str,
+    model: str = CEREBRAS_MODEL,
+    temperature: float = 0.1,
+    max_tokens: int = 600,
+) -> str:
+    cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
+    if not cerebras_api_key:
+        raise ValueError("CEREBRAS_API_KEY not set")
+
+    headers = {
+        "Authorization": f"Bearer {cerebras_api_key}",
+        "Content-Type": "application/json",
+    }
+
+    max_retries = 4
+    delay = 1.0
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = httpx.post(
+                CEREBRAS_API_URL,
+                headers=headers,
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": temperature,
+                    "max_completion_tokens": max_tokens,
+                    "response_format": {"type": "json_object"},
+                },
+                timeout=120.0,
+            )
+            if response.status_code == 429:
+                if attempt == max_retries:
+                    response.raise_for_status()
+
+                retry_after = response.headers.get("Retry-After")
+                if retry_after and retry_after.isdigit():
+                    wait_time = float(retry_after)
+                else:
+                    wait_time = delay
+                    delay = min(delay * 2, 30.0)
+
+                logger.warning(
+                    f"Cerebras 429 Too Many Requests. Retrying in {wait_time}s..."
+                )
+                time.sleep(wait_time)
+                continue
+
+            response.raise_for_status()
+
+            global cerebras_request_count
+            cerebras_request_count += 1
+
+            return response.json()["choices"][0]["message"]["content"]
+
+        except httpx.TimeoutException as e:
+            if attempt == max_retries:
+                raise
+            wait_time = delay
+            delay = min(delay * 2, 30.0)
+            logger.warning(f"Cerebras Timeout. Retrying in {wait_time}s...")
+            time.sleep(wait_time)
+
+    raise Exception("Cerebras failed after all retries")
+
+
+def classify_batch(clauses: list[dict], features_list: list[dict]) -> list[dict]:
+    """Classify a batch of clauses using round-robin provider (Cerebras/Groq)."""
+    prompt = build_batch_prompt(clauses, features_list)
+    count = len(clauses)
+
+    provider = _get_next_provider()
+
+    if provider == "cerebras":
+        try:
+            logger.info(f"Batch classifying {count} clauses via Cerebras...")
+            raw_text = _call_cerebras_sync(prompt, max_tokens=600 * count)
+            logger.debug(f"Cerebras BATCH RAW: {raw_text[:800]}")
+            results = parse_batch_response(raw_text, count)
+            logger.info(f"Batch classified {count} clauses via Cerebras OK")
+            return results
+        except Exception as e:
+            logger.warning(f"Cerebras batch error: {e}")
+
+    elif provider == "groq":
+        try:
+            logger.info(f"Batch classifying {count} clauses via Groq...")
+            raw_text = _call_groq_sync(prompt, max_tokens=600 * count)
+            logger.debug(f"Groq BATCH RAW: {raw_text[:800]}")
+            results = parse_batch_response(raw_text, count)
+            logger.info(f"Batch classified {count} clauses via Groq OK")
+            return results
+        except Exception as e:
+            logger.warning(f"Groq batch error: {e}")
+
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    if groq_api_key:
+        try:
+            logger.info(f"Batch classifying {count} clauses via Groq (fallback)...")
+            raw_text = _call_groq_sync(prompt, max_tokens=600 * count)
+            logger.debug(f"Groq BATCH RAW: {raw_text[:800]}")
+            results = parse_batch_response(raw_text, count)
+            logger.info(f"Batch classified {count} clauses via Groq OK")
+            return results
+        except Exception as e:
+            logger.warning(f"Groq fallback batch error: {e}")
+
+    try:
+        logger.info(f"Batch classifying {count} clauses via Ollama...")
+        response = httpx.post(
+            OLLAMA_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "format": "json",
+                "options": {"temperature": 0.1, "num_predict": min(450 * count, 2000)},
+            },
+            timeout=180.0,
+        )
+        response.raise_for_status()
+        raw_text = response.json()["response"]
+        logger.debug(f"Ollama BATCH RAW: {raw_text[:800]}")
+        results = parse_batch_response(raw_text, count)
+        logger.info(f"Batch classified {count} clauses via Ollama OK")
+        return results
+    except Exception as e:
+        logger.warning(f"Ollama batch error: {e}. Falling back to per-clause...")
+
+    results = []
+    for clause, features in zip(clauses, features_list):
+        results.append(classify_clause(clause, features))
+    return results

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Filter, AlertTriangle, Activity, Info, MessageSquare, Shield, FileText, Zap, Check } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Filter, AlertTriangle, Activity, Info } from 'lucide-react';
 import { useTheme } from './theme-context.js';
 import {
   filterClauses,
@@ -20,11 +20,6 @@ export default function ClausesPage({
     confidence: 'all',
   });
   const [expandedCardId, setExpandedCardId] = useState(null); // NEW: expandable state
-  const [visibleCount, setVisibleCount] = useState(50); // NEW: pagination state
-
-  useEffect(() => {
-    setVisibleCount(50);
-  }, [filters, analysisResult]);
 
   const clauses = useMemo(() => filterClauses(analysisResult, filters), [analysisResult, filters]);
   const severitySeries = useMemo(() => getSeveritySeries(analysisResult), [analysisResult]);
@@ -241,7 +236,7 @@ export default function ClausesPage({
                 <p className="text-sm text-white/30">Try adjusting your filters to see more analysis.</p>
               </div>
             ) : (
-              clauses.slice(0, visibleCount).map((clause, idx) => {
+              clauses.slice(0, 50).map((clause, idx) => {
                 const isRisky = clause.is_risky;
                 const isExpanded = expandedCardId === idx;
                 const severityLevel = clause.severity_score >= 5 ? 'HIGH' : clause.severity_score >= 2 ? 'MEDIUM' : 'LOW';
@@ -376,16 +371,6 @@ export default function ClausesPage({
               })
             )}
           </div>
-          {clauses.length > visibleCount && (
-            <div className="mt-8 flex justify-center">
-              <button
-                onClick={() => setVisibleCount(prev => prev + 50)}
-                className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all shadow-lg"
-              >
-                Load More Clauses
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

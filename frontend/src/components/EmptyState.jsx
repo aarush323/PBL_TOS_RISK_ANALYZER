@@ -1,7 +1,7 @@
 import React from 'react';
-import { FileSearch, Zap, Plus, ArrowRight, RefreshCw } from 'lucide-react';
+import { FileSearch, Zap, Plus, ArrowRight } from 'lucide-react';
 
-export default function EmptyState({ view, onNewAnalysis, navigate }) {
+export default function EmptyState({ view, onNewAnalysis }) {
     const configs = {
         overview: {
             icon: <FileSearch size={48} className="text-[#007AFF]" />,
@@ -27,14 +27,6 @@ export default function EmptyState({ view, onNewAnalysis, navigate }) {
 
     const { icon, title, description } = configs[view] || configs.overview;
 
-    const handleRefresh = () => {
-        if (navigate) {
-            navigate('/app');
-        } else {
-            window.location.hash = '/app';
-        }
-    };
-
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center">
             <div className="w-20 h-20 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-6 animate-pulse">
@@ -55,11 +47,10 @@ export default function EmptyState({ view, onNewAnalysis, navigate }) {
                 </button>
 
                 <button
-                    onClick={handleRefresh}
+                    onClick={() => window.location.reload()}
                     className="flex items-center gap-2 px-6 py-3 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-all"
                 >
-                    <RefreshCw size={18} />
-                    <span>Go to Dashboard</span>
+                    Refresh Page
                 </button>
             </div>
 

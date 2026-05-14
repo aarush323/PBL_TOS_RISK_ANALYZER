@@ -5,10 +5,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from settings import EXTRACTOR_USER_AGENT, EXTRACTOR_TIMEOUT
-
 HEADERS = {
-    "User-Agent": EXTRACTOR_USER_AGENT,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
     "Connection": "keep-alive",
@@ -29,7 +27,7 @@ NOISE_PATTERNS = [
 
 def fetch_url(url: str) -> str:
     logger.info(f"Fetching URL: {url}")
-    response = requests.get(url, headers=HEADERS, timeout=EXTRACTOR_TIMEOUT)
+    response = requests.get(url, headers=HEADERS, timeout=15)
     logger.info(f"HTTP response: {response.status_code}")
     response.raise_for_status()
     return response.text
@@ -79,7 +77,7 @@ def extract_from_url(url: str) -> dict:
 
     main_content = find_main_content(soup)
     logger.info(f"Main content detected: <{main_content.name}>")
-
+    
     raw_text = main_content.get_text(separator="\n")
     logger.info(f"Extracted raw text length: {len(raw_text)}")
 

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { GridBackground } from "@/components/ui/grid-background";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Icons } from "@/components/ui/icons";
 
 export default function HeroSection({ onAnalyze, onGetStarted }) {
     const [url, setUrl] = useState('');
@@ -48,7 +49,24 @@ export default function HeroSection({ onAnalyze, onGetStarted }) {
 
                 <div className="flex flex-col items-center gap-6">
                     <div className="flex items-center gap-4">
+                        <div className="flex -space-x-3">
+                            <Avatar className="border-2 border-black w-12 h-12">
+                                <AvatarFallback className="text-sm font-semibold text-white border-white/20 bg-purple-600">JD</AvatarFallback>
+                            </Avatar>
+                            <Avatar className="border-2 border-black w-12 h-12">
+                                <AvatarFallback className="text-sm font-semibold text-white border-white/20 bg-blue-600">AS</AvatarFallback>
+                            </Avatar>
+                            <Avatar className="border-2 border-black w-12 h-12">
+                                <AvatarFallback className="text-sm font-semibold text-white border-white/20 bg-blue-700">MK</AvatarFallback>
+                            </Avatar>
+                        </div>
                         <span className="font-bold text-gray-200">Works with URL, PDF, and pasted text</span>
+                    </div>
+
+                    <div className="flex gap-6 justify-center">
+                        <a href="https://github.com/aarush323" className="text-gray-400 hover:text-gray-300" target="_blank" rel="noreferrer">
+                            <Icons.gitHub className="w-5 h-5 fill-current" />
+                        </a>
                     </div>
                 </div>
             </div>

@@ -23,10 +23,11 @@ class JobStatus(str, enum.Enum):
     processing = "processing"
     complete = "complete"
     failed = "failed"
-    blocked = "blocked"
 
 
 class User(Base):
+    """Registered user account."""
+
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, index=True)
@@ -52,6 +53,8 @@ class User(Base):
 
 
 class Analysis(Base):
+    """One row per analysis job.  result stores the full analyze_document() output."""
+
     __tablename__ = "analyses"
 
     job_id = Column(String(36), primary_key=True, index=True)
@@ -60,7 +63,7 @@ class Analysis(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
-    )
+    )  # nullable = anonymous allowed
     source = Column(Text, nullable=True)
     source_type = Column(String(32), nullable=True)
     status = Column(
@@ -86,6 +89,8 @@ class Analysis(Base):
 
 
 class ChatSession(Base):
+    """One row per chat session."""
+
     __tablename__ = "chat_sessions"
 
     session_id = Column(String(36), primary_key=True, index=True)
@@ -120,6 +125,8 @@ class ChatSession(Base):
 
 
 class ClauseEmbedding(Base):
+    """Clause-level embeddings for RAG retrieval."""
+
     __tablename__ = "clause_embeddings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -142,6 +149,8 @@ class ClauseEmbedding(Base):
 
 
 class CompareSession(Base):
+    """Cached comparison result between two documents."""
+
     __tablename__ = "compare_sessions"
 
     compare_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -168,6 +177,8 @@ class CompareSession(Base):
 
 
 class ChatMessage(Base):
+    """One row per message in a chat session."""
+
     __tablename__ = "chat_messages"
 
     id = Column(String(36), primary_key=True, index=True)

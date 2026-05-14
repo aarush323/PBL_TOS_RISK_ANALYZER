@@ -46,7 +46,10 @@ Also extract:
 Return as JSON with keys: professional_summary, executive_summary, key_findings, top_concern, recommendation.
 """
 
-from settings import CEREBRAS_API_URL, CEREBRAS_MODEL, GROQ_API_URL, GROQ_MODEL
+CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
+CEREBRAS_MODEL = "llama3.1-8b"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 
 def _call_llm(prompt: str) -> str:

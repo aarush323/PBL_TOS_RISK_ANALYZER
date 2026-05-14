@@ -75,15 +75,6 @@ async def update_analysis_failed(db: AsyncSession, job_id: str, error: str) -> N
         await db.commit()
 
 
-async def update_analysis_blocked(db: AsyncSession, job_id: str, error: str) -> None:
-    job = await db.get(Analysis, job_id)
-    if job:
-        job.status = JobStatus.blocked
-        job.error = error
-        job.updated_at = datetime.now(timezone.utc)
-        await db.commit()
-
-
 async def get_analysis_job(db: AsyncSession, job_id: str) -> Analysis | None:
     return await db.get(Analysis, job_id)
 

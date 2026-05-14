@@ -123,7 +123,7 @@ export default function AppLayout() {
                 />
 
                 <main className="flex-1 overflow-y-auto">
-                    <ErrorBoundary navigate={navigate} onReset={() => navigate('/app')}>
+                    <ErrorBoundary>
                         <AnimatePresence mode="wait">
                             <Motion.section
                                 key={location.pathname}

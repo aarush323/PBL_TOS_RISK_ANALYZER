@@ -1,3 +1,8 @@
+"""
+Embedding service using Google Gemini Embedding API.
+Model: gemini-embedding-001 (384 dimensions via output_dimensionality).
+"""
+
 import logging
 import os
 
@@ -6,30 +11,41 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-from settings import EMBEDDING_MODEL, EMBEDDING_DIM, GEMINI_API_KEY
-
 _client = None
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIM = 384
 
 
 def _get_client():
     global _client
     if _client is None:
-        if not GEMINI_API_KEY:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
             raise RuntimeError(
                 "GEMINI_API_KEY environment variable is not set. "
                 "Get one from https://aistudio.google.com/app/apikey"
             )
-        _client = genai.Client(api_key=GEMINI_API_KEY)
+        _client = genai.Client(api_key=api_key)
         logger.info(f"Gemini embedding configured: {EMBEDDING_MODEL} (dim={EMBEDDING_DIM})")
     return _client
 
 
 def get_model():
+    """Kept for backward compatibility. Returns the model name string."""
     _get_client()
     return EMBEDDING_MODEL
 
 
 def embed_text(text: str) -> list[float]:
+    """
+    Embed a single string. Returns list of 384 floats.
+
+    Args:
+        text: Single text string to embed
+
+    Returns:
+        List of 384 float values
+    """
     client = _get_client()
     result = client.models.embed_content(
         model=EMBEDDING_MODEL,
@@ -43,6 +59,17 @@ def embed_text(text: str) -> list[float]:
 
 
 def embed_batch(texts: list[str], batch_size: int = 20) -> list[list[float]]:
+    """
+    Embed multiple strings at once via Gemini API.
+    Uses small batches + delays to stay under free tier rate limits.
+
+    Args:
+        texts: List of text strings to embed
+        batch_size: Batch size for processing (default 20, keeps under 100 RPM)
+
+    Returns:
+        List of embedding lists (each 384 floats)
+    """
     if not texts:
         return []
 
@@ -75,6 +102,7 @@ def embed_batch(texts: list[str], batch_size: int = 20) -> list[list[float]]:
                 else:
                     raise
 
+        # Space batches ~13s apart to stay under 100 items/min limit
         if i + batch_size < len(texts):
             time.sleep(13)
 
@@ -82,6 +110,7 @@ def embed_batch(texts: list[str], batch_size: int = 20) -> list[list[float]]:
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two vectors."""
     import math
 
     dot = sum(x * y for x, y in zip(a, b))

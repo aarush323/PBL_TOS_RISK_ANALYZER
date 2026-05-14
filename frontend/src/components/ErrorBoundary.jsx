@@ -11,24 +11,14 @@ class ErrorBoundary extends React.Component {
         return { hasError: true, error };
     }
 
-    componentDidCatch(error) {
-        if (import.meta.env.DEV) {
-            console.warn('ErrorBoundary caught an error:', error.message);
-        }
+    componentDidCatch(error, errorInfo) {
+        console.error("ErrorBoundary caught an error:", error, errorInfo);
     }
 
     handleReset = () => {
         this.setState({ hasError: false, error: null });
         if (this.props.onReset) this.props.onReset();
-    };
-
-    handleGoHome = () => {
-        this.setState({ hasError: false, error: null });
-        if (this.props.navigate) {
-            this.props.navigate('/app');
-        } else {
-            window.location.hash = '/app';
-        }
+        else window.location.href = '/';
     };
 
     render() {
@@ -57,7 +47,7 @@ class ErrorBoundary extends React.Component {
                             <span>Reset View</span>
                         </button>
                         <button
-                            onClick={this.handleGoHome}
+                            onClick={() => window.location.href = '/'}
                             className="flex items-center gap-2 px-6 py-3 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-all"
                         >
                             <Home size={18} />

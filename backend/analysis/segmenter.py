@@ -80,7 +80,7 @@ def segment_clauses(paragraphs: list[str]) -> list[dict]:
         if should_split(para):
             sub_clauses = split_by_sentences(para)
             for sub in sub_clauses:
-                logger.debug(f"clause chunk: {sub[:80]}...")
+                print(f"[CHUNK] {sub[:300]}...")
                 clauses.append({
                     "id": clause_id,
                     "text": sub,

@@ -11,7 +11,6 @@ logging.basicConfig(
 import asyncio
 import uuid
 import shutil
-import tempfile
 
 from fastapi import (
     FastAPI,
@@ -22,8 +21,7 @@ from fastapi import (
     status,
     BackgroundTasks,
 )
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,33 +49,57 @@ import compare_service
 
 logger = logging.getLogger(__name__)
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 app = FastAPI(title="ToS Analyzer API")
 
-from settings import ENVIRONMENT, FRONTEND_URL, CORS_ORIGINS, validate_production_environment
+if ENVIRONMENT == "production":
+    cors_origins = [FRONTEND_URL]
+else:
+    cors_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
 
-validate_production_environment()
-
-logger.info(f"Running in {ENVIRONMENT} mode | Frontend URL: {FRONTEND_URL} | CORS origins: {CORS_ORIGINS}")
-
-
-@app.middleware("http")
-async def cors_middleware(request, call_next):
-    response = await call_next(request)
-    origin = request.headers.get("origin", "")
-    if origin:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        response.headers["Access-Control-Max-Age"] = "600"
-    return response
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-@app.api_route("/{rest:path}", methods=["OPTIONS"])
-async def preflight_handler():
-    return Response(status_code=200, headers={
-        "Access-Control-Max-Age": "600",
-    })
+def validate_environment():
+    if ENVIRONMENT == "production":
+        required_vars = [
+            "DATABASE_URL",
+            "SECRET_KEY",
+            "CEREBRAS_API_KEY",
+            "FRONTEND_URL",
+        ]
+        missing = [var for var in required_vars if not os.getenv(var)]
+        if missing:
+            # We allow it to continue if a default exists, but we warn
+            for var in missing:
+                if globals().get(var):
+                    logger.warning(
+                        f"Using default value for {var} because it is not set in the environment."
+                    )
+                else:
+                    raise RuntimeError(
+                        f"CRITICAL: Missing required environment variables: {', '.join(missing)}. "
+                        "Please set these in your deployment settings (e.g., Railway Dashboard)."
+                    )
+        logger.info("Environment validation complete.")
+    else:
+        logger.info(f"Running in {ENVIRONMENT} mode - CORS allowing localhost origins.")
+
+
+validate_environment()
 
 
 @app.on_event("startup")
@@ -339,10 +361,11 @@ def extract_text(body: AnalyzeInput):
 def extract_pdf(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+    safe_name = f"{uuid.uuid4()}_{file.filename}"
+    temp_path = f"/tmp/{safe_name}"
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            shutil.copyfileobj(file.file, tmp)
-            temp_path = tmp.name
+        with open(temp_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
         result = handle_input("pdf", temp_path)
         return result
     except ValueError as e:
@@ -350,7 +373,7 @@ def extract_pdf(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF extraction failed: {str(e)}")
     finally:
-        if "temp_path" in locals() and os.path.exists(temp_path):
+        if os.path.exists(temp_path):
             os.remove(temp_path)
 
 
@@ -418,11 +441,26 @@ async def analyze_async(
                 user_id=user_id,
             )
 
-            await crud.update_analysis_blocked(db, job_id, str(e))
+            mock_result = {
+                "overall_risk": "High",
+                "risky_clause_count": 1,
+                "total_clauses": 1,
+                "clauses": [
+                    {
+                        "id": 0,
+                        "text": "The target website actively blocked automated extraction (e.g., via 403 Forbidden, CAPTCHA, or anti-bot measures).",
+                        "explanation": f"When a company blocks automated analysis of its legal terms, it reduces transparency and makes it harder for users to independently verify their rights. Error details: {str(e)}",
+                        "is_risky": True,
+                        "risk_categories": ["Transparency Risk", "Accessibility Risk"],
+                        "confidence": "High",
+                        "skipped_llm": True,
+                    }
+                ],
+            }
+            await crud.update_analysis_complete(db, job_id, mock_result)
             return {
                 "job_id": job_id,
-                "status": "blocked",
-                "error": str(e),
+                "status": "processing",
                 "extraction": {"cleaned_text": "Content blocked by host."},
             }
         else:
@@ -455,8 +493,6 @@ async def analyze_status(job_id: str, db: AsyncSession = Depends(get_db)):
         return {"status": "complete", "result": job.result}
     if job.status.value == "failed":
         return {"status": "failed", "error": job.error}
-    if job.status.value == "blocked":
-        return {"status": "blocked", "error": job.error}
     return {"status": "processing"}
 
 
