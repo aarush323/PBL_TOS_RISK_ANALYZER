@@ -176,9 +176,9 @@ export default function AuthPage() {
                 initial={{ opacity: 0, x: 20, scale: 0.9 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: 20, scale: 0.9 }}
-                className={`pointer-events-auto flex items-center gap-4 px-8 py-5 rounded-[2rem] border ${t.isError ? 'bg-[var(--color-error)]/10 border-[var(--color-error)]/20' : 'bg-[var(--color-success)]/10 border-[var(--color-success)]/20'} shadow-2xl backdrop-blur-xl`}
+                className={`auth-notification pointer-events-auto flex items-center gap-4 px-8 py-5 rounded-[2rem] border ${t.isError ? 'error' : ''} shadow-2xl backdrop-blur-xl`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white ${t.isError ? 'bg-[var(--color-error)]' : 'bg-[var(--color-success)]'}`}>
+                <div className={`auth-notification-icon w-8 h-8 rounded-full flex items-center justify-center ${t.isError ? 'error' : ''}`}>
                   {t.isError ? <X size={14} /> : <ShieldCheck size={14} />}
                 </div>
                 <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-widest">

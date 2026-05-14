@@ -289,6 +289,41 @@ body {
   background: rgba(239, 68, 68, 0.1);
 }
 
+.app-toast {
+  background: color-mix(in srgb, var(--text-primary) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 18%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.app-toast.error {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.28);
+  color: #ef4444;
+}
+
+.auth-notification {
+  background: color-mix(in srgb, var(--color-text) 9%, transparent);
+  border-color: color-mix(in srgb, var(--color-text) 18%, transparent);
+}
+
+.auth-notification.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.auth-notification-icon {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+.auth-notification-icon.error {
+  background: var(--color-error);
+  color: #fff;
+}
+
 @keyframes slide-in {
   from {
     opacity: 0;

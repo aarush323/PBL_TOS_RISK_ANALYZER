@@ -429,10 +429,7 @@ export default function AppLayout() {
                 {toasts.map(t => (
                     <div
                         key={t.id}
-                        className={`px-4 py-3 rounded-lg text-sm ${t.isError
-                            ? 'bg-red-500/20 border border-red-500/30 text-red-500'
-                            : 'bg-green-500/20 border border-green-500/30 text-green-500'
-                            }`}
+                        className={`app-toast px-4 py-3 rounded-lg text-sm ${t.isError ? 'error' : ''}`}
                     >
                         {t.message}
                     </div>
