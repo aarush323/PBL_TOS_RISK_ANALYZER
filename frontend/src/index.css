@@ -325,7 +325,7 @@ body {
 
 @media print {
   @page {
-    margin: 15mm;
+    margin: 12mm;
     size: A4;
     print-color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
@@ -475,6 +475,81 @@ body {
   /* Hide collapse/expand toggles in print */
   [data-section-id] .cursor-pointer svg {
     display: none !important;
+  }
+
+  .report-page {
+    max-width: none !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .report-header {
+    margin-bottom: 8mm !important;
+  }
+
+  .report-title {
+    font-size: 24pt !important;
+    line-height: 1.1 !important;
+  }
+
+  .report-meta {
+    font-size: 9pt !important;
+  }
+
+  .report-layout {
+    display: block !important;
+  }
+
+  .report-content {
+    display: block !important;
+    padding-bottom: 0 !important;
+  }
+
+  .report-section {
+    margin: 0 0 8mm !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .report-section h2 {
+    font-size: 15pt !important;
+    margin-bottom: 4mm !important;
+  }
+
+  .report-grid {
+    gap: 4mm !important;
+  }
+
+  .report-grid-two,
+  .report-grid-three {
+    grid-template-columns: 1fr !important;
+  }
+
+  .report-stack {
+    gap: 4mm !important;
+  }
+
+  .report-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    box-shadow: none !important;
+  }
+
+  .report-summary-card {
+    font-size: 13pt !important;
+    line-height: 1.55 !important;
+    padding: 5mm !important;
+  }
+
+  .report-finding-card,
+  .report-compliance-card {
+    padding: 4mm !important;
+  }
+
+  .report-category-card,
+  .report-clause-card {
+    margin-bottom: 0 !important;
   }
 }
 

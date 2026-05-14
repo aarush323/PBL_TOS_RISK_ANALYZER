@@ -50,43 +50,8 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
     finally { setIsGenerating(false); }
   };
 
-  const handleDownloadPDF = async () => {
-    if (!reportRef.current) return;
-    const [html2canvas, { jsPDF: JsPDF }] = await Promise.all([
-      import('html2canvas'),
-      import('jspdf'),
-    ]);
-    const canvas = await html2canvas.default(reportRef.current, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      onclone: (doc) => {
-        doc.querySelectorAll('svg').forEach((svg) => {
-          const w = svg.getAttribute('width') || '16';
-          const h = svg.getAttribute('height') || '16';
-          svg.setAttribute('width', w);
-          svg.setAttribute('height', h);
-          svg.style.width = w + 'px';
-          svg.style.height = h + 'px';
-        });
-      },
-    });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new JsPDF('p', 'mm', 'a4');
-    const w = pdf.internal.pageSize.getWidth();
-    const imgProps = pdf.getImageProperties(imgData);
-    let h = (imgProps.height * w) / imgProps.width;
-    let remaining = h;
-    let pos = 0;
-    const pageH = 297;
-    while (remaining > 0) {
-      const sliceH = Math.min(remaining, pageH);
-      if (pos > 0) pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, -pos, w, h);
-      pos += pageH;
-      remaining -= pageH;
-    }
-    pdf.save('Jurist_Report_' + (report?.report_metadata?.report_id || 'analysis') + '.pdf');
+  const handleDownloadPDF = () => {
+    window.print();
   };
 
   if (!analysisResult && !report) return <EmptyState title="No Analysis Found" description="Run an analysis first to generate a report." />;
@@ -135,29 +100,29 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
   );
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
+    <div className="report-page" style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="report-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <button onClick={() => window.history.back()} style={{
+          <button className="report-back no-print" onClick={() => window.history.back()} style={{
             display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none',
             fontFamily: s.font, fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: '6px',
           }}><ArrowLeft size={13} /> Back</button>
-          <h1 style={{ fontFamily: s.serif, fontSize: '30px', fontWeight: '400', fontStyle: 'italic',
+          <h1 className="report-title" style={{ fontFamily: s.serif, fontSize: '30px', fontWeight: '400', fontStyle: 'italic',
             color: 'var(--text-primary)', margin: '0 0 4px', letterSpacing: '-0.02em' }}>Risk Analysis Report</h1>
-          <p style={{ fontFamily: s.mono, fontSize: '11px', color: 'var(--text-tertiary)', margin: 0 }}>
+          <p className="report-meta" style={{ fontFamily: s.mono, fontSize: '11px', color: 'var(--text-tertiary)', margin: 0 }}>
             {report.report_metadata.report_id} · {new Date(report.report_metadata.generated_at).toLocaleDateString()}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="report-toolbar no-print" style={{ display: 'flex', gap: '8px' }}>
           <button onClick={handleDownloadPDF} style={btnStyle}><Download size={13} /> PDF</button>
           <button onClick={() => window.print()} style={btnStyle}><Printer size={13} /> Print</button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '28px' }}>
+      <div className="report-layout" style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '28px' }}>
         {/* Sidebar nav */}
-        <div style={{ position: 'sticky', top: '80px', alignSelf: 'start' }}>
+        <div className="report-sidebar no-print" style={{ position: 'sticky', top: '80px', alignSelf: 'start' }}>
           <div style={{ padding: '14px', borderRadius: '12px', background: s.surface, border: `1px solid ${s.border}`, marginBottom: '12px' }}>
             <div style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', marginBottom: '4px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Risk Score</div>
             <div style={{ fontFamily: s.serif, fontSize: '32px', fontWeight: '400', color: getRiskColor(riskScore) }}>{riskScore}/100</div>
@@ -186,18 +151,18 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
         </div>
 
         {/* Content */}
-        <div ref={reportRef} id="report-content" style={{ display: 'flex', flexDirection: 'column', gap: '40px', paddingBottom: '80px' }}>
-          <section id="summary">{sectionTitle(FileText, 'Executive Summary')}
-            <div style={{ padding: '20px', borderRadius: '12px', background: s.surface, border: `1px solid ${s.border}`,
+        <div ref={reportRef} id="report-content" className="report-content" style={{ display: 'flex', flexDirection: 'column', gap: '40px', paddingBottom: '80px' }}>
+          <section id="summary" className="report-section">{sectionTitle(FileText, 'Executive Summary')}
+            <div className="report-card report-summary-card" style={{ padding: '20px', borderRadius: '12px', background: s.surface, border: `1px solid ${s.border}`,
               fontFamily: 'Georgia, serif', fontSize: '15px', fontStyle: 'italic', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
               "{report.executive_summary}"
             </div>
           </section>
 
-          <section id="findings">{sectionTitle(Target, 'Key Findings')}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <section id="findings" className="report-section">{sectionTitle(Target, 'Key Findings')}
+            <div className="report-grid report-grid-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               {report.key_findings.map((f, i) => (
-                <div key={i} style={{ display: 'flex', gap: '12px', padding: '14px 16px', borderRadius: '10px',
+                <div key={i} className="report-card report-finding-card" style={{ display: 'flex', gap: '12px', padding: '14px 16px', borderRadius: '10px',
                   background: s.surface, border: `1px solid ${s.border}` }}>
                   <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: s.surface,
                     border: `1px solid ${s.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -208,10 +173,10 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
             </div>
           </section>
 
-          <section id="categories">{sectionTitle(Shield, 'Category Breakdown')}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <section id="categories" className="report-section">{sectionTitle(Shield, 'Category Breakdown')}
+            <div className="report-stack" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {Object.entries(report.category_analysis).map(([name, data]) => (
-                <div key={name} style={{ borderRadius: '12px', overflow: 'hidden', background: s.surfaceCard, border: `1px solid ${s.border}` }}>
+                <div key={name} className="report-card report-category-card" style={{ borderRadius: '12px', overflow: 'hidden', background: s.surfaceCard, border: `1px solid ${s.border}` }}>
                   <div style={{ padding: '12px 20px', borderBottom: `1px solid ${s.border}`,
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: s.surface }}>
                     <h3 style={{ fontFamily: s.font, fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', margin: 0 }}>{name}</h3>
@@ -234,10 +199,10 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
             </div>
           </section>
 
-          <section id="clauses">{sectionTitle(AlertOctagon, 'Critical Clauses', '#ef4444')}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <section id="clauses" className="report-section">{sectionTitle(AlertOctagon, 'Critical Clauses', '#ef4444')}
+            <div className="report-stack" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {report.critical_clauses.map((cl) => (
-                <div key={cl.rank} style={{ position: 'relative', padding: '20px 24px 20px 28px', borderRadius: '12px',
+                <div key={cl.rank} className="report-card report-clause-card" style={{ position: 'relative', padding: '20px 24px 20px 28px', borderRadius: '12px',
                   background: s.surfaceCard, border: `1px solid ${s.border}`, borderLeft: '3px solid #ef4444' }}>
                   <div style={{ position: 'absolute', top: '-8px', left: '-8px', width: '28px', height: '28px',
                     borderRadius: '8px', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -250,7 +215,7 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
                   <div style={{ padding: '14px', borderRadius: '8px', background: s.surface, border: `1px solid ${s.border}`,
                     borderLeft: '2px solid #ef4444', fontFamily: s.mono, fontSize: '12px', fontStyle: 'italic',
                     color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '14px' }}>"{cl.text}"</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="report-grid report-grid-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <div>
                       <div style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '4px' }}>Why risky</div>
                       <p style={{ fontFamily: s.font, fontSize: '12px', fontWeight: '300', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>{cl.reason}</p>
@@ -265,10 +230,10 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
             </div>
           </section>
 
-          <section id="compliance">{sectionTitle(Check, 'Compliance Status', '#22c55e')}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+          <section id="compliance" className="report-section">{sectionTitle(Check, 'Compliance Status', '#22c55e')}
+            <div className="report-grid report-grid-three" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
               {Object.entries(report.compliance_check).map(([reg, note]) => (
-                <div key={reg} style={{ padding: '16px', borderRadius: '10px', background: s.surface, border: `1px solid ${s.border}` }}>
+                <div key={reg} className="report-card report-compliance-card" style={{ padding: '16px', borderRadius: '10px', background: s.surface, border: `1px solid ${s.border}` }}>
                   <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>{reg}</h3>
                   <p style={{ fontFamily: s.font, fontSize: '12px', fontWeight: '400', color: 'var(--text-primary)', margin: 0, lineHeight: '1.5' }}>{note}</p>
                 </div>
@@ -276,9 +241,9 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
             </div>
           </section>
 
-          <section id="action">{sectionTitle(Zap, 'Action Plan')}
-            <div style={{ padding: '24px', borderRadius: '14px', background: s.surface, border: `1px solid ${s.border}` }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
+          <section id="action" className="report-section">{sectionTitle(Zap, 'Action Plan')}
+            <div className="report-card" style={{ padding: '24px', borderRadius: '14px', background: s.surface, border: `1px solid ${s.border}` }}>
+              <div className="report-grid report-grid-three" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>
                 {[
                   { title: 'Immediate', color: '#ef4444', items: report.action_plan.immediate },
                   { title: 'Negotiate', color: '#f59e0b', items: report.action_plan.negotiate },
