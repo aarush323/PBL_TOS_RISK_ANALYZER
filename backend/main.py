@@ -1193,7 +1193,47 @@ async def get_compare(
     compare = await crud.get_compare_by_id(db, compare_id, current_user.id)
     if not compare:
         raise HTTPException(status_code=404, detail="Comparison not found")
-    return {"result": compare.result}
+    result = compare.result or {}
+    structured = result.get("structured")
+
+    if not structured and not result.get("doc_a"):
+        job_a = await crud.get_analysis_job(db, str(compare.job_id_a))
+        job_b = await crud.get_analysis_job(db, str(compare.job_id_b))
+        analysis_a = job_a.result if job_a and job_a.result else {}
+        analysis_b = job_b.result if job_b and job_b.result else {}
+
+        overall_winner = (
+            result.get("overall_riskier", "").lower()
+            if result.get("overall_riskier")
+            else "tie"
+        )
+        verdict = (
+            f"Document {result.get('source_b', 'B') if overall_winner == 'a' else result.get('source_a', 'A')} has higher risk"
+            if overall_winner in {"a", "b"}
+            else "Documents have similar risk"
+        )
+
+        structured = {
+            "doc_a": {
+                "label": result.get("source_a") or compare.source_a or "Document A",
+                "risk": analysis_a.get("overall_risk", "Unknown"),
+                "risky_clause_count": analysis_a.get("risky_clause_count", 0),
+                "total_clauses": analysis_a.get("total_clauses", 0),
+                "score": analysis_a.get("risk_score", 0),
+            },
+            "doc_b": {
+                "label": result.get("source_b") or compare.source_b or "Document B",
+                "risk": analysis_b.get("overall_risk", "Unknown"),
+                "risky_clause_count": analysis_b.get("risky_clause_count", 0),
+                "total_clauses": analysis_b.get("total_clauses", 0),
+                "score": analysis_b.get("risk_score", 0),
+            },
+            "categories": result.get("pairs", []),
+            "overall_winner": overall_winner,
+            "verdict": verdict,
+        }
+
+    return {"result": result, "structured": structured}
 
 
 @app.post("/report/generate/{job_id}")

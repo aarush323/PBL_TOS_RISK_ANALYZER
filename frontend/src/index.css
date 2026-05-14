@@ -531,9 +531,43 @@ body {
   }
 
   .report-card {
+    background: #fff !important;
+    border: 1px solid #d9d9d9 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     box-shadow: none !important;
+  }
+
+  .report-card > div,
+  .report-card span,
+  .report-card p,
+  .report-card h3 {
+    color: #111 !important;
+  }
+
+  .report-category-card > div:first-child,
+  .report-clause-card > div[style*="margin-bottom: 10px"],
+  .report-clause-card > div[style*="padding: 14px"],
+  .report-compliance-card,
+  .report-finding-card,
+  .report-summary-card {
+    background: #fff !important;
+  }
+
+  .report-category-card [style*="background: rgba(245,158,11,0.04)"],
+  .report-clause-card [style*="background: rgba(239,68,68,0.08)"],
+  .report-card [style*="background: rgba(34,197,94,0.06)"] {
+    background: #f8f8f8 !important;
+  }
+
+  .report-category-card [style*="rgba(245,158,11,0.1)"],
+  .report-clause-card [style*="rgba(239,68,68,0.15)"],
+  .report-card [style*="rgba(34,197,94,0.12)"] {
+    border-color: #d9d9d9 !important;
+  }
+
+  .report-clause-card {
+    border-left: 3px solid #ef4444 !important;
   }
 
   .report-summary-card {
