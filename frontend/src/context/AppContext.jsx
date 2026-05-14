@@ -181,9 +181,14 @@ export function AppProvider({ children }) {
     const openCompareHistory = async (compareId) => {
         try {
             const { res, data } = await apiFetchJson(`/compare/${compareId}`, { token });
-            if (res.ok && data?.result) {
-                setComparisonData(data.result);
+            if (!res.ok || !data) { addToast('Failed to load comparison', true); return; }
+            let result = data.result || data.structured || data.comparison || data;
+            if (result && !result.doc_a) result = result.comparison || result;
+            if (result && result.doc_a) {
+                setComparisonData(result);
                 navigate('/app/compare');
+            } else {
+                addToast('Comparison data is incomplete', true);
             }
         } catch { addToast('Failed to load comparison', true); }
     };

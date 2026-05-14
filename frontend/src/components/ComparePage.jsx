@@ -98,7 +98,17 @@ export default function ComparePage({
     );
   }
 
-  const { doc_a, doc_b, categories, overall_winner, verdict } = comparisonData;
+  const { doc_a, doc_b, categories, overall_winner, verdict } = comparisonData || {};
+  if (!doc_a || !doc_b) {
+    return (
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 24px', textAlign: 'center' }}>
+        <div style={{ padding: '56px 32px', borderRadius: '16px', border: `2px dashed ${s.border}`, background: s.surfaceCard }}>
+          <h2 style={{ fontFamily: s.serif, fontSize: '24px', fontWeight: '400', color: 'var(--text-primary)', marginBottom: '8px' }}>Incomplete comparison data</h2>
+          <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '300', color: 'var(--text-secondary)' }}>This comparison could not be loaded. Try running a new comparison.</p>
+        </div>
+      </div>
+    );
+  }
   const winner = overall_winner === 'a' ? 'A' : overall_winner === 'b' ? 'B' : 'tie';
 
   return (
