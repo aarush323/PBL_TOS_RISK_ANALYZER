@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Search, Bell, Plus, X } from 'lucide-react';
+import { Search, Bell, X } from 'lucide-react';
 
 export default function Header({ onNewAnalysis, activeView, analysisResult, hasActiveChat, onNavigate, onHighlightClause }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,14 +109,6 @@ export default function Header({ onNewAnalysis, activeView, analysisResult, hasA
         <div className="flex items-center gap-3">
           <button className="relative w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all">
             <Bell size={18} />
-          </button>
-          
-          <button
-            onClick={onNewAnalysis}
-            className="h-9 px-4 rounded-full bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white text-sm font-semibold flex items-center gap-2 hover:shadow-lg hover:shadow-[#007AFF]/30 transition-all"
-          >
-            <Plus size={16} />
-            <span>New Analysis</span>
           </button>
         </div>
       </div>
