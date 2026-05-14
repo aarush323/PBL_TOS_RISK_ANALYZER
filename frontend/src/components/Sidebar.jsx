@@ -207,6 +207,8 @@ export default function Sidebar({
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
+          onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
           <div style={{ position: 'relative', width: '16px', height: '16px' }}>
             <Sun size={16} style={{
@@ -244,6 +246,8 @@ export default function Sidebar({
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
+          onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
           <HelpCircle size={15} />
           Support
@@ -267,6 +271,8 @@ export default function Sidebar({
             cursor: 'pointer',
             transition: 'all 0.15s ease',
           }}
+          onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
           <LogOut size={15} />
           Logout

@@ -82,20 +82,22 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
                 key={item.id}
                 onClick={() => onNavigate && onNavigate(item.id)}
                 style={{
-                  padding: '5px 14px',
-                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
                   fontFamily: 'Geist, system-ui, sans-serif',
                   fontSize: '13px',
                   fontWeight: isActive ? '500' : '400',
-                  border: isActive
-                    ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`
-                    : '1px solid transparent',
-                  background: isActive
-                    ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
-                    : 'transparent',
+                  border: 'none',
+                  background: 'transparent',
                   color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) e.target.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) e.target.style.color = 'var(--text-secondary)';
                 }}
               >
                 {item.label}
