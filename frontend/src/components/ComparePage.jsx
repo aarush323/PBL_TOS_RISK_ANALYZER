@@ -47,7 +47,7 @@ export default function ComparePage({
           ) : (
             <button
               onClick={onSelectDocuments}
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl transition-all shadow-xl shadow-blue-600/20"
+              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-zinc-50 font-bold rounded-2xl transition-all shadow-xl shadow-blue-600/20"
             >
               <Plus size={20} className="inline mr-2" />
               Select Documents
@@ -107,7 +107,7 @@ export default function ComparePage({
       <div className={`p-8 rounded-[2rem] border relative overflow-hidden ${winner === 'tie' ? 'bg-white/5 border-white/10' : 'bg-blue-600/10 border-blue-500/20'}`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-start gap-5">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${winner === 'tie' ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'}`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${winner === 'tie' ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500 text-zinc-50 shadow-lg shadow-emerald-500/20'}`}>
               {winner === 'tie' ? <Scale size={28} /> : <Trophy size={28} />}
             </div>
             <div>

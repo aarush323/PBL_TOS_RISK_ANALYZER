@@ -121,7 +121,7 @@ export default function ReportsPage({
         </p>
         <button 
           onClick={generateReport}
-          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-zinc-50 rounded-xl font-medium transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
         >
           <Zap className="w-4 h-4" />
           Generate Professional Report

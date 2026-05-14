@@ -293,14 +293,14 @@ export default function ClausesPage({
                                     </div>
                                   </div>
                                   <div className="space-y-6">
-                                    {(clause.review_note || clause.recommendation) && (
+                                    {clause.recommendation && (
                                       <div className="space-y-3">
                                         <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] flex items-center gap-2">
                                           <Zap size={12} />
                                           Recommendation
                                         </h4>
                                         <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-sm text-amber-100/70 leading-relaxed shadow-inner">
-                                          {clause.review_note || clause.recommendation}
+                                          {clause.recommendation}
                                         </div>
                                       </div>
                                     )}

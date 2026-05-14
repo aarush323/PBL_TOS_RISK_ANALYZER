@@ -788,3 +788,29 @@ body {
   background: rgba(0, 98, 214, 0.2) !important;
   color: var(--color-text) !important;
 }
+
+/* ─── Additional Missing Overrides ─── */
+[data-theme="light"] .bg-white\/\[0\.02\] {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+[data-theme="light"] .bg-white\/\[0\.04\] {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .bg-white\/\[0\.07\] {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme="light"] .text-white\/10 {
+  color: var(--color-text-subtle) !important;
+}
+
+[data-theme="light"] .text-white\/20 {
+  color: var(--color-text-subtle) !important;
+}
+
+[data-theme="light"] .from-\[\#0a0a0a\] {
+  --tw-gradient-from: var(--color-surface-1) var(--tw-gradient-from-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
