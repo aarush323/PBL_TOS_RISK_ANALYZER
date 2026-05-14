@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Download, Activity, Target, Shield, Check, AlertOctagon, Zap, List, BrainCircuit, ArrowLeft, ChevronRight, Loader2, Share2, Printer } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { apiFetchJson } from '@/shared/api/client';
 import { getAccessToken } from '@/shared/api/auth-storage';
 import EmptyState from './EmptyState.jsx';
@@ -54,13 +52,41 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
 
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
-    const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const [html2canvas, { jsPDF: JsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ]);
+    const canvas = await html2canvas.default(reportRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      onclone: (doc) => {
+        doc.querySelectorAll('svg').forEach((svg) => {
+          const w = svg.getAttribute('width') || '16';
+          const h = svg.getAttribute('height') || '16';
+          svg.setAttribute('width', w);
+          svg.setAttribute('height', h);
+          svg.style.width = w + 'px';
+          svg.style.height = h + 'px';
+        });
+      },
+    });
     const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdf = new JsPDF('p', 'mm', 'a4');
     const w = pdf.internal.pageSize.getWidth();
     const imgProps = pdf.getImageProperties(imgData);
-    pdf.addImage(imgData, 'PNG', 0, 0, w, (imgProps.height * w) / imgProps.width);
-    pdf.save(`Jurist_Report_${report?.report_metadata?.report_id || 'analysis'}.pdf`);
+    let h = (imgProps.height * w) / imgProps.width;
+    let remaining = h;
+    let pos = 0;
+    const pageH = 297;
+    while (remaining > 0) {
+      const sliceH = Math.min(remaining, pageH);
+      if (pos > 0) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, -pos, w, h);
+      pos += pageH;
+      remaining -= pageH;
+    }
+    pdf.save('Jurist_Report_' + (report?.report_metadata?.report_id || 'analysis') + '.pdf');
   };
 
   if (!analysisResult && !report) return <EmptyState title="No Analysis Found" description="Run an analysis first to generate a report." />;
