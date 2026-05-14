@@ -8,110 +8,306 @@ export default function Sidebar({
   historyItems, onOpenHistory, isHistoryLoading, selectedHistoryId, onNewAnalysis
 }) {
   const { theme, toggle } = useTheme();
+  const isDark = theme !== 'light';
 
-  const truncateLabel = (label, maxLen = 20) => {
+  const truncateLabel = (label, maxLen = 22) => {
     if (!label) return 'Untitled';
-    return label.length > maxLen ? label.slice(0, maxLen) + '...' : label;
+    return label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-[#0a0a0a] border-r border-white/5 flex flex-col z-10">
-      <div className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
-            <Scale size={16} className="text-white/80" />
+    <aside style={{
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      height: '100vh',
+      width: '256px',
+      background: isDark ? '#09090B' : '#FAFAFA',
+      borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'}`,
+      display: 'flex',
+      flexDirection: 'column',
+      zIndex: 10,
+    }}>
+      {/* Brand */}
+      <div style={{ padding: '24px 24px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Scale size={15} style={{ color: 'var(--text-secondary)' }} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">Jurist AI</h1>
-            <p className="text-[10px] text-white/50 uppercase tracking-wider">Free Policy Analyzer</p>
+            <h1 style={{
+              fontFamily: 'DM Serif Display, serif',
+              fontSize: '18px',
+              fontWeight: '400',
+              color: 'var(--text-primary)',
+              margin: 0,
+              letterSpacing: '-0.02em',
+            }}>Jurist AI</h1>
+            <p style={{
+              fontFamily: 'DM Mono, monospace',
+              fontSize: '9px',
+              color: 'var(--text-tertiary)',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: 0,
+            }}>Free Policy Analyzer</p>
           </div>
         </div>
 
         <button
           onClick={onNewAnalysis}
-          className="mt-6 w-full flex items-center justify-center gap-2 h-9 rounded-lg bg-white/5 border border-white/10 text-white/90 text-[13px] font-medium hover:bg-white/10 transition-all"
+          style={{
+            marginTop: '20px',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            height: '36px',
+            borderRadius: '10px',
+            background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            color: 'var(--text-primary)',
+            fontFamily: 'Geist, system-ui, sans-serif',
+            fontSize: '13px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={e => {
+            e.target.style.background = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+          }}
+          onMouseLeave={e => {
+            e.target.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+          }}
         >
           <Plus size={14} />
           New Analysis
         </button>
       </div>
 
-      <nav className="flex-1 px-3 overflow-y-auto">
-        <div className="mt-4 mb-2">
-          <div className="px-4 py-2">
-            <h3 className="text-[10px] text-white/30 uppercase tracking-[0.05em] font-medium">Recent Analyses</h3>
+      {/* History */}
+      <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto' }}>
+        <div style={{ marginTop: '8px' }}>
+          <div style={{ padding: '8px 12px' }}>
+            <h3 style={{
+              fontFamily: 'DM Mono, monospace',
+              fontSize: '9px',
+              color: 'var(--text-tertiary)',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              margin: 0,
+            }}>Recent Analyses</h3>
           </div>
 
           {isHistoryLoading ? (
-            <div className="px-4 space-y-2">
+            <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-10 bg-white/5 rounded-lg animate-pulse" />
+                <div key={i} style={{
+                  height: '36px',
+                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                  borderRadius: '8px',
+                  animation: 'pulse 2s ease-in-out infinite',
+                }} />
               ))}
             </div>
           ) : historyItems.length === 0 ? (
-            <div className="px-4 py-3">
-              <p className="text-xs text-white/40">No analyses yet. Start your first one!</p>
+            <div style={{ padding: '12px 12px' }}>
+              <p style={{
+                fontFamily: 'Geist, system-ui, sans-serif',
+                fontSize: '12px',
+                fontWeight: '300',
+                color: 'var(--text-tertiary)',
+                margin: 0,
+              }}>No analyses yet. Start your first one!</p>
             </div>
           ) : (
-            <div className="px-2 space-y-0.5">
+            <div style={{ padding: '0 4px', display: 'flex', flexDirection: 'column', gap: '1px' }}>
               {historyItems.slice(0, 10).map((item) => {
                 let displayLabel = item.source_label || item.source || 'Untitled';
                 if (displayLabel.startsWith('http')) {
                   try { displayLabel = new URL(displayLabel).hostname; } catch(e) {}
                 }
+                const isSelected = selectedHistoryId === item.job_id;
                 return (
                   <button
                     key={item.job_id}
                     onClick={() => onOpenHistory(item.job_id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${selectedHistoryId === item.job_id
-                      ? 'bg-white/[0.04] text-white/90'
-                      : 'text-white/50 hover:text-white/80 hover:bg-white/[0.02]'
-                      }`}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: isSelected
+                        ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
+                        : 'transparent',
+                      color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      fontFamily: 'Geist, system-ui, sans-serif',
+                      fontSize: '13px',
+                      fontWeight: isSelected ? '500' : '400',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                      textOverflow: 'ellipsis',
+                      overflow: 'hidden',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    <div className={`w-1.5 h-1.5 rounded-full ${getRiskClass(item.overall_risk)} opacity-60`} />
-                    <span className="text-[13px] truncate">{truncateLabel(displayLabel)}</span>
+                    <div className={`${getRiskClass(item.overall_risk)}`} style={{
+                      width: '5px',
+                      height: '5px',
+                      borderRadius: '50%',
+                      opacity: 0.6,
+                      flexShrink: 0,
+                    }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {truncateLabel(displayLabel)}
+                    </span>
                   </button>
                 );
               })}
             </div>
           )}
-
         </div>
       </nav>
 
-      <div className="p-3 border-t border-white/5">
+      {/* Footer */}
+      <div style={{
+        padding: '12px',
+        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'}`,
+      }}>
         <button
           onClick={toggle}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-white/50 hover:text-white/80 hover:bg-white/[0.02] transition-colors group"
           aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '8px 14px',
+            borderRadius: '8px',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+            fontFamily: 'Geist, system-ui, sans-serif',
+            fontSize: '13px',
+            fontWeight: '400',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
         >
-          <div className="relative w-[18px] h-[18px]">
-            <Sun size={18} className={`absolute inset-0 transition-all duration-300 ${theme === 'light' ? 'opacity-100 rotate-0' : 'opacity-0 -rotate-90'}`} />
-            <Moon size={18} className={`absolute inset-0 transition-all duration-300 ${theme === 'dark' ? 'opacity-100 rotate-0' : 'opacity-0 rotate-90'}`} />
+          <div style={{ position: 'relative', width: '16px', height: '16px' }}>
+            <Sun size={16} style={{
+              position: 'absolute',
+              inset: 0,
+              transition: 'all 0.3s ease',
+              opacity: theme === 'light' ? 1 : 0,
+              transform: theme === 'light' ? 'rotate(0deg)' : 'rotate(-90deg)',
+            }} />
+            <Moon size={16} style={{
+              position: 'absolute',
+              inset: 0,
+              transition: 'all 0.3s ease',
+              opacity: theme === 'dark' ? 1 : 0,
+              transform: theme === 'dark' ? 'rotate(0deg)' : 'rotate(90deg)',
+            }} />
           </div>
-          <span className="text-[13px] font-medium">
-            {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-          </span>
+          {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
         </button>
 
-        <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-white/50 hover:text-white/80 hover:bg-white/[0.02] transition-colors">
-          <HelpCircle size={16} />
-          <span className="text-[13px] font-medium">Support</span>
+        <button
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '8px 14px',
+            borderRadius: '8px',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+            fontFamily: 'Geist, system-ui, sans-serif',
+            fontSize: '13px',
+            fontWeight: '400',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <HelpCircle size={15} />
+          Support
         </button>
+
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-white/50 hover:text-white/80 hover:bg-white/[0.02] transition-colors"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '8px 14px',
+            borderRadius: '8px',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+            fontFamily: 'Geist, system-ui, sans-serif',
+            fontSize: '13px',
+            fontWeight: '400',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
         >
-          <LogOut size={16} />
-          <span className="text-[13px] font-medium">Logout</span>
+          <LogOut size={15} />
+          Logout
         </button>
 
-        <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/5 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/80 font-medium text-xs">
+        <div style={{
+          marginTop: '12px',
+          padding: '10px 12px',
+          borderRadius: '10px',
+          background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}>
+          <div style={{
+            width: '30px',
+            height: '30px',
+            borderRadius: '50%',
+            background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-secondary)',
+            fontFamily: 'DM Mono, monospace',
+            fontSize: '11px',
+            fontWeight: '500',
+          }}>
             {user?.email?.[0]?.toUpperCase() || 'U'}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">{user?.username || user?.email || 'User'}</p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{
+              fontFamily: 'Geist, system-ui, sans-serif',
+              fontSize: '13px',
+              fontWeight: '500',
+              color: 'var(--text-primary)',
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>{user?.username || user?.email || 'User'}</p>
           </div>
         </div>
       </div>

@@ -3,26 +3,31 @@ import { MessageSquare, Minimize2, Maximize2, X } from 'lucide-react';
 import TypingDots from './TypingDots.jsx';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
 import { apiFetchJson } from '@/shared/api/client';
+import { useTheme } from './theme-context.js';
 
 export default function ChatPopup({
-  isOpen,
-  onToggle,
-  chatMessages,
-  chatInput,
-  onChatInputChange,
-  onSendChat,
-  isChatTyping,
-  sessionId,
-  user,
+  isOpen, onToggle, chatMessages, chatInput, onChatInputChange,
+  onSendChat, isChatTyping, sessionId, user,
 }) {
+  const { theme } = useTheme();
+  const isDark = theme !== 'light';
   const messagesEndRef = useRef(null);
   const [indexStatus, setIndexStatus] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const s = {
+    font: 'Geist, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
+    border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
+    surface: isDark ? 'rgba(20,20,22,0.95)' : 'rgba(255,255,255,0.95)',
+    msgBot: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+    msgUser: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+    textPrimary: 'var(--text-primary)',
+    textSecondary: 'var(--text-secondary)',
+    textTertiary: 'var(--text-tertiary)',
+  };
+
   useEffect(() => {
-    if (isOpen && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (isOpen && messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isOpen, isExpanded]);
 
   useEffect(() => {
@@ -32,9 +37,7 @@ export default function ChatPopup({
         try {
           const { res, data } = await apiFetchJson(`/chat/${sessionId}/index/status`);
           if (res.ok) setIndexStatus(data);
-        } catch {
-          // ignore polling errors
-        }
+        } catch {}
       };
       pollStatus();
       interval = setInterval(pollStatus, 10000);
@@ -42,144 +45,125 @@ export default function ChatPopup({
     return () => { if (interval) clearInterval(interval); };
   }, [sessionId]);
 
-  const suggestions = [
-    "summarize the risks",
-    "what is the overall risk level",
-    "explain clause 1",
-    "what are my rights",
-  ];
+  const suggestions = ["summarize the risks", "what is the overall risk level", "explain clause 1", "what are my rights"];
 
   if (!isOpen) {
     return (
-      <button
-        onClick={onToggle}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-black text-white flex items-center justify-center shadow-2xl border border-white/10 hover:scale-105 hover:bg-zinc-900 transition-all z-50 group"
-      >
-        <MessageSquare size={24} className="group-hover:text-blue-400 transition-colors" />
+      <button onClick={onToggle} style={{
+        position: 'fixed', bottom: '24px', right: '24px', width: '56px', height: '56px', borderRadius: '50%',
+        background: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff', border: 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+        boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.15)', zIndex: 50,
+        transition: 'transform 0.2s ease',
+      }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+        <MessageSquare size={24} />
       </button>
     );
   }
 
   return (
-    <div
-      className={`fixed z-50 flex flex-col glass-card border border-white/10 shadow-2xl rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden ${isExpanded
-          ? 'bottom-6 right-6 w-[calc(50vw-48px)] h-[calc(100vh-48px)]'
-          : 'bottom-6 right-6 w-96 h-[600px] max-h-[calc(100vh-48px)]'
-        }`}
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(20px)' }}
-    >
+    <div style={{
+      position: 'fixed', zIndex: 50, display: 'flex', flexDirection: 'column',
+      background: s.surface, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+      border: `1px solid ${s.border}`, borderRadius: '16px', overflow: 'hidden',
+      transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
+      bottom: '24px', right: '24px',
+      ...(isExpanded
+        ? { width: 'calc(50vw - 48px)', height: 'calc(100vh - 48px)' }
+        : { width: '380px', height: '600px', maxHeight: 'calc(100vh - 48px)' }
+      )
+    }}>
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 p-4 shrink-0 bg-white/5 border-b border-white/10">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center border border-white/5 shrink-0">
-            <MessageSquare size={16} className="text-white" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px',
+        borderBottom: `1px solid ${s.border}`, background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: s.msgUser,
+            border: `1px solid ${s.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MessageSquare size={14} color={s.textPrimary} />
           </div>
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-white tracking-tight">Jurist AI</h3>
-            <p className="truncate text-[10px] text-white/50 tracking-wider uppercase font-medium">Document chat</p>
+          <div>
+            <h3 style={{ fontFamily: s.font, fontSize: '14px', fontWeight: '500', color: s.textPrimary, margin: 0 }}>Jurist AI</h3>
+            <p style={{ fontFamily: s.mono, fontSize: '9px', color: s.textTertiary, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Document chat</p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {sessionId && indexStatus && (
-            <span className={`inline-flex h-7 items-center whitespace-nowrap rounded-full border px-3 text-[10px] font-medium leading-none ${indexStatus.is_indexed ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+            <span style={{ fontFamily: s.mono, fontSize: '9px', padding: '4px 8px', borderRadius: '4px',
+              background: indexStatus.is_indexed ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)',
+              color: indexStatus.is_indexed ? '#22c55e' : '#f59e0b', border: `1px solid ${indexStatus.is_indexed ? 'rgba(34,197,94,0.2)' : 'rgba(245,158,11,0.2)'}`,
+              letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               {indexStatus.is_indexed ? 'Context Ready' : 'Building Context'}
             </span>
           )}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            {isExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          <button onClick={() => setIsExpanded(!isExpanded)} style={{ background: 'none', border: 'none', color: s.textTertiary, cursor: 'pointer', padding: '4px' }}>
+            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
-          <button
-            onClick={onToggle}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <X size={16} />
+          <button onClick={onToggle} style={{ background: 'none', border: 'none', color: s.textTertiary, cursor: 'pointer', padding: '4px' }}>
+            <X size={18} />
           </button>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5 scrollbar-hide">
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {!sessionId ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4 border border-white/10">
-              <MessageSquare size={28} className="text-white/20" />
-            </div>
-            <p className="text-sm text-white/40 mb-2">No active document context.</p>
-            <p className="text-xs text-white/30 max-w-[200px]">Run an analysis first, then ask questions about the document and flagged clauses.</p>
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <MessageSquare size={32} style={{ color: s.textTertiary, marginBottom: '16px', opacity: 0.5 }} />
+            <p style={{ fontFamily: s.font, fontSize: '14px', color: s.textSecondary, margin: '0 0 8px' }}>No active context.</p>
+            <p style={{ fontFamily: s.font, fontSize: '12px', color: s.textTertiary, maxWidth: '240px', margin: 0, lineHeight: '1.5' }}>Run an analysis first to chat about the document.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <>
             {chatMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-semibold ${msg.role === 'bot'
-                    ? 'bg-zinc-800 text-white/90 border border-white/10'
-                    : 'bg-white text-black'
-                    }`}
-                >
+              <div key={idx} style={{ display: 'flex', gap: '12px', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: s.mono, fontSize: '11px', fontWeight: '500',
+                  background: msg.role === 'bot' ? (isDark ? '#fff' : '#000') : s.msgUser,
+                  color: msg.role === 'bot' ? (isDark ? '#000' : '#fff') : s.textPrimary,
+                  border: msg.role === 'bot' ? 'none' : `1px solid ${s.border}` }}>
                   {msg.role === 'bot' ? 'J' : user?.email?.[0]?.toUpperCase() || 'U'}
                 </div>
-                <div
-                  className={`flex-1 p-[14px] rounded-2xl text-[13px] leading-relaxed shadow-sm ${msg.role === 'bot'
-                    ? 'bg-zinc-900 border border-white/5 rounded-tl-sm'
-                    : 'bg-white/10 border border-white/10 rounded-tr-sm backdrop-blur-md'
-                    }`}
-                >
-                  <div
-                    className="text-white/90 prose prose-invert prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: msg.html || msg.content }}
-                  />
-                </div>
+                <div style={{ padding: '14px', borderRadius: '12px', maxWidth: '85%',
+                  background: msg.role === 'bot' ? s.msgBot : s.msgUser,
+                  border: `1px solid ${s.border}`,
+                  borderTopLeftRadius: msg.role === 'bot' ? '4px' : '12px',
+                  borderTopRightRadius: msg.role === 'user' ? '4px' : '12px',
+                  fontFamily: 'Georgia, serif', fontSize: '14px', color: s.textPrimary, lineHeight: '1.6' }}
+                  dangerouslySetInnerHTML={{ __html: msg.html || msg.content }}
+                />
               </div>
             ))}
             {isChatTyping && (
-              <div className="flex gap-3">
-                <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center text-[11px] font-semibold text-white/90 border border-white/10">
-                  J
-                </div>
-                <div className="py-3 px-4 rounded-2xl rounded-tl-sm bg-zinc-900 border border-white/5 flex items-center">
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: s.mono, fontSize: '11px', fontWeight: '500', background: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff' }}>J</div>
+                <div style={{ padding: '14px', borderRadius: '12px 12px 12px 4px', background: s.msgBot, border: `1px solid ${s.border}`, display: 'flex', alignItems: 'center' }}>
                   <TypingDots />
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
-          </div>
+          </>
         )}
       </div>
 
-      {/* Input Area */}
+      {/* Input */}
       {sessionId && (
-        <div className="p-4 border-t border-white/5 bg-black/40 backdrop-blur-xl">
-          <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
+        <div style={{ padding: '16px', borderTop: `1px solid ${s.border}`, background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', scrollbarWidth: 'none' }}>
             {suggestions.map((sugg, idx) => (
-              <button
-                key={idx}
-                onClick={() => onChatInputChange(sugg)}
-                className="whitespace-nowrap px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/10 text-xs text-white/60 hover:text-white hover:border-white/20 hover:bg-zinc-800 transition-all shadow-sm"
-              >
-                {sugg}
-              </button>
+              <button key={idx} onClick={() => onChatInputChange(sugg)} style={{
+                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '8px', background: s.msgBot, border: `1px solid ${s.border}`,
+                fontFamily: s.font, fontSize: '11px', color: s.textSecondary, cursor: 'pointer', transition: 'all 0.15s',
+              }}>{sugg}</button>
             ))}
           </div>
-
-          <div className="relative">
-            <ChatInput
-              value={chatInput}
-              onChange={(e) => onChatInputChange(e.target.value)}
-              onSubmit={onSendChat}
-              loading={isChatTyping}
-              onStop={() => { }}
-              className="bg-zinc-900/80 border-white/10 rounded-xl"
-            >
-              <ChatInputTextArea placeholder="Ask Jurist about this document..." className="text-sm min-h-[44px]" />
-              <div className="absolute right-2 bottom-2">
-                <ChatInputSubmit className="h-8 w-8 rounded-md bg-white text-black hover:bg-zinc-200 shadow-sm" />
+          <div style={{ position: 'relative' }}>
+            <ChatInput value={chatInput} onChange={(e) => onChatInputChange(e.target.value)} onSubmit={onSendChat} loading={isChatTyping} onStop={() => {}}
+              style={{ background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', border: `1px solid ${s.border}`, borderRadius: '12px' }}>
+              <ChatInputTextArea placeholder="Ask Jurist..." style={{ fontFamily: s.font, fontSize: '13px', minHeight: '44px', padding: '12px', color: s.textPrimary }} />
+              <div style={{ position: 'absolute', right: '8px', bottom: '8px' }}>
+                <ChatInputSubmit style={{ width: '32px', height: '32px', borderRadius: '8px', background: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff' }} />
               </div>
             </ChatInput>
           </div>

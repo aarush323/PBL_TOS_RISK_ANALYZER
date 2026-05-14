@@ -1,7 +1,10 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Search, Bell, X } from 'lucide-react';
+import { useTheme } from './theme-context.js';
 
 export default function Header({ activeView, analysisResult, hasActiveChat, onNavigate, onHighlightClause }) {
+  const { theme } = useTheme();
+  const isDark = theme !== 'light';
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef(null);
@@ -39,26 +42,61 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
   };
 
   return (
-    <header className="sticky top-0 h-16 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-6 z-20">
-      <div className="flex items-center gap-8">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-white/60">🏠</span>
-          <span className="text-white/40">/</span>
-          <span className="text-white font-medium">{viewLabels[activeView] || 'Dashboard'}</span>
+    <header style={{
+      position: 'sticky',
+      top: 0,
+      height: '52px',
+      background: isDark ? 'rgba(10,10,11,0.85)' : 'rgba(250,250,250,0.85)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'}`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 24px',
+      zIndex: 20,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        {/* Breadcrumb */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontFamily: 'Geist, system-ui, sans-serif',
+          fontSize: '13px',
+        }}>
+          <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>🏠</span>
+          <span style={{ color: 'var(--text-tertiary)', fontSize: '10px' }}>/</span>
+          <span style={{
+            color: 'var(--text-primary)',
+            fontWeight: '500',
+          }}>{viewLabels[activeView] || 'Dashboard'}</span>
         </div>
 
-        <div className="flex items-center gap-1">
+        {/* Navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
           {navItems.map(item => {
             const isActive = activeView === item.id || (item.id === 'overview' && activeView === 'dashboard');
             return (
               <button
                 key={item.id}
                 onClick={() => onNavigate && onNavigate(item.id)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-[#007AFF]/20 text-[#007AFF] border border-[#007AFF]'
-                    : 'text-white/60 hover:text-white hover:bg-white/10 border border-transparent'
-                }`}
+                style={{
+                  padding: '5px 14px',
+                  borderRadius: '8px',
+                  fontFamily: 'Geist, system-ui, sans-serif',
+                  fontSize: '13px',
+                  fontWeight: isActive ? '500' : '400',
+                  border: isActive
+                    ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`
+                    : '1px solid transparent',
+                  background: isActive
+                    ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
+                    : 'transparent',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
               >
                 {item.label}
               </button>
@@ -67,50 +105,137 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative" ref={searchRef}>
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Search */}
+        <div ref={searchRef} style={{ position: 'relative' }}>
+          <Search size={13} style={{
+            position: 'absolute',
+            left: '10px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: 'var(--text-tertiary)',
+          }} />
           <input
             type="text"
-            placeholder="Search clauses..."
+            placeholder="Search clauses…"
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
               setShowDropdown(e.target.value.length > 0);
             }}
             onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
-            className="w-56 focus:w-64 h-8 pl-8 pr-4 rounded-md bg-transparent border border-white/5 text-[13px] text-white placeholder-white/30 focus:outline-none focus:border-white/20 focus:bg-white/[0.02] transition-all"
+            style={{
+              width: '200px',
+              height: '32px',
+              paddingLeft: '30px',
+              paddingRight: '28px',
+              borderRadius: '8px',
+              background: 'transparent',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'}`,
+              fontFamily: 'Geist, system-ui, sans-serif',
+              fontSize: '12px',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              transition: 'all 0.2s ease',
+            }}
+            onFocusCapture={(e) => {
+              e.target.style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)';
+              e.target.style.width = '240px';
+            }}
+            onBlurCapture={(e) => {
+              e.target.style.borderColor = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)';
+              e.target.style.width = '200px';
+            }}
           />
           {searchQuery && (
             <button
               onClick={() => { setSearchQuery(''); setShowDropdown(false); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-tertiary)',
+                cursor: 'pointer',
+                padding: 0,
+              }}
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           )}
-          
+
           {showDropdown && filteredClauses.length > 0 && (
-            <div className="absolute top-full mt-2 w-full bg-[#0a0a0a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              marginTop: '6px',
+              width: '100%',
+              background: isDark ? '#111113' : '#FFFFFF',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)'}`,
+              borderRadius: '10px',
+              boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.5)' : '0 8px 32px rgba(0,0,0,0.12)',
+              overflow: 'hidden',
+              zIndex: 50,
+            }}>
               {filteredClauses.map((clause, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSelectMatch(idx)}
-                  className="w-full px-4 py-2 text-left text-sm text-white/80 hover:bg-white/5 border-b border-white/5 last:border-0"
+                  style={{
+                    width: '100%',
+                    padding: '8px 14px',
+                    textAlign: 'left',
+                    fontFamily: 'Geist, system-ui, sans-serif',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: idx < filteredClauses.length - 1
+                      ? `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}`
+                      : 'none',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'}
+                  onMouseLeave={e => e.target.style.background = 'transparent'}
                 >
-                  <span className="text-xs text-white/40">CL-{idx + 1}</span>
-                  <p className="truncate">{clause.text?.slice(0, 50)}</p>
+                  <span style={{
+                    fontFamily: 'DM Mono, monospace',
+                    fontSize: '10px',
+                    color: 'var(--text-tertiary)',
+                    marginRight: '6px',
+                  }}>CL-{idx + 1}</span>
+                  <p style={{
+                    margin: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    color: 'var(--text-primary)',
+                  }}>{clause.text?.slice(0, 50)}</p>
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <button className="relative w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all">
-            <Bell size={18} />
-          </button>
-        </div>
+        {/* Notification */}
+        <button style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '8px',
+          background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-secondary)',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+        }}>
+          <Bell size={15} />
+        </button>
       </div>
     </header>
   );

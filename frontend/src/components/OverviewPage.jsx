@@ -1,17 +1,9 @@
 import React from 'react';
-import {
-  Check, AlertTriangle, FileText, Link, Share2,
-  Download, ArrowRight, BrainCircuit, Zap, Activity,
-  ShieldAlert, ShieldCheck, Target, TrendingUp, Info
-} from 'lucide-react';
+import { Check, AlertTriangle, FileText, Link, Share2, Download, ArrowRight, BrainCircuit, Zap, Activity, ShieldAlert, ShieldCheck, Target, TrendingUp, Info } from 'lucide-react';
 import { useTheme } from './theme-context.js';
 import { motion as Motion } from 'framer-motion';
 import { getScoreColor } from '../utils/colorUtils';
-import {
-  normalizeRiskBreakdown,
-  getHealthCheckItems,
-  getAnalysisTransparency,
-} from '@/features/analysis/model/selectors';
+import { normalizeRiskBreakdown, getHealthCheckItems, getAnalysisTransparency } from '@/features/analysis/model/selectors';
 
 const CATEGORY_COLORS = {
   'Legal': { color: '#ef4444', bg: 'bg-red-500' },
@@ -25,58 +17,35 @@ function renderValue(value) {
   if (value == null) return '';
   if (typeof value === 'string' || typeof value === 'number') return String(value);
   if (Array.isArray(value)) return value.map(renderValue).filter(Boolean).join(', ');
-  if (typeof value === 'object') {
-    return (
-      value.finding ||
-      value.issue ||
-      value.top_concern ||
-      value.text ||
-      value.category ||
-      JSON.stringify(value)
-    );
-  }
+  if (typeof value === 'object') return value.finding || value.issue || value.top_concern || value.text || value.category || JSON.stringify(value);
   return String(value);
 }
 
-export default function OverviewPage({
-  analysisResult,
-  sourceInfo,
-  calculateScore,
-  onNavigate,
-}) {
+export default function OverviewPage({ analysisResult, sourceInfo, calculateScore, onNavigate }) {
   const { theme } = useTheme();
+  const isDark = theme !== 'light';
   const score = typeof calculateScore === 'function' ? calculateScore() : 0;
   const totalClauses = analysisResult?.total_clauses || 0;
   const riskyClauses = analysisResult?.risky_clause_count || 0;
   const overallRisk = analysisResult?.overall_risk || 'Low';
 
-  const breakdownArray = React.useMemo(
-    () => normalizeRiskBreakdown(analysisResult),
-    [analysisResult]
-  );
+  const breakdownArray = React.useMemo(() => normalizeRiskBreakdown(analysisResult), [analysisResult]);
+  const healthCheckItems = React.useMemo(() => getHealthCheckItems(breakdownArray), [breakdownArray]);
+  const analysisTransparency = React.useMemo(() => getAnalysisTransparency(analysisResult), [analysisResult]);
 
-  const healthCheckItems = React.useMemo(
-    () => getHealthCheckItems(breakdownArray),
-    [breakdownArray]
-  );
-
-  const analysisTransparency = React.useMemo(
-    () => getAnalysisTransparency(analysisResult),
-    [analysisResult]
-  );
-
-
-  const getScoreDescription = () => {
-    if (score <= 10) return "Very few issues were flagged. This document appears low-risk.";
-    if (score <= 30) return "Some issues were flagged and are worth reviewing.";
-    if (score <= 55) return "Several clauses were flagged. Review carefully before agreeing.";
-    return "Many high-severity clauses were flagged. Review with caution before signing.";
+  const s = {
+    font: 'Geist, system-ui, sans-serif', mono: 'DM Mono, monospace', serif: 'DM Serif Display, serif',
+    border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
+    surface: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+    surfaceCard: 'var(--bg-surface)',
+    textPrimary: 'var(--text-primary)',
+    textSecondary: 'var(--text-secondary)',
+    textTertiary: 'var(--text-tertiary)',
   };
 
   const renderRadarChart = () => {
-    const isLight = theme === 'light';
-    const gridStroke = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
-    const axisStroke = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
+    const gridStroke = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)';
+    const axisStroke = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
     const maxCount = Math.max(...(breakdownArray.map(c => Number(c.count) || 0) || []), 1);
     const categories = ['Legal', 'Privacy', 'Security', 'Financial', 'User'];
 
@@ -96,251 +65,149 @@ export default function OverviewPage({
     });
 
     return (
-      <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-2xl">
-        {gridLines.map((line, i) => (
-          <polygon key={i} points={line} fill="none" stroke={gridStroke} strokeWidth="0.5" />
-        ))}
+      <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.1))' }}>
+        {gridLines.map((line, i) => <polygon key={i} points={line} fill="none" stroke={gridStroke} strokeWidth="0.5" />)}
         {categories.map((_, i) => {
           const angle = (i * 72 - 90) * (Math.PI / 180);
-          return (
-            <line key={i} x1="100" y1="100" x2={100 + 100 * Math.cos(angle)} y2={100 + 100 * Math.sin(angle)} stroke={axisStroke} strokeWidth="0.5" />
-          );
+          return <line key={i} x1="100" y1="100" x2={100 + 100 * Math.cos(angle)} y2={100 + 100 * Math.sin(angle)} stroke={axisStroke} strokeWidth="0.5" />;
         })}
-        <polygon points={points} fill="rgba(0, 122, 255, 0.2)" stroke="#007AFF" strokeWidth="2" className="transition-all duration-700" />
+        <polygon points={points} fill="rgba(113, 113, 122, 0.1)" stroke="var(--text-secondary)" strokeWidth="1" style={{ transition: 'all 0.7s' }} />
         {categories.map((label, i) => {
           const breakdown = breakdownArray.find(b => b.category.toLowerCase().includes(label.toLowerCase()));
           const val = breakdown ? breakdown.count : 0;
           const angle = (i * 72 - 90) * (Math.PI / 180);
           const radius = (val / maxCount) * 92;
-          const categoryColor = CATEGORY_COLORS[label]?.color || '#007AFF';
-          return <circle key={i} cx={100 + radius * Math.cos(angle)} cy={100 + radius * Math.sin(angle)} r="3.5" fill={categoryColor} className="shadow-lg" />;
+          const categoryColor = CATEGORY_COLORS[label]?.color || 'var(--text-tertiary)';
+          return <circle key={i} cx={100 + radius * Math.cos(angle)} cy={100 + radius * Math.sin(angle)} r="3" fill={categoryColor} />;
         })}
       </svg>
     );
   };
 
-  const subTextClass = theme === 'light' ? 'text-gray-500' : 'text-white/60';
-  const mutedTextClass = theme === 'light' ? 'text-gray-400' : 'text-white/40';
-  const textClass = theme === 'light' ? 'text-gray-900' : 'text-white';
-
   const totalRisky = analysisResult?.risky_clause_count || 0;
   const deepAnalyzed = totalClauses - (analysisResult?.skipped_llm_count || 0);
   const deepScanPct = totalClauses > 0 ? Math.round((deepAnalyzed / totalClauses) * 100) : 0;
 
+  const cardStyle = {
+    background: s.surfaceCard, borderRadius: '16px', border: `1px solid ${s.border}`, padding: '24px',
+  };
+
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex justify-between items-start">
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px 80px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-[10px] font-semibold text-[#007AFF] uppercase tracking-wider">Analysis Results</span>
-          </div>
-          <h1 className={`text-2xl font-bold mb-1 ${textClass}`}>Summary</h1>
+          <h1 style={{ fontFamily: s.serif, fontSize: '32px', fontWeight: '400', color: s.textPrimary, margin: '0 0 8px', letterSpacing: '-0.02em' }}>Summary</h1>
           {sourceInfo?.type && (
-            <div className="flex items-center gap-2 text-sm text-white/60">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: s.font, fontSize: '14px', color: s.textSecondary, fontWeight: '300' }}>
               {sourceInfo.type === 'url' && <Link size={14} />}
               {(sourceInfo.type === 'pdf' || sourceInfo.type === 'text') && <FileText size={14} />}
-              <span className="truncate max-w-md">{sourceInfo.value || 'Document'}</span>
+              <span style={{ maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sourceInfo.value || 'Document'}</span>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => onNavigate && onNavigate('reports')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all ${theme === 'light' ? 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50' : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'}`}
-          >
-            <Share2 size={16} />
-            Open Report
-          </button>
-        </div>
+        <button onClick={() => onNavigate && onNavigate('reports')} style={{
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '10px',
+          background: s.surface, border: `1px solid ${s.border}`, color: s.textSecondary,
+          fontFamily: s.font, fontSize: '13px', fontWeight: '400', cursor: 'pointer', transition: 'all 0.2s',
+        }}><Share2 size={14} /> Open Report</button>
       </div>
 
-      {/* Hero Stats Section */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Score Gauge */}
-        <div className="col-span-12 lg:col-span-5 glass-card p-8 flex flex-col items-center justify-center relative overflow-hidden group">
-          <div className={`absolute -top-24 -left-24 w-64 h-64 rounded-full blur-3xl transition-all duration-1000 ${theme === 'light' ? 'bg-blue-100/40 group-hover:bg-blue-200/40' : 'bg-[#007AFF]/10 group-hover:bg-[#007AFF]/20'}`} />
-
-          <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-8 ${mutedTextClass}`}>Risk Score</h3>
-
-          <div className="relative w-56 h-32 mb-4">
-            <svg viewBox="0 0 100 50" className="w-full h-full drop-shadow-2xl">
-              <path
-                d="M 10 45 A 35 35 0 0 1 90 45"
-                fill="none"
-                stroke={theme === 'light' ? '#f1f5f9' : 'rgba(255,255,255,0.05)'}
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-              <Motion.path
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: score / 100 }}
-                transition={{ duration: 1.5, ease: "easeOut" }}
-                d="M 10 45 A 35 35 0 0 1 90 45"
-                fill="none"
-                stroke={getScoreColor(score)}
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        {/* Score Card */}
+        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', minHeight: '340px' }}>
+          <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: s.textTertiary, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '32px' }}>Risk Score</h3>
+          <div style={{ position: 'relative', width: '220px', height: '110px', marginBottom: '24px' }}>
+            <svg viewBox="0 0 100 50" style={{ width: '100%', height: '100%' }}>
+              <path d="M 10 45 A 35 35 0 0 1 90 45" fill="none" stroke={s.surface} strokeWidth="10" strokeLinecap="round" />
+              <Motion.path initial={{ pathLength: 0 }} animate={{ pathLength: score / 100 }} transition={{ duration: 1.5, ease: "easeOut" }}
+                d="M 10 45 A 35 35 0 0 1 90 45" fill="none" stroke={getScoreColor(score)} strokeWidth="10" strokeLinecap="round" />
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
-              <span className={`text-6xl font-black tracking-tighter drop-shadow-sm ${textClass}`}>
-                {score}
-              </span>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: '10px' }}>
+              <span style={{ fontFamily: s.serif, fontSize: '56px', fontWeight: '400', color: s.textPrimary, lineHeight: 1 }}>{score}</span>
             </div>
           </div>
-
-          <div className="text-center z-10">
-            <p className={`text-lg font-extrabold uppercase tracking-widest pointer-events-none transition-colors duration-300`} style={{ color: getScoreColor(score) }}>
-              {overallRisk} Risk Level
-            </p>
-            <p className={`text-[10px] mt-1 font-bold uppercase tracking-[0.1em] ${mutedTextClass}`}>
-              Based on {totalRisky} flagged clauses
-            </p>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontFamily: s.font, fontSize: '16px', fontWeight: '500', color: getScoreColor(score), margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{overallRisk} Risk Level</p>
+            <p style={{ fontFamily: s.mono, fontSize: '9px', color: s.textTertiary, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Based on {totalRisky} flagged clauses</p>
           </div>
         </div>
 
-        {/* Generated summary */}
-        <div className="col-span-12 lg:col-span-7">
-          <div className="glass-card h-full p-8 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'}`}>
-                    <BrainCircuit size={16} className={theme === 'light' ? 'text-gray-700' : 'text-white/70'} />
-                  </div>
-                  <div>
-                    <h3 className={`text-xs font-semibold uppercase tracking-widest ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Analysis Summary</h3>
-                  </div>
-                </div>
-                <div className={`px-2.5 py-1 rounded text-[10px] font-semibold tracking-widest border ${theme === 'light' ? 'bg-gray-100 border-gray-200 text-gray-500' : 'bg-white/5 border-white/10 text-white/40'}`}>
-                  CONFIDENCE: {analysisResult?.confidence_level || 'HIGH'}
-                </div>
+        {/* Narrative Card */}
+        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: s.surface, border: `1px solid ${s.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BrainCircuit size={16} style={{ color: s.textSecondary }} />
               </div>
-
-              <Motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
-              >
-                <p className={`text-[15px] font-medium leading-relaxed ${theme === 'light' ? 'text-gray-800' : 'text-white/80'}`}>
-                  {analysisResult?.professional_summary || analysisResult?.executive_summary || "Analysis is complete. Review the flagged clauses and their wording before relying on the score."}
-                </p>
-              </Motion.div>
-
-              {(analysisResult?.key_findings || []).length > 0 && (
-                <div className="mt-8 flex flex-wrap gap-2">
-                  {analysisResult.key_findings.slice(0, 5).map((finding, i) => {
-                    const findingCategory = renderValue(finding?.category);
-                    const findingSeverity = renderValue(finding?.severity);
-                    const sevColor = finding.severity === 'critical' ? 'text-red-400 border-red-500/20 bg-red-500/10' :
-                      finding.severity === 'high' ? 'text-orange-400 border-orange-500/20 bg-orange-500/10' :
-                      finding.severity === 'medium' ? 'text-amber-400 border-amber-500/20 bg-amber-500/10' :
-                      'text-green-400 border-green-500/20 bg-green-500/10';
-                    return (
-                      <span key={i} className={`px-2.5 py-1 rounded text-[10px] font-medium uppercase tracking-wider border ${sevColor}`}>
-                        {findingCategory}: {findingSeverity}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              {analysisResult?.top_concern && (
-                <div className={`mt-6 p-5 rounded-xl border ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/[0.02] border-white/5'}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <ShieldAlert size={14} className={theme === 'light' ? 'text-gray-500' : 'text-white/40'} />
-                    <p className={`text-[10px] font-semibold uppercase tracking-widest ${theme === 'light' ? 'text-gray-500' : 'text-white/40'}`}>Top Concern</p>
-                  </div>
-                  <p className={`text-sm ${theme === 'light' ? 'text-gray-700' : 'text-white/70'}`}>{renderValue(analysisResult.top_concern)}</p>
-                </div>
-              )}
+              <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: s.textTertiary, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Analysis Summary</h3>
             </div>
-
-            <div className={`mt-8 pt-6 flex items-center gap-8 border-t ${theme === 'light' ? 'border-gray-200' : 'border-white/5'}`}>
-              <div>
-                <p className={`text-[10px] font-medium uppercase tracking-widest mb-1 ${mutedTextClass}`}>Critical Risks</p>
-                <p className={`text-lg font-semibold ${textClass}`}>{totalRisky}</p>
-              </div>
-              <div className={`w-px h-8 ${theme === 'light' ? 'bg-gray-200' : 'bg-white/10'}`} />
-              <div>
-                <p className={`text-[10px] font-medium uppercase tracking-widest mb-1 ${mutedTextClass}`}>Score</p>
-                <p className={`text-lg font-semibold ${textClass}`}>{score}%</p>
-              </div>
+            <div style={{ fontFamily: s.mono, fontSize: '9px', color: s.textTertiary, padding: '4px 8px', borderRadius: '4px', background: s.surface, border: `1px solid ${s.border}`, letterSpacing: '0.06em' }}>
+              CONFIDENCE: {analysisResult?.confidence_level || 'HIGH'}
             </div>
           </div>
+          <p style={{ fontFamily: 'Georgia, serif', fontSize: '15px', fontWeight: '400', color: s.textSecondary, lineHeight: '1.7', margin: '0 0 24px', flex: 1, fontStyle: 'italic' }}>
+            "{analysisResult?.professional_summary || analysisResult?.executive_summary || "Analysis is complete. Review the flagged clauses and their wording before relying on the score."}"
+          </p>
+          {(analysisResult?.key_findings || []).length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {analysisResult.key_findings.slice(0, 4).map((f, i) => (
+                <span key={i} style={{ fontFamily: s.mono, fontSize: '9px', color: s.textSecondary, padding: '4px 10px', borderRadius: '6px', background: s.surface, border: `1px solid ${s.border}`, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {renderValue(f?.category)}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Grid: High Impact Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
         {[
-          { label: 'Total Clauses', value: totalClauses, icon: FileText, color: 'text-[#007AFF]', bg: 'bg-[#007AFF]/5' },
-          { label: 'Flagged Clauses', value: riskyClauses, icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-500/5' },
-          { label: 'Model-Reviewed', value: `${deepScanPct}%`, icon: BrainCircuit, color: 'text-indigo-400', bg: 'bg-indigo-400/5' },
-          { label: 'Overall Score', value: `${score}/100`, icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/5' },
-        ].map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <div key={i} className={`glass-card p-6 flex flex-col justify-between group transition-all hover:scale-[1.02] duration-300`}>
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-2 rounded-lg ${stat.bg}`}>
-                  <Icon size={18} className={stat.color} />
-                </div>
-                <TrendingUp size={14} className="text-white/10 group-hover:text-white/30 transition-colors" />
-              </div>
-              <div>
-                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>{stat.label}</span>
-                <div className={`text-3xl font-black mt-1 ${textClass}`}>{stat.value}</div>
-              </div>
+          { label: 'Total Clauses', value: totalClauses, icon: FileText },
+          { label: 'Flagged Clauses', value: riskyClauses, icon: ShieldAlert, color: '#ef4444' },
+          { label: 'Model-Reviewed', value: `${deepScanPct}%`, icon: BrainCircuit },
+          { label: 'Overall Score', value: `${score}/100`, icon: ShieldCheck, color: '#22c55e' },
+        ].map((stat, i) => (
+          <div key={i} style={{ ...cardStyle }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <stat.icon size={16} style={{ color: stat.color || s.textSecondary }} />
             </div>
-          );
-        })}
+            <span style={{ fontFamily: s.mono, fontSize: '9px', color: s.textTertiary, letterSpacing: '0.1em', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>{stat.label}</span>
+            <div style={{ fontFamily: s.font, fontSize: '24px', fontWeight: '500', color: s.textPrimary }}>{stat.value}</div>
+          </div>
+        ))}
       </div>
 
-      {/* Breakdown section */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Radar Matrix - Promoted to Hero */}
-        <div className="col-span-12 lg:col-span-8 glass-card p-8 group relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/5 blur-[100px] pointer-events-none" />
-          <div className="flex items-center justify-between mb-10">
+      {/* Breakdown */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
             <div>
-              <h3 className={`text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2 ${theme === 'light' ? 'text-indigo-600' : 'text-indigo-400'}`}>
-                <Activity size={16} />
-                Risk Breakdown
+              <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: s.textTertiary, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Activity size={14} /> Risk Breakdown
               </h3>
-              <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${mutedTextClass}`}>Flagged clauses by category</p>
             </div>
-              <div className={`flex items-center gap-4 text-[10px] font-black tracking-widest ${subTextClass}`}>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#007AFF]" /> CATEGORY SHARE</div>
-              </div>
           </div>
-
-          <div className="flex flex-col md:flex-row items-center gap-16">
-            <div className="w-full md:w-[400px] max-w-full drop-shadow-2xl">
-              {renderRadarChart()}
-            </div>
-            <div className="w-full md:w-[45%] md:flex-none space-y-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '40px', flex: 1 }}>
+            <div style={{ width: '240px', flexShrink: 0 }}>{renderRadarChart()}</div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {['Legal', 'Privacy', 'Security', 'Financial', 'User'].map((label, i) => {
                 const breakdown = breakdownArray.find(b => b.category?.toLowerCase().includes(label.toLowerCase()));
                 const count = breakdown?.count || 0;
                 const pct = riskyClauses > 0 ? (count / riskyClauses) * 100 : 0;
-                const categoryColor = CATEGORY_COLORS[label]?.bg || 'bg-slate-500';
+                const color = CATEGORY_COLORS[label]?.color || s.textTertiary;
                 return (
-                  <div key={i} className={`w-full px-4 py-4 rounded-2xl border transition-all hover:translate-x-2 ${theme === 'light' ? 'bg-gray-50/50 border-gray-100 hover:border-indigo-100' : 'bg-white/5 border-white/5 hover:border-white/20'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-2.5 h-2.5 rounded-full ${categoryColor}`} />
-                        <span className={`text-xs font-black uppercase tracking-widest ${textClass}`}>{label}</span>
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
+                        <span style={{ fontFamily: s.mono, fontSize: '10px', color: s.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
                       </div>
-                      <span className={`text-[10px] font-black ${mutedTextClass}`}>{count} Risks ({Math.round(pct)}%)</span>
+                      <span style={{ fontFamily: s.mono, fontSize: '9px', color: s.textTertiary }}>{count} ({Math.round(pct)}%)</span>
                     </div>
-                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                      <Motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 1, delay: i * 0.1 }}
-                        className={`h-full ${categoryColor}`}
-                      />
+                    <div style={{ height: '4px', background: s.surface, borderRadius: '2px', overflow: 'hidden' }}>
+                      <Motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1, delay: i * 0.1 }} style={{ height: '100%', background: color }} />
                     </div>
                   </div>
                 );
@@ -349,178 +216,32 @@ export default function OverviewPage({
           </div>
         </div>
 
-        {/* Visual Health Sparklines & Checklist */}
-        <div className="col-span-12 lg:col-span-4 space-y-6">
-          <div className="glass-card p-8 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Clause Map</h3>
-              <Target size={16} className="text-red-500" />
-            </div>
-
-            {/* Document Severity Sparkline (Mini Heatmap) */}
-            <div className="flex-1 flex flex-col justify-center space-y-6">
-              <div className="space-y-4">
-                <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Severity by position</p>
-                <div className="h-16 flex items-end gap-[2px]">
-                  {(analysisResult?.clauses || []).map((c, i) => {
-                    const sev = c.severity_score || 0;
-                    return (
-                      <div
-                        key={i}
-                        className={`flex-1 rounded-t-[1px] transition-all duration-500 ${c.is_risky ? (sev >= 5 ? 'bg-red-500' : 'bg-amber-500') : 'bg-white/10'}`}
-                        style={{ height: `${Math.max(10, (sev / 10) * 100)}%` }}
-                      />
-                    );
-                  }).slice(0, 50)}
-                </div>
-                <div className="flex justify-between text-[8px] font-bold text-white/20 uppercase tracking-widest">
-                  <span>Start</span>
-                  <span>End of Doc</span>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-white/5 space-y-3">
-                <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Category check</p>
-                {healthCheckItems.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <span className={`text-[10px] font-bold ${subTextClass}`}>{item.name}</span>
-                    {item.passed ? <ShieldCheck size={14} className="text-green-500" /> : <ShieldAlert size={14} className="text-amber-500" />}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => onNavigate && onNavigate('clauses')}
-              className="mt-8 w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-            >
-              View Clauses
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Analysis details */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Transparency Bar Chart */}
-        <div className="col-span-12 lg:col-span-8 glass-card p-8">
-          <div className="flex items-center justify-between mb-10">
-            <h3 className={`text-xs font-black uppercase tracking-[0.2em] ${mutedTextClass}`}>Analysis Details</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div className="space-y-10">
-              <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className={`text-2xl font-black ${textClass}`}>{deepScanPct}%</p>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${mutedTextClass}`}>Model-reviewed share</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-black text-[#007AFF]`}>{deepAnalyzed}</p>
-                    <p className={`text-[9px] font-bold text-white/30 uppercase`}>Clauses</p>
-                  </div>
-                </div>
-                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                  <Motion.div
-                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${deepScanPct}%` }}
-                    transition={{ duration: 1.5 }}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-black/20 border-white/5'}`}>
-                  <ShieldCheck size={20} className="text-green-500 mb-3" />
-                  <p className={`text-lg font-black ${textClass}`}>{analysisTransparency?.nlpFiltered}</p>
-                  <p className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Rule-cleared</p>
-                </div>
-                <div className={`p-5 rounded-2xl border ${theme === 'light' ? 'bg-white border-blue-100 shadow-sm' : 'bg-white/5 border-[#007AFF]/20'}`}>
-                  <BrainCircuit size={20} className="text-[#007AFF] mb-3" />
-                  <p className={`text-lg font-black text-[#007AFF]`}>{deepAnalyzed}</p>
-                  <p className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Model-reviewed</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center justify-center p-6 bg-indigo-500/[0.02] rounded-3xl border border-indigo-500/10">
-              <div className="relative">
-                <svg className="w-44 h-44 transform -rotate-90">
-                  <circle cx="88" cy="88" r="75" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
-                  <Motion.circle
-                    cx="88" cy="88" r="75" stroke="currentColor" strokeWidth="12" strokeDasharray="471" fill="transparent"
-                    initial={{ strokeDashoffset: 471 }}
-                    animate={{ strokeDashoffset: 471 - (471 * deepScanPct) / 100 }}
-                    transition={{ duration: 2, ease: "easeInOut" }}
-                    className="text-indigo-500"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className={`text-4xl font-black tracking-tighter ${textClass}`}>{deepScanPct}%</span>
-                  <span className={`text-[9px] font-black uppercase tracking-widest ${mutedTextClass}`}>Reviewed</span>
-                </div>
-              </div>
-              <p className={`text-center text-[10px] font-bold mt-6 leading-relaxed max-w-[150px] ${subTextClass}`}>
-                Share of clauses sent to model review after the initial filter step.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Hero Narrative Recap */}
-        <div className="col-span-12 lg:col-span-4 glass-card p-0 overflow-hidden group">
-          <div className="h-full p-8 flex flex-col justify-between">
+        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: s.textTertiary, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '24px', display: 'flex', justifyContent: 'space-between' }}>
+            Clause Map <Target size={14} style={{ color: '#ef4444' }} />
+          </h3>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div>
-              <div className="flex items-center gap-3 mb-8">
-                <div className={`w-8 h-8 rounded flex items-center justify-center border ${theme === 'light' ? 'bg-gray-50 border-gray-200' : 'bg-white/5 border-white/10'}`}>
-                  <FileText size={16} className={theme === 'light' ? 'text-gray-700' : 'text-white/70'} />
-                </div>
-                <h3 className={`text-xs font-semibold uppercase tracking-widest ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>Takeaway</h3>
+              <p style={{ fontFamily: s.mono, fontSize: '9px', color: s.textTertiary, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px' }}>Severity by position</p>
+              <div style={{ height: '48px', display: 'flex', alignItems: 'flex-end', gap: '1px' }}>
+                {(analysisResult?.clauses || []).slice(0, 50).map((c, i) => {
+                  const sev = c.severity_score || 0;
+                  return <div key={i} style={{ flex: 1, borderRadius: '1px 1px 0 0', background: c.is_risky ? (sev >= 5 ? '#ef4444' : '#f59e0b') : s.surface, height: `${Math.max(10, (sev / 10) * 100)}%` }} />;
+                })}
               </div>
-              <p className={`text-[15px] font-medium leading-relaxed ${theme === 'light' ? 'text-gray-800' : 'text-white/80'}`}>
-                {analysisResult?.executive_summary || analysisResult?.professional_summary || "Analysis complete. Review the flagged clauses to see which terms drove the score."}
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: s.mono, fontSize: '8px', color: s.textTertiary, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '6px' }}>
+                <span>Start</span><span>End</span>
+              </div>
             </div>
-
-            <div className={`mt-8 pt-8 border-t ${theme === 'light' ? 'border-gray-200' : 'border-white/5'}`}>
-              <div className="flex items-center gap-4 mb-6">
-                <div className="flex -space-x-3">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center overflow-hidden ${theme === 'light' ? 'border-white bg-gray-50' : 'border-[#0a0a0a] bg-white/5'}`}>
-                      <Activity size={12} className={theme === 'light' ? 'text-gray-400' : 'text-white/20'} />
-                    </div>
-                  ))}
+            <div style={{ paddingTop: '16px', borderTop: `1px solid ${s.border}` }}>
+              {healthCheckItems.map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontFamily: s.font, fontSize: '12px', color: s.textSecondary }}>{item.name}</span>
+                  {item.passed ? <ShieldCheck size={14} color="#22c55e" /> : <ShieldAlert size={14} color="#f59e0b" />}
                 </div>
-                <span className={`text-[10px] font-semibold uppercase tracking-widest ${mutedTextClass}`}>Analysis Complete</span>
-              </div>
-              <button
-                onClick={() => onNavigate && onNavigate('reports')}
-                className={`w-full py-4 rounded-xl font-semibold text-[11px] uppercase tracking-widest transition-all active:scale-95 ${theme === 'light' ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-white text-black hover:bg-gray-200'}`}
-              >
-                Open Report
-              </button>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
-
-
-      <div className="flex items-center justify-between pt-6">
-        <p className={`text-[10px] font-bold uppercase tracking-widest ${mutedTextClass}`}>
-          Jurist AI analysis
-        </p>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => onNavigate && onNavigate('clauses')}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#0056cc] text-white text-xs font-black uppercase tracking-widest hover:shadow-lg hover:shadow-[#007AFF]/30 transition-all active:scale-[0.98]"
-          >
-            Review Flagged Clauses
-            <ArrowRight size={16} />
-          </button>
         </div>
       </div>
     </div>

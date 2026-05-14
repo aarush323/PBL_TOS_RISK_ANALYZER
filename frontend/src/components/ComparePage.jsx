@@ -1,81 +1,94 @@
 import React from 'react';
-import { 
-  Scale, Plus, MessageSquare, ArrowLeft,
-  Trophy, Hash, ChevronRight, Zap
-} from 'lucide-react';
+import { Scale, Plus, MessageSquare, ArrowLeft, Trophy, Hash, ChevronRight, Zap } from 'lucide-react';
+import { useTheme } from './theme-context.js';
 
 export default function ComparePage({
-  comparisonData,
-  historyItems,
-  isComparing,
-  compareHistory,
-  onOpenCompareHistory,
-  onSelectDocuments,
-  onNewComparison,
-  onDiscussInChat,
+  comparisonData, historyItems, isComparing, compareHistory,
+  onOpenCompareHistory, onSelectDocuments, onNewComparison, onDiscussInChat,
 }) {
-  const getRiskColor = (score) => {
-    if (score >= 50) return 'text-red-500';
-    if (score >= 20) return 'text-amber-500';
-    return 'text-emerald-500';
+  const { theme } = useTheme();
+  const isDark = theme !== 'light';
+  const s = {
+    font: 'Geist, system-ui, sans-serif',
+    mono: 'DM Mono, monospace',
+    serif: 'DM Serif Display, serif',
+    border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
+    surface: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+    surfaceCard: 'var(--bg-surface)',
   };
 
-  const getRiskBg = (score) => {
-    if (score >= 50) return 'bg-red-500/10 border-red-500/20';
-    if (score >= 20) return 'bg-amber-500/10 border-amber-500/20';
-    return 'bg-emerald-500/10 border-emerald-500/20';
-  };
+  const getRiskColor = (score) => score >= 50 ? '#ef4444' : score >= 20 ? '#f59e0b' : '#22c55e';
 
   if (isComparing) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-        <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-6" />
-        <h2 className="text-xl font-medium mb-2">Cross-referencing legal terms...</h2>
-        <p className="text-white/60">This takes about 15-20 seconds.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center' }}>
+        <div style={{ width: '48px', height: '48px', border: '3px solid var(--text-tertiary)', borderTopColor: 'var(--text-primary)',
+          borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '20px' }} />
+        <h2 style={{ fontFamily: s.serif, fontSize: '22px', fontWeight: '400', color: 'var(--text-primary)', margin: '0 0 6px' }}>
+          Cross-referencing terms…
+        </h2>
+        <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '300', color: 'var(--text-secondary)', margin: 0 }}>
+          This takes about 15–20 seconds.
+        </p>
       </div>
     );
   }
 
   if (!comparisonData) {
     return (
-      <div className="max-w-4xl mx-auto py-12">
-        <div className="glass-card p-12 text-center border-dashed border-2 border-white/10 rounded-[2rem]">
-          <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Scale size={40} className="text-blue-500" />
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '48px 24px' }}>
+        <div style={{ padding: '56px 32px', textAlign: 'center', borderRadius: '16px',
+          border: `2px dashed ${s.border}`, background: s.surfaceCard }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '14px', background: s.surface,
+            border: `1px solid ${s.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 20px' }}>
+            <Scale size={28} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <h2 className="text-2xl font-bold mb-3">Document Comparison</h2>
-          <p className="text-white/60 mb-8 max-w-md mx-auto">Select two analyzed documents to generate a side-by-side risk assessment and identify critical differences.</p>
-          
+          <h2 style={{ fontFamily: s.serif, fontSize: '26px', fontWeight: '400', color: 'var(--text-primary)',
+            margin: '0 0 8px', letterSpacing: '-0.02em' }}>Document Comparison</h2>
+          <p style={{ fontFamily: s.font, fontSize: '14px', fontWeight: '300', color: 'var(--text-secondary)',
+            lineHeight: '1.6', maxWidth: '420px', margin: '0 auto 28px' }}>
+            Select two analyzed documents to generate a side-by-side risk assessment.
+          </p>
           {historyItems.length < 2 ? (
-            <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl inline-block">
-              <p className="text-amber-500 text-sm font-medium">You need at least 2 analyzed documents to compare.</p>
+            <div style={{ padding: '12px 20px', borderRadius: '10px', background: 'rgba(245,158,11,0.05)',
+              border: '1px solid rgba(245,158,11,0.1)', display: 'inline-block' }}>
+              <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '500', color: '#f59e0b', margin: 0 }}>
+                You need at least 2 analyzed documents to compare.
+              </p>
             </div>
           ) : (
-            <button
-              onClick={onSelectDocuments}
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-zinc-50 font-bold rounded-2xl transition-all shadow-xl shadow-blue-600/20"
-            >
-              <Plus size={20} className="inline mr-2" />
-              Select Documents
+            <button onClick={onSelectDocuments} style={{
+              padding: '12px 24px', borderRadius: '10px',
+              background: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)', border: 'none',
+              color: isDark ? '#000' : '#fff', fontFamily: s.font, fontSize: '14px', fontWeight: '500',
+              cursor: 'pointer', transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: '6px',
+            }}>
+              <Plus size={16} /> Select Documents
             </button>
           )}
         </div>
 
         {compareHistory?.length > 0 && (
-          <div className="mt-12">
-            <h3 className="text-sm font-bold uppercase tracking-widest mb-6 text-white/40">Recent Comparisons</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div style={{ marginTop: '40px' }}>
+            <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
+              textTransform: 'uppercase', margin: '0 0 16px' }}>Recent Comparisons</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               {compareHistory.map(c => (
-                <button 
-                  key={c.compare_id} 
-                  onClick={() => onOpenCompareHistory(c.compare_id)}
-                  className="flex items-center justify-between p-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all text-left"
-                >
-                  <div className="flex flex-col gap-1">
-                    <span className="font-semibold truncate max-w-[200px]">{c.source_a} vs {c.source_b}</span>
-                    <span className="text-xs text-white/40">{new Date(c.created_at).toLocaleDateString()}</span>
+                <button key={c.compare_id} onClick={() => onOpenCompareHistory(c.compare_id)} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px',
+                  borderRadius: '12px', background: s.surface, border: `1px solid ${s.border}`,
+                  cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                }}>
+                  <div>
+                    <span style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>
+                      {c.source_a} vs {c.source_b}
+                    </span>
+                    <span style={{ display: 'block', fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '3px' }}>
+                      {new Date(c.created_at).toLocaleDateString()}
+                    </span>
                   </div>
-                  <ChevronRight size={18} className="text-white/20" />
+                  <ChevronRight size={14} style={{ color: 'var(--text-tertiary)' }} />
                 </button>
               ))}
             </div>
@@ -89,131 +102,146 @@ export default function ComparePage({
   const winner = overall_winner === 'a' ? 'A' : overall_winner === 'b' ? 'B' : 'tie';
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
-      <div className="flex items-center justify-between">
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px 80px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
         <div>
-          <button 
-            onClick={onNewComparison}
-            className="flex items-center gap-2 text-white/60 hover:text-white mb-2 text-sm"
-          >
-            <ArrowLeft size={14} /> New Comparison
-          </button>
-          <h1 className="text-3xl font-bold font-serif italic">Legal Differential</h1>
+          <button onClick={onNewComparison} style={{
+            display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none',
+            fontFamily: s.font, fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: '8px',
+          }}><ArrowLeft size={13} /> New Comparison</button>
+          <h1 style={{ fontFamily: s.serif, fontSize: '32px', fontWeight: '400', fontStyle: 'italic',
+            color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>Legal Differential</h1>
         </div>
-        <button
-          onClick={onDiscussInChat}
-          className="px-6 py-3 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all flex items-center gap-2"
-        >
-          <MessageSquare size={18} />
-          Discuss Findings
-        </button>
+        <button onClick={onDiscussInChat} style={{
+          display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', borderRadius: '10px',
+          background: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)', border: 'none',
+          color: isDark ? '#000' : '#fff', fontFamily: s.font, fontSize: '13px', fontWeight: '500',
+          cursor: 'pointer', transition: 'all 0.2s',
+        }}><MessageSquare size={15} /> Discuss Findings</button>
       </div>
 
-      {/* Summary Banner */}
-      <div className={`p-8 rounded-[2rem] border relative overflow-hidden ${winner === 'tie' ? 'bg-white/5 border-white/10' : 'bg-blue-600/10 border-blue-500/20'}`}>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="flex items-start gap-5">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${winner === 'tie' ? 'bg-amber-500/20 text-amber-500' : 'bg-emerald-500 text-zinc-50 shadow-lg shadow-emerald-500/20'}`}>
-              {winner === 'tie' ? <Scale size={28} /> : <Trophy size={28} />}
+      {/* Verdict banner */}
+      <div style={{ padding: '28px', borderRadius: '16px', border: `1px solid ${s.border}`,
+        background: winner === 'tie' ? s.surface : 'rgba(34,197,94,0.04)', marginBottom: '28px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: winner === 'tie' ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.1)',
+              color: winner === 'tie' ? '#f59e0b' : '#22c55e' }}>
+              {winner === 'tie' ? <Scale size={22} /> : <Trophy size={22} />}
             </div>
             <div>
-              <h2 className="text-2xl font-bold mb-1">
-                {winner === 'tie' ? "Inconclusive Difference" : `${winner === 'A' ? doc_a.label : doc_b.label} is the safer choice`}
+              <h2 style={{ fontFamily: s.serif, fontSize: '22px', fontWeight: '400', color: 'var(--text-primary)', margin: '0 0 6px' }}>
+                {winner === 'tie' ? 'Inconclusive' : `${winner === 'A' ? doc_a.label : doc_b.label} is safer`}
               </h2>
-              <p className="text-white/60 leading-relaxed max-w-2xl">{verdict}</p>
+              <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '300', color: 'var(--text-secondary)',
+                lineHeight: '1.6', margin: 0, maxWidth: '600px' }}>{verdict}</p>
             </div>
           </div>
           {winner !== 'tie' && (
-            <div className="px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-500 text-xs font-black uppercase tracking-[0.2em]">
-              Recommended
-            </div>
+            <span style={{ fontFamily: s.mono, fontSize: '9px', color: '#22c55e', letterSpacing: '0.1em',
+              textTransform: 'uppercase', padding: '4px 12px', borderRadius: '6px',
+              background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>Recommended</span>
           )}
         </div>
       </div>
 
-      {/* Head-to-Head Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* Head-to-head */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
         {[doc_a, doc_b].map((doc, idx) => {
           const isDocA = idx === 0;
           const isWinner = (isDocA && winner === 'A') || (!isDocA && winner === 'B');
           const score = doc.score || 0;
-          
           return (
-            <div key={idx} className={`p-8 rounded-[2.5rem] border transition-all ${isWinner ? 'bg-white/5 border-emerald-500/30' : 'bg-white/[0.02] border-white/10'}`}>
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${isWinner ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-white/20'}`} />
-                  <span className="text-sm font-bold uppercase tracking-widest text-white/40">{isDocA ? 'Document A' : 'Document B'}</span>
+            <div key={idx} style={{ padding: '28px', borderRadius: '16px', background: s.surfaceCard,
+              border: `1px solid ${isWinner ? 'rgba(34,197,94,0.2)' : s.border}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%',
+                    background: isWinner ? '#22c55e' : 'var(--text-tertiary)',
+                    boxShadow: isWinner ? '0 0 8px rgba(34,197,94,0.4)' : 'none' }} />
+                  <span style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
+                    textTransform: 'uppercase' }}>{isDocA ? 'Document A' : 'Document B'}</span>
                 </div>
-                {isWinner && <span className="text-[10px] font-black bg-emerald-500 text-black px-2 py-1 rounded">WINNER</span>}
+                {isWinner && <span style={{ fontFamily: s.mono, fontSize: '9px', fontWeight: '500',
+                  background: '#22c55e', color: '#000', padding: '2px 8px', borderRadius: '4px' }}>WINNER</span>}
               </div>
-
-              <h3 className="text-2xl font-bold mb-2 truncate">{doc.label}</h3>
-              <div className="flex items-baseline gap-2 mb-8">
-                <span className={`text-6xl font-black font-serif ${getRiskColor(score)}`}>{score}</span>
-                <span className="text-white/20 font-bold">/ 100 RISK</span>
+              <h3 style={{ fontFamily: s.font, fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)',
+                margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.label}</h3>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '20px' }}>
+                <span style={{ fontFamily: s.serif, fontSize: '48px', fontWeight: '400', color: getRiskColor(score) }}>{score}</span>
+                <span style={{ fontFamily: s.mono, fontSize: '11px', color: 'var(--text-tertiary)' }}>/ 100 risk</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-white/5 rounded-2xl">
-                  <div className="text-[10px] font-bold text-white/40 uppercase mb-1">Risky Clauses</div>
-                  <div className="text-xl font-bold">{doc.risky_count || doc.risky_clause_count}</div>
-                </div>
-                <div className="p-4 bg-white/5 rounded-2xl">
-                  <div className="text-[10px] font-bold text-white/40 uppercase mb-1">Total Clauses</div>
-                  <div className="text-xl font-bold">{doc.total_clauses}</div>
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {[
+                  { l: 'Risky Clauses', v: doc.risky_count || doc.risky_clause_count },
+                  { l: 'Total Clauses', v: doc.total_clauses },
+                ].map((m, i) => (
+                  <div key={i} style={{ padding: '12px', borderRadius: '10px', background: s.surface }}>
+                    <div style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+                      textTransform: 'uppercase', marginBottom: '4px' }}>{m.l}</div>
+                    <div style={{ fontFamily: s.font, fontSize: '18px', fontWeight: '600', color: 'var(--text-primary)' }}>{m.v}</div>
+                  </div>
+                ))}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Category Breakdown */}
-      <div className="space-y-6">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-white/40 flex items-center gap-2">
-          <Hash size={14} /> Sectional Differential
+      {/* Categories */}
+      <div>
+        <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
+          textTransform: 'uppercase', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Hash size={12} /> Sectional Differential
         </h3>
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {categories?.map((cat, idx) => (
-            <div key={idx} className="bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden hover:bg-white/[0.07] transition-all">
-              <div className="px-8 py-5 border-b border-white/10 flex items-center justify-between">
-                <h4 className="font-bold text-lg">{cat.category}</h4>
-                <div className="flex gap-4 text-xs font-bold uppercase tracking-tighter">
-                  <span className={cat.winner === 'a' ? 'text-emerald-500' : 'text-white/40'}>Doc A: {cat.a_count}</span>
-                  <span className={cat.winner === 'b' ? 'text-emerald-500' : 'text-white/40'}>Doc B: {cat.b_count}</span>
+            <div key={idx} style={{ borderRadius: '14px', overflow: 'hidden', background: s.surfaceCard, border: `1px solid ${s.border}` }}>
+              <div style={{ padding: '16px 24px', borderBottom: `1px solid ${s.border}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ fontFamily: s.font, fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)', margin: 0 }}>{cat.category}</h4>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {[{ l: 'A', v: cat.a_count, w: cat.winner === 'a' }, { l: 'B', v: cat.b_count, w: cat.winner === 'b' }].map(d => (
+                    <span key={d.l} style={{ fontFamily: s.mono, fontSize: '11px', color: d.w ? '#22c55e' : 'var(--text-tertiary)' }}>
+                      Doc {d.l}: {d.v}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className="p-8">
-                {/* Visual diff bar */}
-                <div className="w-full h-1.5 bg-white/5 rounded-full mb-8 flex overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-1000 ${cat.winner === 'a' ? 'bg-emerald-500' : 'bg-white/20'}`}
-                    style={{ width: `${(cat.a_count / (cat.a_count + cat.b_count || 1)) * 100}%` }}
-                  />
-                  <div 
-                    className={`h-full transition-all duration-1000 ${cat.winner === 'b' ? 'bg-emerald-500' : 'bg-white/20'}`}
-                    style={{ width: `${(cat.b_count / (cat.a_count + cat.b_count || 1)) * 100}%` }}
-                  />
+              <div style={{ padding: '20px 24px' }}>
+                <div style={{ width: '100%', height: '4px', background: s.surface, borderRadius: '4px',
+                  display: 'flex', overflow: 'hidden', marginBottom: '20px' }}>
+                  <div style={{ height: '100%', transition: 'width 1s',
+                    background: cat.winner === 'a' ? '#22c55e' : 'var(--text-tertiary)', opacity: cat.winner === 'a' ? 1 : 0.3,
+                    width: `${(cat.a_count / (cat.a_count + cat.b_count || 1)) * 100}%` }} />
+                  <div style={{ height: '100%', transition: 'width 1s',
+                    background: cat.winner === 'b' ? '#22c55e' : 'var(--text-tertiary)', opacity: cat.winner === 'b' ? 1 : 0.3,
+                    width: `${(cat.b_count / (cat.a_count + cat.b_count || 1)) * 100}%` }} />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                  <div className="space-y-3">
-                    <div className="text-[10px] font-black text-white/30 uppercase">Clause A Summary</div>
-                    <p className="text-sm text-white/70 italic leading-relaxed">"{cat.clause_a_summary || 'No significant risks identified in this category.'}"</p>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="text-[10px] font-black text-white/30 uppercase">Clause B Summary</div>
-                    <p className="text-sm text-white/70 italic leading-relaxed">"{cat.clause_b_summary || 'No significant risks identified in this category.'}"</p>
-                  </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '16px' }}>
+                  {[{ l: 'A Summary', t: cat.clause_a_summary }, { l: 'B Summary', t: cat.clause_b_summary }].map(d => (
+                    <div key={d.l}>
+                      <div style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+                        textTransform: 'uppercase', marginBottom: '6px' }}>{d.l}</div>
+                      <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '300', fontStyle: 'italic',
+                        color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                        "{d.t || 'No significant risks identified.'}"
+                      </p>
+                    </div>
+                  ))}
                 </div>
-
-                <div className="p-5 bg-blue-500/5 border border-blue-500/10 rounded-2xl flex gap-4">
-                  <Zap size={20} className="text-blue-500 shrink-0" />
+                <div style={{ padding: '14px 16px', borderRadius: '10px', background: s.surface,
+                  border: `1px solid ${s.border}`, display: 'flex', gap: '12px' }}>
+                  <Zap size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0, marginTop: '2px' }} />
                   <div>
-                    <div className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-1">Key Difference</div>
-                    <p className="text-sm text-white/90 font-medium">{cat.key_difference}</p>
-                    <p className="text-xs text-white/40 mt-2 leading-relaxed">{cat.reasoning}</p>
+                    <div style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+                      textTransform: 'uppercase', marginBottom: '4px' }}>Key Difference</div>
+                    <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)',
+                      margin: '0 0 4px' }}>{cat.key_difference}</p>
+                    <p style={{ fontFamily: s.font, fontSize: '12px', fontWeight: '300', color: 'var(--text-tertiary)',
+                      lineHeight: '1.5', margin: 0 }}>{cat.reasoning}</p>
                   </div>
                 </div>
               </div>

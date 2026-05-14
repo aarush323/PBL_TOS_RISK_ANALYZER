@@ -14,378 +14,381 @@ export default function ClausesPage({
   onToggleChat
 }) {
   const { theme } = useTheme();
-  const [filters, setFilters] = useState({
-    riskLevel: 'all',
-    severity: 'all',
-    confidence: 'all',
-  });
-  const [expandedCardId, setExpandedCardId] = useState(null); // NEW: expandable state
-  const [visibleCount, setVisibleCount] = useState(50); // NEW: pagination state
+  const isDark = theme !== 'light';
+  const [filters, setFilters] = useState({ riskLevel: 'all', severity: 'all', confidence: 'all' });
+  const [expandedCardId, setExpandedCardId] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(50);
 
-  useEffect(() => {
-    setVisibleCount(50);
-  }, [filters, analysisResult]);
+  useEffect(() => { setVisibleCount(50); }, [filters, analysisResult]);
 
   const clauses = useMemo(() => filterClauses(analysisResult, filters), [analysisResult, filters]);
   const severitySeries = useMemo(() => getSeveritySeries(analysisResult), [analysisResult]);
-
   const totalClauses = analysisResult?.clauses?.length || 0;
   const filteredCount = clauses.length;
+  const selectedCategoryCounts = useMemo(() => getConfidenceCounts(analysisResult), [analysisResult]);
+
+  const s = {
+    font: 'Geist, system-ui, sans-serif',
+    mono: 'DM Mono, monospace',
+    serif: 'DM Serif Display, serif',
+    border: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)',
+    borderStrong: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    surfaceDim: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+    surface: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+    surfaceHover: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+  };
+
   const renderConfidenceRing = (confidence) => {
     const confValue = confidence === 'High' ? 90 : confidence === 'Medium' ? 60 : 30;
     const color = confidence === 'High' ? '#ef4444' : confidence === 'Medium' ? '#f59e0b' : '#22c55e';
-
     return (
-      <div className="relative w-14 h-14">
-        <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-          <circle
-            cx="18"
-            cy="18"
-            r="15"
-            fill="none"
-            stroke={theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}
-            strokeWidth="3"
-          />
-          <circle
-            cx="18"
-            cy="18"
-            r="15"
-            fill="none"
-            stroke={color}
-            strokeWidth="3"
-            strokeDasharray={`${confValue} 100`}
-            strokeLinecap="round"
-          />
+      <div style={{ position: 'relative', width: '44px', height: '44px' }}>
+        <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+          <circle cx="18" cy="18" r="15" fill="none" stroke={s.border} strokeWidth="2.5" />
+          <circle cx="18" cy="18" r="15" fill="none" stroke={color} strokeWidth="2.5"
+            strokeDasharray={`${confValue} 100`} strokeLinecap="round" />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
-          {confValue}
-        </span>
+        <span style={{
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: s.mono, fontSize: '10px', fontWeight: '500', color: 'var(--text-primary)',
+        }}>{confValue}</span>
       </div>
     );
   };
 
   const renderSeverityBar = () => {
     const data = severitySeries;
-    if (data.length === 0) {
-      return (
-        <div className="h-32 flex flex-col items-center justify-center border border-white/5 bg-white/5 rounded-lg">
-          <Info size={24} className="text-white/20 mb-2" />
-          <p className="text-xs text-white/40">No clauses to map</p>
-        </div>
-      );
-    }
-
-    const maxSeverity = Math.max(...data.map(d => d.severity), 1);
-    const avgSeverity = data.reduce((sum, d) => sum + d.severity, 0) / (data.length || 1);
-    const highRiskZones = data.filter(d => d.severity >= 3).length;
-
+    if (!data.length) return (
+      <div style={{ height: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        border: `1px solid ${s.border}`, background: s.surfaceDim, borderRadius: '10px' }}>
+        <Info size={20} style={{ color: 'var(--text-tertiary)', marginBottom: '6px' }} />
+        <p style={{ fontFamily: s.font, fontSize: '11px', color: 'var(--text-tertiary)', margin: 0 }}>No clauses to map</p>
+      </div>
+    );
+    const maxSev = Math.max(...data.map(d => d.severity), 1);
+    const avgSev = data.reduce((sum, d) => sum + d.severity, 0) / (data.length || 1);
+    const highRisk = data.filter(d => d.severity >= 3).length;
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between text-[10px] text-white/30 uppercase tracking-widest font-bold">
-          <span>Start of Doc</span>
-          <span>End of Doc</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: s.mono, fontSize: '9px',
+          color: 'var(--text-tertiary)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span>Start</span><span>End</span>
         </div>
-        <div className="h-20 flex items-end gap-[1px]">
-          {data.map((d, i) => {
-            const barHeight = Math.max(8, (d.severity / maxSeverity) * 100);
-            return (
-              <div
-                key={i}
-                className="flex-1 rounded-t-sm transition-all hover:scale-y-110 origin-bottom cursor-help"
-                style={{
-                  height: `${barHeight}%`,
-                  backgroundColor: d.isRisky
-                    ? (d.severity >= 3 ? '#ef4444' : '#f59e0b')
-                    : (theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)'),
-                  opacity: d.isRisky ? 1 : 0.4
-                }}
-                title={`Clause ${i + 1}: Sev ${d.severity.toFixed(1)}`}
-              />
-            );
-          })}
+        <div style={{ height: '64px', display: 'flex', alignItems: 'flex-end', gap: '1px' }}>
+          {data.map((d, i) => (
+            <div key={i} style={{
+              flex: 1, borderRadius: '2px 2px 0 0', transition: 'all 0.2s',
+              height: `${Math.max(8, (d.severity / maxSev) * 100)}%`,
+              backgroundColor: d.isRisky ? (d.severity >= 3 ? '#ef4444' : '#f59e0b') : s.surface,
+              opacity: d.isRisky ? 1 : 0.5,
+            }} title={`Clause ${i+1}: ${d.severity.toFixed(1)}`} />
+          ))}
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="p-2 rounded bg-white/5 border border-white/5">
-            <p className="text-[10px] text-white/30 uppercase mb-1">Avg Sev</p>
-            <p className="text-sm font-bold text-white">{avgSeverity.toFixed(1)}</p>
-          </div>
-          <div className="p-2 rounded bg-white/5 border border-white/5 text-center">
-            <p className="text-[10px] text-white/30 uppercase mb-1">Max</p>
-            <p className="text-sm font-bold text-white">{maxSeverity.toFixed(1)}</p>
-          </div>
-          <div className="p-2 rounded bg-white/5 border border-white/5 text-right">
-            <p className="text-[10px] text-white/30 uppercase mb-1">Critical</p>
-            <p className="text-sm font-bold text-red-400">{highRiskZones}</p>
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+          {[
+            { label: 'Avg Sev', val: avgSev.toFixed(1) },
+            { label: 'Max', val: maxSev.toFixed(1) },
+            { label: 'Critical', val: highRisk, color: '#ef4444' },
+          ].map((m, i) => (
+            <div key={i} style={{ padding: '8px 10px', borderRadius: '8px', background: s.surfaceDim, border: `1px solid ${s.border}` }}>
+              <p style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+                textTransform: 'uppercase', margin: '0 0 2px' }}>{m.label}</p>
+              <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '600', color: m.color || 'var(--text-primary)', margin: 0 }}>{m.val}</p>
+            </div>
+          ))}
         </div>
       </div>
     );
   };
 
-  const selectedCategoryCounts = useMemo(() => getConfidenceCounts(analysisResult), [analysisResult]);
+  const selectStyle = {
+    height: '34px', padding: '0 12px', borderRadius: '8px',
+    background: s.surfaceDim, border: `1px solid ${s.border}`,
+    fontFamily: s.font, fontSize: '11px', fontWeight: '500',
+    color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer',
+    transition: 'all 0.2s',
+  };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Clause map */}
-      <div className="bg-gradient-to-b from-[#0a0a0a] to-transparent px-8 py-8 border-b border-white/5">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="flex items-center justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Severity map header */}
+      <div style={{ padding: '32px 32px 24px', borderBottom: `1px solid ${s.border}`,
+        background: `linear-gradient(to bottom, ${isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.01)'}, transparent)` }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
             <div>
-              <h2 className="text-3xl font-black text-white tracking-tighter">Clause Review</h2>
-              <p className="text-sm text-white/40 font-bold uppercase tracking-widest mt-1">
-                Clause severity across the document — {sourceInfo?.value || 'Current Analysis'}
+              <h2 style={{ fontFamily: s.serif, fontSize: '32px', fontWeight: '400', color: 'var(--text-primary)',
+                margin: '0 0 6px', letterSpacing: '-0.02em' }}>Clause Review</h2>
+              <p style={{ fontFamily: s.font, fontWeight: '300', fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                Severity across the document — {sourceInfo?.value || 'Current Analysis'}
               </p>
             </div>
-            <div className="flex items-center gap-6">
-              <div className="text-right">
-                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Filtered Scope</p>
-                <p className="text-lg font-black text-white tracking-tight">{filteredCount} of {totalClauses} Clauses</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
+                  textTransform: 'uppercase', margin: '0 0 4px' }}>Filtered Scope</p>
+                <p style={{ fontFamily: s.font, fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)', margin: 0 }}>
+                  {filteredCount} of {totalClauses}
+                </p>
               </div>
-              <div className="h-10 w-px bg-white/10" />
-              <div className="text-right">
-                <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Risk Profile</p>
-                <div className="w-32 h-1.5 bg-white/10 rounded-full mt-2 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-red-500 to-amber-500 rounded-full transition-all duration-1000"
-                    style={{ width: `${totalClauses > 0 ? (clauses.filter(c => c.is_risky).length / totalClauses) * 100 : 0}%` }}
-                  />
+              <div style={{ height: '32px', width: '1px', background: s.border }} />
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
+                  textTransform: 'uppercase', margin: '0 0 4px' }}>Risk Profile</p>
+                <div style={{ width: '100px', height: '4px', background: s.surface, borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', borderRadius: '4px', transition: 'width 1s ease',
+                    background: 'linear-gradient(90deg, #ef4444, #f59e0b)',
+                    width: `${totalClauses > 0 ? (clauses.filter(c => c.is_risky).length / totalClauses) * 100 : 0}%`,
+                  }} />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="glass-card p-8 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#007AFF]/5 blur-[100px] pointer-events-none" />
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xs font-black text-white/50 uppercase tracking-[0.2em] flex items-center gap-2">
-                <Activity size={14} className="text-[#007AFF]" />
-                Severity by document position
+          {/* Severity chart card */}
+          <div style={{ padding: '24px', borderRadius: '14px', background: 'var(--bg-surface)',
+            border: `1px solid ${s.border}`, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
+                textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Activity size={13} style={{ color: 'var(--text-secondary)' }} /> Severity by position
               </h3>
-              <div className="flex items-center gap-4 text-[9px] font-black tracking-widest text-white/30">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" /> CRITICAL</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> MODERATE</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-white/10" /> NOT FLAGGED</span>
+              <div style={{ display: 'flex', gap: '12px', fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em' }}>
+                {[{ c: '#ef4444', l: 'Critical' }, { c: '#f59e0b', l: 'Moderate' }, { c: s.surface, l: 'Safe' }].map(x => (
+                  <span key={x.l} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: x.c }} />{x.l}
+                  </span>
+                ))}
               </div>
             </div>
-            <div className="h-40">{renderSeverityBar()}</div>
+            {renderSeverityBar()}
           </div>
         </div>
       </div>
 
-      <div className="flex-1 px-8 py-6 space-y-6 overflow-y-auto">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-            <div className="flex items-center gap-3 flex-wrap">
-              <Filter size={16} className="text-indigo-500 mr-2" />
-              {['riskLevel', 'severity', 'confidence'].map(filterKey => (
-                <select
-                  key={filterKey}
-                  value={filters[filterKey]}
-                  onChange={(e) => setFilters(prev => ({ ...prev, [filterKey]: e.target.value }))}
-                  className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white/80 focus:outline-none focus:border-[#007AFF]/50 transition-all hover:bg-white/10"
-                >
-                  <option value="all">{filterKey === 'riskLevel' ? 'ALL RISK' : filterKey === 'severity' ? 'ALL SEVERITY' : 'ALL CONFIDENCE'}</option>
-                  {filterKey === 'riskLevel' && (
-                    <>
-                      <option value="risky">RISKY ONLY</option>
-                      <option value="safe">SAFE ONLY</option>
-                    </>
-                  )}
-                  {filterKey === 'severity' && (
-                    <>
-                      <option value="high">HIGH RISK (≥5)</option>
-                      <option value="medium">MEDIUM RISK (2-5)</option>
-                      <option value="low">LOW RISK (&lt;2)</option>
-                    </>
-                  )}
-                  {filterKey === 'confidence' && (
-                    <>
-                      <option value="High">HIGH CONFIDENCE</option>
-                      <option value="Medium">MEDIUM CONFIDENCE</option>
-                      <option value="Low">LOW CONFIDENCE</option>
-                    </>
-                  )}
+      {/* Filters + clause list */}
+      <div style={{ flex: 1, padding: '24px 32px', overflowY: 'auto' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Filter size={14} style={{ color: 'var(--text-tertiary)' }} />
+              {['riskLevel', 'severity', 'confidence'].map(fk => (
+                <select key={fk} value={filters[fk]}
+                  onChange={e => setFilters(p => ({ ...p, [fk]: e.target.value }))} style={selectStyle}>
+                  <option value="all">{fk === 'riskLevel' ? 'All Risk' : fk === 'severity' ? 'All Severity' : 'All Confidence'}</option>
+                  {fk === 'riskLevel' && <><option value="risky">Risky Only</option><option value="safe">Safe Only</option></>}
+                  {fk === 'severity' && <><option value="high">High (≥5)</option><option value="medium">Medium (2-5)</option><option value="low">Low (&lt;2)</option></>}
+                  {fk === 'confidence' && <><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></>}
                 </select>
               ))}
             </div>
-
-            <div className="flex items-center gap-4">
-              <div className="glass-card px-4 py-2 flex items-center gap-3">
-                <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Confidence Dist:</span>
-                <div className="flex gap-1.5">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '8px',
+                background: s.surfaceDim, border: `1px solid ${s.border}` }}>
+                <span style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Confidence:</span>
+                <div style={{ display: 'flex', gap: '3px' }}>
                   {Object.entries(selectedCategoryCounts).map(([conf, count]) => (
-                    <div
-                      key={conf}
-                      className={`w-6 h-1.5 rounded-full ${conf === 'High' ? 'bg-red-500' : conf === 'Medium' ? 'bg-amber-500' : 'bg-green-500'}`}
-                      style={{ opacity: count > 0 ? 1 : 0.2 }}
-                      title={`${conf}: ${count}`}
-                    />
+                    <div key={conf} style={{
+                      width: '18px', height: '4px', borderRadius: '4px',
+                      background: conf === 'High' ? '#ef4444' : conf === 'Medium' ? '#f59e0b' : '#22c55e',
+                      opacity: count > 0 ? 1 : 0.2,
+                    }} title={`${conf}: ${count}`} />
                   ))}
                 </div>
               </div>
-              <button
-                onClick={onToggleChat}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all"
-              >
-                <MessageSquare size={16} />
-                Ask about clauses
+              <button onClick={onToggleChat} style={{
+                display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 16px', borderRadius: '8px',
+                background: s.surfaceDim, border: `1px solid ${s.border}`,
+                fontFamily: s.font, fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+                <MessageSquare size={13} /> Ask about clauses
               </button>
             </div>
           </div>
 
-          <div className="grid gap-6">
+          {/* Clause cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {clauses.length === 0 ? (
-              <div className="glass-card p-20 text-center border-dashed border-2">
-                <Shield size={64} className="mx-auto text-white/5 mb-6" />
-                <h3 className="text-xl font-bold text-white/60 mb-2">No Matching Clauses</h3>
-                <p className="text-sm text-white/30">Try adjusting your filters to see more analysis.</p>
+              <div style={{ padding: '64px 24px', textAlign: 'center', borderRadius: '14px',
+                border: `2px dashed ${s.border}`, background: s.surfaceDim }}>
+                <Shield size={48} style={{ color: 'var(--text-tertiary)', margin: '0 auto 16px', display: 'block', opacity: 0.3 }} />
+                <h3 style={{ fontFamily: s.serif, fontSize: '20px', fontWeight: '400', color: 'var(--text-secondary)', margin: '0 0 6px' }}>No Matching Clauses</h3>
+                <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '300', color: 'var(--text-tertiary)', margin: 0 }}>
+                  Try adjusting your filters to see more analysis.
+                </p>
               </div>
             ) : (
               clauses.slice(0, visibleCount).map((clause, idx) => {
                 const isRisky = clause.is_risky;
                 const isExpanded = expandedCardId === idx;
-                const severityLevel = clause.severity_score >= 3 ? 'HIGH' : clause.severity_score >= 2 ? 'MEDIUM' : 'LOW';
-                const severityColor = clause.severity_score >= 3 ? 'bg-red-500/20 text-red-400' : clause.severity_score >= 2 ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400';
+                const sevLevel = clause.severity_score >= 3 ? 'High' : clause.severity_score >= 2 ? 'Medium' : 'Low';
+                const sevColor = clause.severity_score >= 3 ? '#ef4444' : clause.severity_score >= 2 ? '#f59e0b' : 'var(--text-secondary)';
+                const borderLeft = isRisky ? `3px solid ${sevColor}` : `3px solid ${isDark ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.2)'}`;
 
                 return (
-                  <div
-                    key={idx}
-                    id={`clause-${idx}`}
-                    className={`glass-card p-0 overflow-hidden transition-all duration-500 border-none group ${isRisky ? 'bg-gradient-to-r from-red-500/[0.03] to-transparent' : 'bg-gradient-to-r from-green-500/[0.02] to-transparent'}`}
-                  >
-                    <div className={`h-full border-l-[3px] ${isRisky ? 'border-red-500/50 group-hover:border-red-500' : 'border-green-500/20 group-hover:border-green-500/50'} transition-all`}>
-                      {isRisky ? (
-                        <div className="p-6">
-                          <div className="flex items-center justify-between mb-5">
-                            <div className="flex items-center gap-4">
-                              <span className={`text-[10px] font-black px-3 py-1 rounded-full tracking-widest shadow-sm ${severityColor}`}>
-                                {severityLevel} RISK
-                              </span>
-                              <span className="text-xs font-black text-white/60 uppercase tracking-widest">{clause.risk_categories?.[0] || 'General Liability'}</span>
-                              <div className="px-2 py-0.5 rounded bg-white/5 border border-white/5 text-[10px] font-bold text-white/40 tracking-tight">
-                                IMPACT: {clause.severity_score?.toFixed(1) || '0.0'}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <div className="text-right">
-                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Confidence</p>
-                                <p className={`text-xs font-black ${clause.confidence === 'High' ? 'text-red-500' : clause.confidence === 'Medium' ? 'text-amber-500' : 'text-green-500'}`}>{clause.confidence}</p>
-                              </div>
-                              {renderConfidenceRing(clause.confidence)}
-                            </div>
+                  <div key={idx} id={`clause-${idx}`} style={{
+                    borderRadius: '14px', overflow: 'hidden', background: 'var(--bg-surface)',
+                    border: `1px solid ${s.border}`, borderLeft, transition: 'all 0.3s ease',
+                  }}>
+                    {isRisky ? (
+                      <div style={{ padding: '20px 24px' }}>
+                        {/* Risky header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{
+                              fontFamily: s.mono, fontSize: '9px', fontWeight: '500', padding: '3px 10px', borderRadius: '6px',
+                              letterSpacing: '0.06em', textTransform: 'uppercase',
+                              background: `${sevColor}15`, color: sevColor, border: `1px solid ${sevColor}25`,
+                            }}>{sevLevel} Risk</span>
+                            <span style={{ fontFamily: s.font, fontSize: '11px', fontWeight: '500', color: 'var(--text-tertiary)',
+                              textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                              {clause.risk_categories?.[0] || 'General'}
+                            </span>
+                            <span style={{ fontFamily: s.mono, fontSize: '10px', color: 'var(--text-tertiary)',
+                              padding: '2px 8px', borderRadius: '4px', background: s.surfaceDim, border: `1px solid ${s.border}` }}>
+                              {clause.severity_score?.toFixed(1) || '0.0'}
+                            </span>
                           </div>
-
-                          <div className="space-y-6">
-                            <p className={`text-lg font-medium leading-relaxed font-serif tracking-tight ${theme === 'light' ? 'text-gray-800' : 'text-white/90'} ${!isExpanded ? 'line-clamp-2' : ''}`}>
-                              {clause.explanation}
-                            </p>
-
-                            {isExpanded && (
-                              <div className="pt-6 border-t border-white/5 space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                  <div className="space-y-3">
-                                    <h4 className="text-[10px] font-black text-[#007AFF] uppercase tracking-[0.2em] flex items-center gap-2">
-                                      <FileText size={12} />
-                                      Source Provision
-                                    </h4>
-                                    <div className="p-6 rounded-2xl bg-black/40 border border-white/5 text-sm text-white/50 font-mono leading-relaxed max-h-80 overflow-y-auto selection:bg-[#007AFF]/30">
-                                      {clause.text}
-                                    </div>
-                                  </div>
-                                  <div className="space-y-6">
-                                    {clause.recommendation && (
-                                      <div className="space-y-3">
-                                        <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                                          <Zap size={12} />
-                                          Recommendation
-                                        </h4>
-                                        <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-sm text-amber-100/70 leading-relaxed shadow-inner">
-                                          {clause.recommendation}
-                                        </div>
-                                      </div>
-                                    )}
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 transition-colors hover:bg-blue-500/10">
-                                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Risk category</p>
-                                        <p className="text-xs text-blue-100/50 leading-snug">{(clause.risk_categories || ['General']).join(', ')}</p>
-                                      </div>
-                                      <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/10 transition-colors hover:bg-purple-500/10">
-                                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-1">Confidence</p>
-                                        <p className="text-xs text-purple-100/50 leading-snug">{clause.confidence || 'Not provided'}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5">
-                            <div className="flex items-center gap-3">
-                              <div className="flex -space-x-2">
-                                {[1, 2, 3].map(i => (
-                                  <div key={i} className="w-6 h-6 rounded-full border border-[#0a0a0a] bg-white/5 flex items-center justify-center">
-                                    <Shield size={10} className="text-white/20" />
-                                  </div>
-                                ))}
-                              </div>
-                              <span className="text-[10px] text-white/30 font-black uppercase tracking-widest">Analysis context</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <p style={{ fontFamily: s.mono, fontSize: '8px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
+                                textTransform: 'uppercase', margin: '0 0 2px' }}>Confidence</p>
+                              <p style={{ fontFamily: s.font, fontSize: '11px', fontWeight: '600', margin: 0,
+                                color: clause.confidence === 'High' ? '#ef4444' : clause.confidence === 'Medium' ? '#f59e0b' : '#22c55e' }}>
+                                {clause.confidence}
+                              </p>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onExplainRiskInChat && onExplainRiskInChat(clause, idx);
-                                  onToggleChat && onToggleChat();
-                                }}
-                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#007AFF] text-white text-[11px] font-black uppercase tracking-tighter hover:bg-[#0056cc] transition-all shadow-[0_8px_20px_-8px_rgba(0,122,255,0.4)] active:scale-95"
-                              >
-                                <MessageSquare size={14} />
-                                Ask about this clause
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setExpandedCardId(isExpanded ? null : idx);
-                                }}
-                                className={`px-5 py-2.5 rounded-xl border text-[11px] font-black uppercase tracking-tighter transition-all ${isExpanded ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:bg-white/10'}`}
-                              >
-                                {isExpanded ? 'Hide details' : 'Show details'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-5 flex items-center justify-between group/safe transition-all hover:bg-green-500/[0.02]">
-                          <div className="flex items-center gap-5">
-                            <div className="w-10 h-10 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 shadow-sm border border-green-500/20 group-hover/safe:scale-110 transition-transform">
-                              <Check size={20} strokeWidth={3} />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">Clause {idx + 1}</p>
-                              <p className="text-base text-white/40 italic font-medium truncate max-w-2xl group-hover/safe:text-white/60 transition-colors">"{clause.text?.slice(0, 100)}..."</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <span className="text-[10px] font-black text-green-500/40 uppercase tracking-widest border border-green-500/20 px-3 py-1 rounded-full">No risk flag</span>
                             {renderConfidenceRing(clause.confidence)}
                           </div>
                         </div>
-                      )}
-                    </div>
+
+                        {/* Explanation */}
+                        <p style={{
+                          fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '400', lineHeight: '1.6',
+                          color: 'var(--text-primary)', margin: '0 0 4px', letterSpacing: '-0.01em',
+                          ...(isExpanded ? {} : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
+                        }}>{clause.explanation}</p>
+
+                        {/* Expanded details */}
+                        {isExpanded && (
+                          <div style={{ paddingTop: '16px', marginTop: '16px', borderTop: `1px solid ${s.border}`,
+                            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div>
+                              <h4 style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.1em',
+                                textTransform: 'uppercase', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <FileText size={11} /> Source Provision
+                              </h4>
+                              <div style={{ padding: '16px', borderRadius: '10px', background: s.surfaceDim,
+                                border: `1px solid ${s.border}`, fontFamily: s.mono, fontSize: '12px',
+                                color: 'var(--text-secondary)', lineHeight: '1.7', maxHeight: '240px', overflowY: 'auto' }}>
+                                {clause.text}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {clause.recommendation && (
+                                <div>
+                                  <h4 style={{ fontFamily: s.mono, fontSize: '9px', color: '#f59e0b', letterSpacing: '0.1em',
+                                    textTransform: 'uppercase', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Zap size={11} /> Recommendation
+                                  </h4>
+                                  <div style={{ padding: '16px', borderRadius: '10px', background: 'rgba(245,158,11,0.04)',
+                                    border: '1px solid rgba(245,158,11,0.1)', fontFamily: s.font, fontSize: '13px',
+                                    fontWeight: '300', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                                    {clause.recommendation}
+                                  </div>
+                                </div>
+                              )}
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                <div style={{ padding: '12px', borderRadius: '8px', background: s.surfaceDim, border: `1px solid ${s.border}` }}>
+                                  <p style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+                                    textTransform: 'uppercase', margin: '0 0 4px' }}>Category</p>
+                                  <p style={{ fontFamily: s.font, fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
+                                    {(clause.risk_categories || ['General']).join(', ')}
+                                  </p>
+                                </div>
+                                <div style={{ padding: '12px', borderRadius: '8px', background: s.surfaceDim, border: `1px solid ${s.border}` }}>
+                                  <p style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+                                    textTransform: 'uppercase', margin: '0 0 4px' }}>Confidence</p>
+                                  <p style={{ fontFamily: s.font, fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
+                                    {clause.confidence || 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Footer actions */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          marginTop: '16px', paddingTop: '14px', borderTop: `1px solid ${s.border}` }}>
+                          <span style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                            Clause {idx + 1}
+                          </span>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={e => { e.stopPropagation(); onExplainRiskInChat?.(clause, idx); onToggleChat?.(); }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 14px', borderRadius: '8px',
+                                background: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)', border: 'none',
+                                color: isDark ? '#000' : '#fff', fontFamily: s.font, fontSize: '11px', fontWeight: '500',
+                                cursor: 'pointer', transition: 'all 0.15s',
+                              }}>
+                              <MessageSquare size={12} /> Ask about this
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); setExpandedCardId(isExpanded ? null : idx); }}
+                              style={{
+                                padding: '6px 14px', borderRadius: '8px', border: `1px solid ${s.border}`,
+                                background: isExpanded ? s.surfaceHover : s.surfaceDim,
+                                color: 'var(--text-secondary)', fontFamily: s.font, fontSize: '11px', fontWeight: '400',
+                                cursor: 'pointer', transition: 'all 0.15s',
+                              }}>
+                              {isExpanded ? 'Hide details' : 'Show details'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Safe clause */
+                      <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(34,197,94,0.08)',
+                            border: '1px solid rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <Check size={16} strokeWidth={2.5} style={{ color: '#22c55e' }} />
+                          </div>
+                          <div>
+                            <p style={{ fontFamily: s.mono, fontSize: '9px', color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+                              textTransform: 'uppercase', margin: '0 0 3px' }}>Clause {idx + 1}</p>
+                            <p style={{ fontFamily: s.font, fontSize: '13px', fontWeight: '300', fontStyle: 'italic',
+                              color: 'var(--text-secondary)', margin: 0, maxWidth: '600px',
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              "{clause.text?.slice(0, 100)}…"
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontFamily: s.mono, fontSize: '9px', color: 'rgba(34,197,94,0.5)', letterSpacing: '0.06em',
+                            textTransform: 'uppercase', padding: '3px 10px', borderRadius: '6px',
+                            border: '1px solid rgba(34,197,94,0.15)' }}>No risk flag</span>
+                          {renderConfidenceRing(clause.confidence)}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
             )}
           </div>
+
           {clauses.length > visibleCount && (
-            <div className="mt-8 flex justify-center">
-              <button
-                onClick={() => setVisibleCount(prev => prev + 50)}
-                className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all shadow-lg"
-              >
-                Load More Clauses
-              </button>
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+              <button onClick={() => setVisibleCount(p => p + 50)} style={{
+                padding: '10px 24px', borderRadius: '10px', background: s.surfaceDim,
+                border: `1px solid ${s.border}`, fontFamily: s.font, fontSize: '12px', fontWeight: '500',
+                color: 'var(--text-secondary)', cursor: 'pointer', transition: 'all 0.15s',
+              }}>Load More Clauses</button>
             </div>
           )}
         </div>
