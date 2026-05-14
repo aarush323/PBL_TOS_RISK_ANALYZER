@@ -1,18 +1,13 @@
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { Scale, LogOut, HelpCircle, Plus, Sun, Moon } from 'lucide-react';
-import { useTheme } from './ThemeProvider.jsx';
+import { useTheme } from './theme-context.js';
 import { getRiskClass } from '../utils/colorUtils';
 
 export default function Sidebar({
-  activeView, onNavigate, user, onLogout,
+  user, onLogout,
   historyItems, onOpenHistory, isHistoryLoading, selectedHistoryId, onNewAnalysis
 }) {
   const { theme, toggle } = useTheme();
-  const location = useLocation();
-
-  // Determine active state from route path
-  const currentPath = location.pathname.replace('/app', '').replace('/', '') || 'dashboard';
 
   const truncateLabel = (label, maxLen = 20) => {
     if (!label) return 'Untitled';

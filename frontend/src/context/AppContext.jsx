@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { marked } from 'marked';
 import { apiFetch, apiFetchJson, withJsonHeaders } from '@/shared/api/client';
@@ -6,19 +6,12 @@ import { getAccessToken } from '@/shared/api/auth-storage';
 import { getRiskScore } from '@/features/analysis/model/score';
 import { useAuthActions } from '@/features/auth/hooks/useAuthActions';
 import { useHistoryActions } from '@/features/history/hooks/useHistoryActions';
+import { AppContext } from './app-context.js';
 
 const parseMarkdown = (content) => {
     try { return marked.parse(content || ''); }
     catch { return content || ''; }
 };
-
-const AppContext = createContext(null);
-
-export function useAppContext() {
-    const ctx = useContext(AppContext);
-    if (!ctx) throw new Error('useAppContext must be used within AppProvider');
-    return ctx;
-}
 
 export function AppProvider({ children }) {
     const navigate = useNavigate();
@@ -192,7 +185,7 @@ export function AppProvider({ children }) {
                 setComparisonData(data.result);
                 navigate('/app/compare');
             }
-        } catch (err) { addToast('Failed to load comparison', true); }
+        } catch { addToast('Failed to load comparison', true); }
     };
 
     // ─── Chat ───

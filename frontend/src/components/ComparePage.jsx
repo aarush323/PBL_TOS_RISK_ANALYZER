@@ -1,9 +1,8 @@
 import React from 'react';
 import { 
-  Scale, Plus, MessageSquare, ArrowLeft, Shield, 
-  Trophy, FileText, Info, Hash, AlertTriangle, ChevronRight, Zap
+  Scale, Plus, MessageSquare, ArrowLeft,
+  Trophy, Hash, ChevronRight, Zap
 } from 'lucide-react';
-import { useTheme } from './ThemeProvider.jsx';
 
 export default function ComparePage({
   comparisonData,
@@ -15,18 +14,10 @@ export default function ComparePage({
   onNewComparison,
   onDiscussInChat,
 }) {
-  const { theme } = useTheme();
-
   const getRiskColor = (score) => {
     if (score >= 60) return 'text-red-500';
     if (score >= 30) return 'text-amber-500';
     return 'text-emerald-500';
-  };
-
-  const getRiskBg = (score) => {
-    if (score >= 60) return 'bg-red-500/10 border-red-500/20';
-    if (score >= 30) return 'bg-amber-500/10 border-amber-500/20';
-    return 'bg-emerald-500/10 border-emerald-500/20';
   };
 
   if (isComparing) {

@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 export default function LandingPage({ onGetStarted }) {
     const navigate = useNavigate();
 
-    const handleAnalyze = (url) => {
+    const handleAnalyze = () => {
         if (onGetStarted) {
             onGetStarted();
         } else {

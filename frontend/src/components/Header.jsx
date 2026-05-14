@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Search, Bell, X } from 'lucide-react';
 
-export default function Header({ onNewAnalysis, activeView, analysisResult, hasActiveChat, onNavigate, onHighlightClause }) {
+export default function Header({ activeView, analysisResult, hasActiveChat, onNavigate, onHighlightClause }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef(null);

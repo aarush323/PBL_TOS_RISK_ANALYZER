@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, AlertTriangle, Shield, Lock, Eye, DollarSign, UserCheck, Scale, MessageSquare, Check, Activity, FileText, BrainCircuit, Zap, Info } from 'lucide-react';
-import { useTheme } from './ThemeProvider.jsx';
+import { Filter, AlertTriangle, Activity, Info } from 'lucide-react';
+import { useTheme } from './theme-context.js';
 import {
   filterClauses,
   getSeveritySeries,
@@ -19,7 +19,6 @@ export default function ClausesPage({
     severity: 'all',
     confidence: 'all',
   });
-  const [selectedClause, setSelectedClause] = useState(null);
   const [expandedCardId, setExpandedCardId] = useState(null); // NEW: expandable state
 
   const clauses = useMemo(() => filterClauses(analysisResult, filters), [analysisResult, filters]);
@@ -27,28 +26,6 @@ export default function ClausesPage({
 
   const totalClauses = analysisResult?.clauses?.length || 0;
   const filteredCount = clauses.length;
-  const progress = totalClauses > 0 ? ((totalClauses - filteredCount) / totalClauses) * 100 : 0;
-
-  const getCategoryIcon = (category) => {
-    const cat = category?.toLowerCase() || '';
-    if (cat.includes('legal')) return <Scale size={14} />;
-    if (cat.includes('privacy')) return <Eye size={14} />;
-    if (cat.includes('security')) return <Lock size={14} />;
-    if (cat.includes('financial')) return <DollarSign size={14} />;
-    if (cat.includes('user')) return <UserCheck size={14} />;
-    return <Shield size={14} />;
-  };
-
-  const getCategoryColor = (category) => {
-    const cat = category?.toLowerCase() || '';
-    if (cat.includes('legal')) return 'text-red-500 bg-red-500/10 border-red-500/30';
-    if (cat.includes('privacy')) return 'text-amber-500 bg-amber-500/10 border-amber-500/30';
-    if (cat.includes('security')) return 'text-blue-500 bg-blue-500/10 border-blue-500/30';
-    if (cat.includes('financial')) return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30';
-    if (cat.includes('user')) return 'text-gray-500 bg-gray-500/10 border-gray-500/30';
-    return 'text-white/50 bg-white/5 border-white/10';
-  };
-
   const renderConfidenceRing = (confidence) => {
     const confValue = confidence === 'High' ? 90 : confidence === 'Medium' ? 60 : 30;
     const color = confidence === 'High' ? '#ef4444' : confidence === 'Medium' ? '#f59e0b' : '#22c55e';

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { X } from 'lucide-react';
-import { useAppContext } from '@/context/AppContext';
+import { useAppContext } from '@/context/app-context.js';
 import Sidebar from '@/components/Sidebar.jsx';
 import Header from '@/components/Header.jsx';
 import ChatPopup from '@/components/ChatPopup.jsx';
@@ -29,7 +29,7 @@ export default function AppLayout() {
         // Compare
         showCompareSelector, setShowCompareSelector,
         compareDocA, setCompareDocA, compareDocB, setCompareDocB,
-        isComparing, setIsComparing, comparisonData, setComparisonData,
+        setIsComparing, setComparisonData,
         performComparison,
     } = useAppContext();
 
@@ -48,14 +48,14 @@ export default function AppLayout() {
 
             <AnimatePresence>
                 {showSourcePopup && (
-                    <motion.div
+                    <Motion.div
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setShowSourcePopup(false)}
                     >
-                        <motion.div
+                        <Motion.div
                             className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 max-w-2xl w-full mx-4"
                             initial={{ y: 20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
@@ -71,8 +71,8 @@ export default function AppLayout() {
                             <div className="bg-black/20 p-4 rounded-lg text-sm text-white/60 font-mono max-h-96 overflow-y-auto">
                                 {sourceInfo.value || 'No content loaded.'}
                             </div>
-                        </motion.div>
-                    </motion.div>
+                        </Motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
 
@@ -125,19 +125,19 @@ export default function AppLayout() {
                 <main className="flex-1 overflow-y-auto">
                     <ErrorBoundary>
                         <AnimatePresence mode="wait">
-                            <motion.section
+                            <Motion.section
                                 key={location.pathname}
                                 initial={viewMotion.initial}
                                 animate={viewMotion.animate}
                                 exit={viewMotion.exit}
                             >
                                 <Outlet />
-                            </motion.section>
+                            </Motion.section>
                         </AnimatePresence>
 
                         {showCompareSelector && (
                             <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998] flex items-center justify-center p-4">
-                                <motion.div
+                                <Motion.div
                                     className="bg-[#0a0a0a] border border-white/10 rounded-xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto"
                                     initial={{ scale: 0.95, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
@@ -210,7 +210,7 @@ export default function AppLayout() {
                                             Compare Now
                                         </button>
                                     </div>
-                                </motion.div>
+                                </Motion.div>
                             </div>
                         )}
                     </ErrorBoundary>

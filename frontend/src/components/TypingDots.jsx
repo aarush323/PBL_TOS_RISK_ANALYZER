@@ -1,11 +1,11 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 
 export default function TypingDots() {
   return (
     <span className="flex items-center gap-1.5" aria-label="Assistant is typing">
       {[0, 1, 2].map((i) => (
-        <motion.span
+        <Motion.span
           key={i}
           className="w-1.5 h-1.5 rounded-full bg-white/60"
           initial={{ y: 0, opacity: 0.3 }}
@@ -16,4 +16,3 @@ export default function TypingDots() {
     </span>
   );
 }
-

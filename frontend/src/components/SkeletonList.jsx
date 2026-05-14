@@ -1,11 +1,11 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 
 export default function SkeletonList({ rows = 5 }) {
   return (
     <div className="flex flex-col gap-2" aria-hidden="true">
       {Array.from({ length: rows }).map((_, idx) => (
-        <motion.div
+        <Motion.div
           key={idx}
           className="h-10 bg-white/5 rounded-lg"
           initial={{ opacity: 0.35 }}
@@ -16,4 +16,3 @@ export default function SkeletonList({ rows = 5 }) {
     </div>
   );
 }
-

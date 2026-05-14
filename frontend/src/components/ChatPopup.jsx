@@ -38,11 +38,9 @@ export default function ChatPopup({
       };
       pollStatus();
       interval = setInterval(pollStatus, 10000);
-    } else {
-      setIndexStatus(null);
     }
     return () => { if (interval) clearInterval(interval); };
-  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   const suggestions = [
     "summarize the risks",

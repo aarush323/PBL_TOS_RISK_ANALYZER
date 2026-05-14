@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef, useState } from 'react';
+import React, { createContext, useContext, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useTextareaResize } from '@/hooks/use-textarea-resize';
 import { Button } from '@/components/ui/button';

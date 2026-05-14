@@ -8,7 +8,6 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { apiFetchJson } from '@/shared/api/client';
 import { getAccessToken } from '@/shared/api/auth-storage';
-import { useTheme } from './ThemeProvider.jsx';
 import EmptyState from './EmptyState.jsx';
 
 const SECTION_LABELS = [
@@ -22,12 +21,9 @@ const SECTION_LABELS = [
 
 export default function ReportsPage({ 
   analysisResult, 
-  sourceInfo, 
-  onNewAnalysis, 
   analysisJobId, 
   token 
 }) {
-  const { theme } = useTheme();
   const [report, setReport] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeSection, setActiveSection] = useState('summary');
@@ -41,24 +37,20 @@ export default function ReportsPage({
     return 'text-emerald-500';
   };
 
-  const getRiskBg = (score) => {
-    if (score >= 60) return 'bg-red-500/10 border-red-500/20';
-    if (score >= 30) return 'bg-amber-500/10 border-amber-500/20';
-    return 'bg-emerald-500/10 border-emerald-500/20';
-  };
-
   useEffect(() => {
-    if (analysisJobId && !report && !isGenerating) {
-      const activeToken = token || getAccessToken();
-      apiFetchJson(`/report/${analysisJobId}`, { token: activeToken })
-        .then(({ res, data }) => {
-          if (res.ok && data?.status === 'complete' && data.report) {
-            setReport(data.report);
-          }
-        })
-        .catch(() => { });
+    if (!analysisJobId || report || isGenerating) {
+      return;
     }
-  }, [analysisJobId, token]);
+
+    const activeToken = token || getAccessToken();
+    apiFetchJson(`/report/${analysisJobId}`, { token: activeToken })
+      .then(({ res, data }) => {
+        if (res.ok && data?.status === 'complete' && data.report) {
+          setReport(data.report);
+        }
+      })
+      .catch(() => { });
+  }, [analysisJobId, token, report, isGenerating]);
 
   const generateReport = async () => {
     if (!analysisJobId) return;

@@ -4,8 +4,8 @@ import {
   Download, ArrowRight, BrainCircuit, Zap, Activity,
   ShieldAlert, ShieldCheck, Target, TrendingUp, Info
 } from 'lucide-react';
-import { useTheme } from './ThemeProvider.jsx';
-import { motion } from 'framer-motion';
+import { useTheme } from './theme-context.js';
+import { motion as Motion } from 'framer-motion';
 import { getScoreColor } from '../utils/colorUtils';
 import {
   normalizeRiskBreakdown,
@@ -43,15 +43,11 @@ export default function OverviewPage({
   sourceInfo,
   calculateScore,
   onNavigate,
-  historyItems,
 }) {
   const { theme } = useTheme();
   const score = typeof calculateScore === 'function' ? calculateScore() : 0;
   const totalClauses = analysisResult?.total_clauses || 0;
   const riskyClauses = analysisResult?.risky_clause_count || 0;
-  const nlpCleared = Math.max(0, totalClauses - riskyClauses);
-  const avgSeverity = analysisResult?.avg_severity_score || 0;
-  const totalRiskScore = analysisResult?.total_severity_score || 0;
   const overallRisk = analysisResult?.overall_risk || 'Low';
 
   const breakdownArray = React.useMemo(
@@ -70,17 +66,9 @@ export default function OverviewPage({
   );
 
 
-  const getScoreDescription = () => {
-    if (score <= 20) return "Very few issues were flagged. This document appears low-risk.";
-    if (score <= 40) return "Some issues were flagged and are worth reviewing.";
-    if (score <= 65) return "Several clauses were flagged. Review carefully before agreeing.";
-    return "Many high-severity clauses were flagged. Review with caution before signing.";
-  };
-
   const renderRadarChart = () => {
     const isLight = theme === 'light';
     const gridStroke = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';
-    const textFill = isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)';
     const axisStroke = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
     const maxCount = Math.max(...(breakdownArray.map(c => Number(c.count) || 0) || []), 1);
     const categories = ['Legal', 'Privacy', 'Security', 'Financial', 'User'];
@@ -176,7 +164,7 @@ export default function OverviewPage({
                 strokeWidth="10"
                 strokeLinecap="round"
               />
-              <motion.path
+              <Motion.path
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: score / 100 }}
                 transition={{ duration: 1.5, ease: "easeOut" }}
@@ -207,7 +195,7 @@ export default function OverviewPage({
         {/* Generated summary */}
         <div className="col-span-12 lg:col-span-7 relative group overflow-hidden rounded-3xl">
           <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-[0.08] dark:opacity-[0.15]" />
-          <motion.div
+          <Motion.div
             animate={{
               scale: [1, 1.1, 1],
               rotate: [0, 5, 0],
@@ -236,7 +224,7 @@ export default function OverviewPage({
                 </div>
               </div>
 
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-4"
@@ -244,7 +232,7 @@ export default function OverviewPage({
                 <p className={`text-xl font-medium leading-relaxed italic tracking-tight font-serif ${theme === 'light' ? 'text-gray-800' : 'text-indigo-50/90'}`}>
                   "{analysisResult?.professional_summary || analysisResult?.executive_summary || "Analysis is complete. Review the flagged clauses and their wording before relying on the score."}"
                 </p>
-              </motion.div>
+              </Motion.div>
 
               {(analysisResult?.key_findings || []).length > 0 && (
                 <div className="mt-6 flex flex-wrap gap-2">
@@ -358,7 +346,7 @@ export default function OverviewPage({
                       <span className={`text-[10px] font-black ${mutedTextClass}`}>{count} Risks ({Math.round(pct)}%)</span>
                     </div>
                     <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                      <motion.div
+                      <Motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
                         transition={{ duration: 1, delay: i * 0.1 }}
@@ -446,7 +434,7 @@ export default function OverviewPage({
                   </div>
                 </div>
                 <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                  <motion.div
+                  <Motion.div
                     className="h-full bg-gradient-to-r from-blue-500 to-indigo-600"
                     initial={{ width: 0 }}
                     animate={{ width: `${deepScanPct}%` }}
@@ -473,7 +461,7 @@ export default function OverviewPage({
               <div className="relative">
                 <svg className="w-44 h-44 transform -rotate-90">
                   <circle cx="88" cy="88" r="75" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
-                  <motion.circle
+                  <Motion.circle
                     cx="88" cy="88" r="75" stroke="currentColor" strokeWidth="12" strokeDasharray="471" fill="transparent"
                     initial={{ strokeDashoffset: 471 }}
                     animate={{ strokeDashoffset: 471 - (471 * deepScanPct) / 100 }}

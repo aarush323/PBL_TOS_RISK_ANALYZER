@@ -1,6 +1,6 @@
 import React from 'react';
 import { Scale, Menu, ArrowRight } from 'lucide-react';
-import { useAppContext } from '@/context/AppContext';
+import { useAppContext } from '@/context/app-context.js';
 
 export default function Navbar({ onGetStarted }) {
     const [mobileOpen, setMobileOpen] = React.useState(false);
