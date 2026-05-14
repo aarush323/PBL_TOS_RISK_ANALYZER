@@ -805,7 +805,9 @@ async def chat(
                 body.message, session.document_text, conversation, clauses
             )
         else:
-            reply = await chat_with_document(session.document_text, conversation)
+            reply = await chat_with_document(
+                session.document_text, conversation, body.message
+            )
         logger.info(f"[CHAT] Response generated via {'RAG' if use_rag else 'full-doc'} ({len(reply)} chars)")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")

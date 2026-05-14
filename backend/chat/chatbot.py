@@ -214,13 +214,19 @@ def truncate_document(text: str) -> str:
     return text[:MAX_CONTEXT_CHARS] + "\n\n... [Document truncated for context length]"
 
 
-async def chat_with_document(document_text: str, conversation: list[dict]) -> str:
+async def chat_with_document(
+    document_text: str,
+    conversation: list[dict],
+    query: str | None = None,
+) -> str:
     """
     Send a chat request to the LLM with the document as context.
 
     Args:
         document_text: The full extracted text of the ToS document
         conversation: List of {"role": "user"|"assistant", "content": "..."} messages
+        query: Current user question. Passed separately because callers may
+            persist chat history after the model response is generated.
 
     Returns:
         The assistant's response string
@@ -245,6 +251,8 @@ DOCUMENT:
     recent = conversation[-20:]
     for msg in recent:
         messages.append({"role": msg["role"], "content": msg["content"]})
+    if query:
+        messages.append({"role": "user", "content": query})
 
     cerebras_api_key = os.environ.get("CEREBRAS_API_KEY")
 

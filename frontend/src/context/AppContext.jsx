@@ -70,6 +70,10 @@ export function AppProvider({ children }) {
     const [isCompareHistoryLoading, setIsCompareHistoryLoading] = useState(false);
 
     const pollRetryCount = useRef(0);
+    const sessionIdRef = useRef(sessionId);
+    const chatInFlightRef = useRef(false);
+    const activeChatRequestRef = useRef(0);
+    const chatAbortControllerRef = useRef(null);
 
     // ─── Toasts ───
 
@@ -120,6 +124,17 @@ export function AppProvider({ children }) {
             setCompareHistory([]);
         }
     }, [token, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        sessionIdRef.current = sessionId;
+        if (chatAbortControllerRef.current) {
+            chatAbortControllerRef.current.abort();
+            chatAbortControllerRef.current = null;
+        }
+        chatInFlightRef.current = false;
+        activeChatRequestRef.current += 1;
+        setIsChatTyping(false);
+    }, [sessionId]);
 
     // ─── Auth ───
 
@@ -407,20 +422,33 @@ export function AppProvider({ children }) {
 
     const sendChat = async () => {
         const msg = chatInput.trim();
-        if (!msg || !sessionId || isChatTyping) return;
+        const requestSessionId = sessionId;
+        if (!msg || !requestSessionId || isChatTyping || chatInFlightRef.current) return;
 
+        chatInFlightRef.current = true;
+        const requestId = activeChatRequestRef.current + 1;
+        activeChatRequestRef.current = requestId;
+        const abortController = new AbortController();
+        chatAbortControllerRef.current = abortController;
         setChatInput('');
-        const newChat = [...chatMessages, { role: 'user', content: msg }];
-        setChatMessages(newChat);
+        setChatMessages(prev => [...prev, { role: 'user', content: msg }]);
         setIsChatTyping(true);
+
+        const appendReplyIfCurrent = (content) => {
+            if (activeChatRequestRef.current !== requestId || sessionIdRef.current !== requestSessionId) return false;
+            setChatMessages(prev => [...prev, { role: 'bot', content, html: parseMarkdown(content) }]);
+            return true;
+        };
+
         try {
             const res = await apiFetch('/chat', {
                 method: 'POST',
                 headers: withJsonHeaders(),
-                body: JSON.stringify({ session_id: sessionId, message: msg, history: [] }),
+                body: JSON.stringify({ session_id: requestSessionId, message: msg, history: [] }),
                 token,
                 retries: 3,
-                retryDelayMs: 3000
+                retryDelayMs: 3000,
+                signal: abortController.signal
             });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
@@ -429,25 +457,32 @@ export function AppProvider({ children }) {
             const data = await res.json();
 
             if (data.comparison_result && data.structured) {
-                setComparisonData(data.structured);
-                const replyText = (data.reply || '') + "\n\n💡 I've loaded the comparison details. Switch to the Compare view for the full side-by-side analysis!";
-                setChatMessages([...newChat, { role: 'bot', content: replyText, html: parseMarkdown(replyText) }]);
-                addToast('Comparison complete! Check the Compare page for details.');
-                if (sessionId) loadCompareHistory(sessionId);
+                const replyText = (data.reply || '') + "\n\nI've loaded the comparison details. Switch to the Compare view for the full side-by-side analysis.";
+                if (appendReplyIfCurrent(replyText)) {
+                    setComparisonData(data.structured);
+                    addToast('Comparison complete! Check the Compare page for details.');
+                    loadCompareHistory(requestSessionId);
+                }
             } else if (data.comparison_needed) {
-                setChatMessages([...newChat, { role: 'bot', content: data.reply || '', html: parseMarkdown(data.reply || '') }]);
-                if (data.comparison_options) setShowCompareSelector(true);
+                if (appendReplyIfCurrent(data.reply || '') && data.comparison_options) {
+                    setShowCompareSelector(true);
+                }
             } else {
-                setChatMessages([...newChat, { role: 'bot', content: data.reply || '', html: parseMarkdown(data.reply || '') }]);
+                appendReplyIfCurrent(data.reply || '');
             }
         } catch (err) {
+            if (err.name === 'AbortError') return;
             console.error(err);
             const errMsg = err.message && err.message !== 'Failed to fetch'
                 ? `Sorry, something went wrong: ${err.message}`
                 : "Sorry, I couldn't connect. The server may be waking up — please try again in a few seconds.";
-            setChatMessages([...newChat, { role: 'bot', content: errMsg, html: parseMarkdown(errMsg) }]);
+            appendReplyIfCurrent(errMsg);
         } finally {
-            setIsChatTyping(false);
+            if (activeChatRequestRef.current === requestId) {
+                chatInFlightRef.current = false;
+                chatAbortControllerRef.current = null;
+                setIsChatTyping(false);
+            }
         }
     };
 
