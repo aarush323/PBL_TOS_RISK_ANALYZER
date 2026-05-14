@@ -15,9 +15,15 @@ export default function ComparePage({
   onDiscussInChat,
 }) {
   const getRiskColor = (score) => {
-    if (score >= 60) return 'text-red-500';
-    if (score >= 30) return 'text-amber-500';
+    if (score >= 50) return 'text-red-500';
+    if (score >= 20) return 'text-amber-500';
     return 'text-emerald-500';
+  };
+
+  const getRiskBg = (score) => {
+    if (score >= 50) return 'bg-red-500/10 border-red-500/20';
+    if (score >= 20) return 'bg-amber-500/10 border-amber-500/20';
+    return 'bg-emerald-500/10 border-emerald-500/20';
   };
 
   if (isComparing) {

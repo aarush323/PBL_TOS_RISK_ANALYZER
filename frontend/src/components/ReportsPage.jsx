@@ -32,9 +32,15 @@ export default function ReportsPage({
   const riskScore = report?.report_metadata?.risk_score ?? analysisResult?.risk_score ?? 0;
   
   const getRiskColor = (score) => {
-    if (score >= 60) return 'text-red-500';
-    if (score >= 30) return 'text-amber-500';
+    if (score >= 50) return 'text-red-500';
+    if (score >= 20) return 'text-amber-500';
     return 'text-emerald-500';
+  };
+
+  const getRiskBg = (score) => {
+    if (score >= 50) return 'bg-red-500/10 border-red-500/20';
+    if (score >= 20) return 'bg-amber-500/10 border-amber-500/20';
+    return 'bg-emerald-500/10 border-emerald-500/20';
   };
 
   useEffect(() => {

@@ -39,7 +39,7 @@ CRITICAL_PHRASES = {
 
 def compute_overall_risk(risk_score: int) -> str:
     """Label risk based on the 0-100 risk_score."""
-    if risk_score >= 60:
+    if risk_score >= 55:
         return "High"
     if risk_score >= 30:
         return "Medium"
@@ -192,7 +192,7 @@ def analyze_document(extraction_result: dict, job_id: str = None) -> dict:
             if cat in risk_breakdown:
                 risk_breakdown[cat] += 1
 
-    risk_score = compute_risk_score(risky, len(clauses))
+    risk_score = compute_risk_score(risky)
     overall_risk = compute_overall_risk(risk_score)
 
     total_severity = sum(c.get("severity_score", 0) for c in risky)
@@ -286,11 +286,11 @@ def aggregate_signals(results: list[dict], risky: list[dict]) -> dict:
     }
     for r in risky:
         sev = r.get("severity_score", 0)
-        if sev >= 7:
+        if sev >= 4:
             severity_distribution["critical"] += 1
-        elif sev >= 5:
-            severity_distribution["high"] += 1
         elif sev >= 3:
+            severity_distribution["high"] += 1
+        elif sev >= 2:
             severity_distribution["medium"] += 1
         else:
             severity_distribution["low"] += 1

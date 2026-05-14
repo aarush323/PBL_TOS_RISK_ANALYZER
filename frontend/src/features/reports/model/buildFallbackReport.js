@@ -108,12 +108,12 @@ export const buildFallbackReport = ({ analysisResult, sourceInfo }) => {
       immediate_actions: riskLevel === 'High'
         ? [`Review all ${totalFlagged} flagged clauses with legal counsel`, 'Do not sign until high-severity clauses are amended', ...topCategories.slice(0, 2).map(c => `Prioritize ${c} clauses for negotiation`)]
         : riskLevel === 'Medium'
-          ? ['Review clauses with severity > 5.0 with legal counsel', ...topCategories.slice(0, 1).map(c => `Focus on ${c} provisions`)]
+          ? ['Review high-severity clauses (score ≥ 3) with legal counsel', ...topCategories.slice(0, 1).map(c => `Focus on ${c} provisions`)]
           : ['No immediate critical actions required'],
-      negotiate_before_signing: riskyClauses.filter(c => (c.severity_score || 0) >= 5).length > 0
-        ? [`${riskyClauses.filter(c => (c.severity_score || 0) >= 5).length} clauses with severity ≥ 5.0 should be negotiated`, 'Request written amendments for high-severity provisions', 'Consider adding protective addendum clauses']
+      negotiate_before_signing: riskyClauses.filter(c => (c.severity_score || 0) >= 3).length > 0
+        ? [`${riskyClauses.filter(c => (c.severity_score || 0) >= 3).length} high-severity clauses (score ≥ 3) should be negotiated`, 'Request written amendments for high-severity provisions', 'Consider adding protective addendum clauses']
         : ['No high-severity clauses requiring negotiation'],
-      monitor_and_accept: [`${riskyClauses.filter(c => (c.severity_score || 0) < 5).length} low-severity clauses can be accepted with awareness`, 'Set calendar reminders for ToS revision dates', 'Re-analyze if the provider updates their terms'],
+      monitor_and_accept: [`${riskyClauses.filter(c => (c.severity_score || 0) < 3).length} low-severity clauses can be accepted with awareness`, 'Set calendar reminders for ToS revision dates', 'Re-analyze if the provider updates their terms'],
       overall_recommendation: riskLevel === 'High' ? 'Do Not Sign Without Amendment' : riskLevel === 'Medium' ? 'Negotiate Key Clauses' : 'Acceptable — Sign with Awareness',
     },
     analysis_transparency: {

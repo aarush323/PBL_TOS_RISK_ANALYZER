@@ -1,61 +1,40 @@
 """
-scoring.py — Unified Risk Score computation for Jurist AI.
+scoring.py — Risk Score computation for Jurist AI.
 
-This is the single source of truth for the Risk Score (0-100).
-  0  = no risk at all (clean document)
-  100 = maximum possible risk
+The score is an asymptotic function of severity-weighted contributions from every
+flagged clause:  score = 100 * raw / (raw + 75).  This avoids the hard cap that
+flattened all documents with many risky clauses to 100.
 
-The formula is based on Weighted Risk Density (WRD):
-  1. Each risky clause contributes a normalised severity:
-       norm = clause.severity_score / MAX_SEVERITY_PER_CLAUSE
-     where MAX_SEVERITY_PER_CLAUSE = 8.5 (High confidence + all 5 categories)
-  2. Sum those contributions and divide by total_clauses (not just risky ones)
-     so that risk density (proportion of document that is risky) is baked in.
-  3. Amplify and clamp to [0, 100].
+The LLM owns per-clause severity (0-4); we just apply the weight table so that a
+single Critical clause (4) contributes 10 points, a High (3) contributes 6,
+Medium (2) 4, Low (1) 2.
 
-No arbitrary hard floors. No magic subtractions. Fully deterministic.
+  0  = no risk at all
+  approaches 100 as raw grows (but never reaches it asymptotically)
 """
 
-# Theoretical maximum a single clause can score via classifier.py:
-#   confidence: High = 1.0
-#   categories: Privacy=2.0 + Legal=1.8 + Security=1.5 + Financial=1.2 + UserRights=1.0 = 7.5
-#   total = 1.0 + 7.5 = 8.5
-MAX_SEVERITY_PER_CLAUSE: float = 8.5
-
-# Calibration amplifier: scales so that typical real-world ToS docs
-# (≈20-30% risky clauses, medium severity) land in the 30-60 range.
-# Derivation:
-#   At 20% density, avg severity 4.5:
-#     wrd = (0.20 * (4.5/8.5)) = 0.106
-#     with AMPLIFIER = 3.5 → raw = 0.106 * 3.5 = 0.37 → score = 37
-#   At 40% density, avg severity 6.0 (very risky doc):
-#     wrd = (0.40 * (6.0/8.5)) = 0.282
-#     with AMPLIFIER = 3.5 → raw = 0.99 → score = 99  (capped at 100)
-AMPLIFIER: float = 3.5
+# How many points each level of LLM-judged severity contributes.
+# Severity 0 (not risky) is never in the risky_clauses list, but included
+# as a safety net.
+SEVERITY_WEIGHTS = {0: 0, 1: 2, 2: 4, 3: 6, 4: 10}
 
 
-def compute_risk_score(risky_clauses: list[dict], total_clauses: int) -> int:
+def compute_risk_score(risky_clauses: list[dict]) -> int:
     """
-    Compute a 0-100 Risk Score where higher = riskier.
+    Compute a 0-100 Risk Score from the LLM-judged severity of each flagged clause.
 
     Args:
         risky_clauses: List of clause dicts that are flagged as risky.
-                       Each must have a "severity_score" key (float).
-        total_clauses: Total number of clauses in the document (including safe ones).
+                       Each must have a "severity_score" key (int 0-4).
 
     Returns:
         Integer risk score in [0, 100]. Returns 0 for empty/clean documents.
     """
-    if total_clauses == 0 or not risky_clauses:
+    if not risky_clauses:
         return 0
 
-    # Sum the normalised severity contributions of every risky clause
-    norm_contributions = [
-        c.get("severity_score", 0.0) / MAX_SEVERITY_PER_CLAUSE
+    raw = sum(
+        SEVERITY_WEIGHTS.get(c.get("severity_score", 0), 0)
         for c in risky_clauses
-    ]
-    wrd = sum(norm_contributions) / total_clauses
-
-    # Amplify and clamp to [0, 1], then scale to [0, 100]
-    raw = min(1.0, wrd * AMPLIFIER)
-    return round(raw * 100)
+    )
+    return round(100 * raw / (raw + 75))

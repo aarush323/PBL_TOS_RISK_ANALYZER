@@ -85,8 +85,8 @@ export const filterClauses = (analysisResult, filters) => {
     }
     if (filters.severity !== 'all') {
       const severityScore = clause.severity_score || 0;
-      if (filters.severity === 'high' && severityScore < 5) return false;
-      if (filters.severity === 'medium' && (severityScore < 2 || severityScore >= 5)) return false;
+      if (filters.severity === 'high' && severityScore < 3) return false;
+      if (filters.severity === 'medium' && (severityScore < 2 || severityScore >= 3)) return false;
       if (filters.severity === 'low' && severityScore >= 2) return false;
     }
     return true;

@@ -77,7 +77,7 @@ export default function ClausesPage({
 
     const maxSeverity = Math.max(...data.map(d => d.severity), 1);
     const avgSeverity = data.reduce((sum, d) => sum + d.severity, 0) / (data.length || 1);
-    const highRiskZones = data.filter(d => d.severity >= 5).length;
+    const highRiskZones = data.filter(d => d.severity >= 3).length;
 
     return (
       <div className="space-y-4">
@@ -95,7 +95,7 @@ export default function ClausesPage({
                 style={{
                   height: `${barHeight}%`,
                   backgroundColor: d.isRisky
-                    ? (d.severity >= 5 ? '#ef4444' : '#f59e0b')
+                    ? (d.severity >= 3 ? '#ef4444' : '#f59e0b')
                     : (theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)'),
                   opacity: d.isRisky ? 1 : 0.4
                 }}
@@ -244,8 +244,8 @@ export default function ClausesPage({
               clauses.slice(0, visibleCount).map((clause, idx) => {
                 const isRisky = clause.is_risky;
                 const isExpanded = expandedCardId === idx;
-                const severityLevel = clause.severity_score >= 5 ? 'HIGH' : clause.severity_score >= 2 ? 'MEDIUM' : 'LOW';
-                const severityColor = clause.severity_score >= 5 ? 'bg-red-500/20 text-red-400' : clause.severity_score >= 2 ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400';
+                const severityLevel = clause.severity_score >= 3 ? 'HIGH' : clause.severity_score >= 2 ? 'MEDIUM' : 'LOW';
+                const severityColor = clause.severity_score >= 3 ? 'bg-red-500/20 text-red-400' : clause.severity_score >= 2 ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400';
 
                 return (
                   <div

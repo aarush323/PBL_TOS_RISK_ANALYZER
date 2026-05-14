@@ -8,8 +8,8 @@
  * @returns {string} Hex color string
  */
 export const getScoreColor = (score) => {
-    if (score <= 30) return '#22c55e'; // Green  — low risk
-    if (score <= 60) return '#f59e0b'; // Amber  — medium risk
+    if (score <= 20) return '#22c55e'; // Green  — low risk
+    if (score <= 50) return '#f59e0b'; // Amber  — medium risk
     return '#ef4444';                  // Red    — high risk
 };
 

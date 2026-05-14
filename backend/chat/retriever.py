@@ -35,7 +35,7 @@ async def _expand_with_neighbors(
     Rules:
     - has_negation = true → grab previous clause
     - triggered_categories overlap with neighbor → grab that neighbor
-    - severity_score > 0.75 → grab both neighbors
+    - severity_score >= 2 → grab both neighbors
     - zero_tolerance match → grab 2 each side
 
     Args:
@@ -60,7 +60,7 @@ async def _expand_with_neighbors(
         has_neg = clause.get("has_negation", False)
 
         candidates = [clause_id - 1, clause_id + 1]
-        if clause.get("is_risky") and severity > 0.75:
+        if clause.get("is_risky") and severity >= 2:
             candidates.extend([clause_id - 2, clause_id + 2])
 
         for cand_id in candidates:
@@ -94,7 +94,7 @@ async def _expand_with_neighbors(
                     f"Expanding clause {clause_id}: category overlap → adding {cand_id}"
                 )
 
-            if severity > 0.75 and cand_id in [clause_id - 1, clause_id + 1]:
+            if severity >= 2 and cand_id in [clause_id - 1, clause_id + 1]:
                 should_add = True
                 logger.info(
                     f"Expanding clause {clause_id}: high severity → adding {cand_id}"
@@ -263,7 +263,7 @@ async def _expand_with_neighbors(
     Rules:
     - has_negation = true → grab previous clause
     - triggered_categories overlap with neighbor → grab that neighbor
-    - severity_score > 0.75 → grab both neighbors
+    - severity_score >= 2 → grab both neighbors
     - zero_tolerance match → grab 2 each side
 
     Args:
@@ -288,7 +288,7 @@ async def _expand_with_neighbors(
         has_neg = clause.get("has_negation", False)
 
         candidates = [clause_id - 1, clause_id + 1]
-        if clause.get("is_risky") and severity > 0.75:
+        if clause.get("is_risky") and severity >= 2:
             candidates.extend([clause_id - 2, clause_id + 2])
 
         for cand_id in candidates:
@@ -322,7 +322,7 @@ async def _expand_with_neighbors(
                     f"Expanding clause {clause_id}: category overlap → adding {cand_id}"
                 )
 
-            if severity > 0.75 and cand_id in [clause_id - 1, clause_id + 1]:
+            if severity >= 2 and cand_id in [clause_id - 1, clause_id + 1]:
                 should_add = True
                 logger.info(
                     f"Expanding clause {clause_id}: high severity → adding {cand_id}"
@@ -536,7 +536,7 @@ async def get_risks_summary(session_id: str, db: AsyncSession) -> dict:
     for clause in all_clauses:
         if clause.is_risky:
             risky_count += 1
-            if clause.severity_score >= 1.5:
+            if clause.severity_score >= 3:
                 high_severity_count += 1
 
         for cat in clause.risk_categories:

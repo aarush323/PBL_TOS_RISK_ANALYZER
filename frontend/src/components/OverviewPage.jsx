@@ -66,6 +66,13 @@ export default function OverviewPage({
   );
 
 
+  const getScoreDescription = () => {
+    if (score <= 10) return "Very few issues were flagged. This document appears low-risk.";
+    if (score <= 30) return "Some issues were flagged and are worth reviewing.";
+    if (score <= 55) return "Several clauses were flagged. Review carefully before agreeing.";
+    return "Many high-severity clauses were flagged. Review with caution before signing.";
+  };
+
   const renderRadarChart = () => {
     const isLight = theme === 'light';
     const gridStroke = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)';

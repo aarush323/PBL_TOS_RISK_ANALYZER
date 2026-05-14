@@ -2,11 +2,11 @@
  * getRiskScore — reads the pre-computed risk_score from the analysis result.
  *
  * The score is computed server-side by backend/analysis/scoring.py using
- * Weighted Risk Density (WRD). It is a 0-100 integer where:
+ * severity-weighted clause contributions, capped at 100.
  *   0   = no risk (clean document)
  *   100 = maximum possible risk
  *
- * Higher score = RISKIER (inverted from the old "safety score" convention).
+ * Higher score = RISKIER.
  *
  * @param {object|null} analysisResult - The analysis result object from the API.
  * @returns {number} Integer 0-100.
