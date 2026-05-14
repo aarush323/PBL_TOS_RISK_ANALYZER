@@ -85,7 +85,7 @@ function CompareWrapper() {
         setComparisonData(null);
         setCompareDocA(null);
         setCompareDocB(null);
-        setShowCompareSelector(true);
+        setShowCompareSelector(false);
       }}
       onDiscussInChat={() => setIsChatPopupOpen(true)}
     />

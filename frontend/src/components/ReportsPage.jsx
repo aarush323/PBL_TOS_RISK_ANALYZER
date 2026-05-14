@@ -17,7 +17,7 @@ const SECTION_LABELS = [
 export default function ReportsPage({ analysisResult, analysisJobId, token }) {
   const { theme } = useTheme();
   const isDark = theme !== 'light';
-  const [report, setReport] = useState(null);
+  const [report, setReport] = useState(() => analysisResult?._report_cache || null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeSection, setActiveSection] = useState('summary');
   const reportRef = useRef(null);
@@ -31,6 +31,10 @@ export default function ReportsPage({ analysisResult, analysisJobId, token }) {
     surface: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     surfaceCard: 'var(--bg-surface)',
   };
+
+  useEffect(() => {
+    setReport(analysisResult?._report_cache || null);
+  }, [analysisJobId, analysisResult]);
 
   useEffect(() => {
     if (!analysisJobId || report || isGenerating) return;
