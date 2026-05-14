@@ -6,10 +6,7 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-CEREBRAS_API_URL = "https://api.cerebras.ai/v1/chat/completions"
-CEREBRAS_MODEL = "llama3.1-8b"
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.1-8b-instant"
+from settings import CEREBRAS_API_URL, CEREBRAS_MODEL, GROQ_API_URL, GROQ_MODEL
 
 UNIFIED_REPORT_PROMPT = """You are a senior legal risk strategist. Based on the analysis data provided, generate a comprehensive, professional risk report in JSON format.
 
@@ -107,7 +104,7 @@ def generate_full_report(analysis_result: dict, source_info: dict) -> dict:
     risky_count = analysis_result.get("risky_clause_count", 0)
     risk_breakdown = analysis_result.get("risk_breakdown", {})
     clauses = analysis_result.get("clauses", [])
-    
+
     risky_clauses = sorted(
         [c for c in clauses if c.get("is_risky")],
         key=lambda x: x.get("severity_score", 0),
@@ -136,17 +133,15 @@ def generate_full_report(analysis_result: dict, source_info: dict) -> dict:
         except Exception as e:
             logger.error(f"Failed to parse unified report JSON: {e}")
 
-    # Merge rank data for UI consistency if needed
     if "critical_clauses" in report_data:
         for i, c in enumerate(report_data["critical_clauses"]):
             c["rank"] = i + 1
             if i < len(risky_clauses):
-                # Ensure we have the original severity and category just in case
                 c["severity_score"] = risky_clauses[i].get("severity_score")
                 c["category"] = (risky_clauses[i].get("risk_categories") or ["General"])[0]
 
     report_id = f"R-{str(hash(source))[-8:]}"
-    
+
     return {
         "report_metadata": {
             "report_id": report_id.replace("-", ""),
@@ -160,7 +155,6 @@ def generate_full_report(analysis_result: dict, source_info: dict) -> dict:
         "compliance_check": report_data.get("compliance_check", {}),
         "critical_clauses": report_data.get("critical_clauses", []),
         "action_plan": report_data.get("action_plan", {}),
-        # Legacy fields for frontend compatibility
         "executive_dashboard": {
             "risk_score": risk_score,
             "overall_risk_level": "High" if risk_score >= 60 else "Medium" if risk_score >= 30 else "Low",

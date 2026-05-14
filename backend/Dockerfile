@@ -19,7 +19,8 @@ COPY main.py .
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 ENV PYTHONUNBUFFERED=1
-ENV ENVIRONMENT=development
+# ENVIRONMENT must be set at deploy time (e.g. "production" or "development")
+# ENV ENVIRONMENT=development
 ENV PORT=8000
 EXPOSE 8000
 CMD uvicorn main:app --host 0.0.0.0 --port $PORT

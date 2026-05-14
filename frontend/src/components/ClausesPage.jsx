@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, AlertTriangle, Activity, Info } from 'lucide-react';
+import { Filter, AlertTriangle, Activity, Info, MessageSquare, Shield, FileText, Zap, Check } from 'lucide-react';
 import { useTheme } from './theme-context.js';
 import {
   filterClauses,

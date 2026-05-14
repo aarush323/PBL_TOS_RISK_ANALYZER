@@ -157,7 +157,7 @@ export function AppProvider({ children }) {
                 }
             }
         } catch (error) {
-            console.error('Auth error:', error);
+            if (import.meta.env.DEV) console.warn('Auth error:', error.message);
             addToast('Authentication service unavailable', true);
         } finally {
             setIsAuthLoading(false);
@@ -174,7 +174,7 @@ export function AppProvider({ children }) {
             if (res.ok) {
                 setCompareHistory(data?.compares || []);
             }
-        } catch (err) { console.error(err); }
+        } catch (err) { if (import.meta.env.DEV) console.warn(err.message); }
         finally { setIsCompareHistoryLoading(false); }
     };
 
@@ -278,7 +278,7 @@ export function AppProvider({ children }) {
                 setTimeout(() => pollAnalysisResults(jobId), 3000);
             }
         } catch (err) {
-            console.warn(`Poll attempt ${pollRetryCount.current + 1} failed:`, err.message);
+            if (import.meta.env.DEV) console.warn(`Poll attempt ${pollRetryCount.current + 1} failed: ${err.message}`);
             pollRetryCount.current += 1;
             if (pollRetryCount.current >= 15) {
                 setIsProcessing(false);
@@ -301,7 +301,7 @@ export function AppProvider({ children }) {
             setIsProcessing(false);
             addToast('Analysis stopped by user.', true);
         } catch (err) {
-            console.error(err);
+            if (import.meta.env.DEV) console.warn('Stop analysis failed:', err.message);
             addToast('Failed to stop analysis', true);
         }
     };
@@ -317,7 +317,7 @@ export function AppProvider({ children }) {
                 token
             });
         } catch (e) {
-            console.error('Chat init fail', e);
+            if (import.meta.env.DEV) console.warn('Chat init fail:', e.message);
         }
     };
 
@@ -421,7 +421,7 @@ export function AppProvider({ children }) {
                 setChatMessages([...newChat, { role: 'bot', content: data.reply || '', html: parseMarkdown(data.reply || '') }]);
             }
         } catch (err) {
-            console.error(err);
+            if (import.meta.env.DEV) console.warn('Chat send failed:', err.message);
             const errMsg = err.message && err.message !== 'Failed to fetch'
                 ? `Sorry, something went wrong: ${err.message}`
                 : "Sorry, I couldn't connect. The server may be waking up — please try again in a few seconds.";
@@ -462,7 +462,7 @@ export function AppProvider({ children }) {
                 addToast(data.detail || 'Comparison failed', true);
             }
         } catch (err) {
-            console.error(err);
+            if (import.meta.env.DEV) console.warn('Comparison failed:', err.message);
             addToast(err.message || 'Failed to compare documents', true);
         } finally {
             setIsComparing(false);

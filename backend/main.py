@@ -11,6 +11,7 @@ logging.basicConfig(
 import asyncio
 import uuid
 import shutil
+import tempfile
 
 from fastapi import (
     FastAPI,
@@ -49,57 +50,21 @@ import compare_service
 
 logger = logging.getLogger(__name__)
 
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-
 app = FastAPI(title="ToS Analyzer API")
 
-if ENVIRONMENT == "production":
-    cors_origins = [FRONTEND_URL]
-else:
-    cors_origins = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ]
+from settings import ENVIRONMENT, FRONTEND_URL, CORS_ORIGINS, validate_production_environment
+
+validate_production_environment()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-def validate_environment():
-    if ENVIRONMENT == "production":
-        required_vars = [
-            "DATABASE_URL",
-            "SECRET_KEY",
-            "CEREBRAS_API_KEY",
-            "FRONTEND_URL",
-        ]
-        missing = [var for var in required_vars if not os.getenv(var)]
-        if missing:
-            # We allow it to continue if a default exists, but we warn
-            for var in missing:
-                if globals().get(var):
-                    logger.warning(
-                        f"Using default value for {var} because it is not set in the environment."
-                    )
-                else:
-                    raise RuntimeError(
-                        f"CRITICAL: Missing required environment variables: {', '.join(missing)}. "
-                        "Please set these in your deployment settings (e.g., Railway Dashboard)."
-                    )
-        logger.info("Environment validation complete.")
-    else:
-        logger.info(f"Running in {ENVIRONMENT} mode - CORS allowing localhost origins.")
-
-
-validate_environment()
+logger.info(f"Running in {ENVIRONMENT} mode, CORS origins: {CORS_ORIGINS}")
 
 
 @app.on_event("startup")
@@ -361,11 +326,10 @@ def extract_text(body: AnalyzeInput):
 def extract_pdf(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
-    safe_name = f"{uuid.uuid4()}_{file.filename}"
-    temp_path = f"/tmp/{safe_name}"
     try:
-        with open(temp_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            temp_path = tmp.name
         result = handle_input("pdf", temp_path)
         return result
     except ValueError as e:
@@ -373,7 +337,7 @@ def extract_pdf(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF extraction failed: {str(e)}")
     finally:
-        if os.path.exists(temp_path):
+        if "temp_path" in locals() and os.path.exists(temp_path):
             os.remove(temp_path)
 
 
@@ -441,26 +405,11 @@ async def analyze_async(
                 user_id=user_id,
             )
 
-            mock_result = {
-                "overall_risk": "High",
-                "risky_clause_count": 1,
-                "total_clauses": 1,
-                "clauses": [
-                    {
-                        "id": 0,
-                        "text": "The target website actively blocked automated extraction (e.g., via 403 Forbidden, CAPTCHA, or anti-bot measures).",
-                        "explanation": f"When a company blocks automated analysis of its legal terms, it reduces transparency and makes it harder for users to independently verify their rights. Error details: {str(e)}",
-                        "is_risky": True,
-                        "risk_categories": ["Transparency Risk", "Accessibility Risk"],
-                        "confidence": "High",
-                        "skipped_llm": True,
-                    }
-                ],
-            }
-            await crud.update_analysis_complete(db, job_id, mock_result)
+            await crud.update_analysis_blocked(db, job_id, str(e))
             return {
                 "job_id": job_id,
-                "status": "processing",
+                "status": "blocked",
+                "error": str(e),
                 "extraction": {"cleaned_text": "Content blocked by host."},
             }
         else:
@@ -493,6 +442,8 @@ async def analyze_status(job_id: str, db: AsyncSession = Depends(get_db)):
         return {"status": "complete", "result": job.result}
     if job.status.value == "failed":
         return {"status": "failed", "error": job.error}
+    if job.status.value == "blocked":
+        return {"status": "blocked", "error": job.error}
     return {"status": "processing"}
 
 

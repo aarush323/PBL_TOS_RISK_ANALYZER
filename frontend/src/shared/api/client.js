@@ -1,10 +1,21 @@
 import { getAccessToken } from './auth-storage';
 
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const isDev = import.meta.env.DEV || false;
+
+export const API_BASE_URL = (() => {
+  const url = import.meta.env.VITE_API_URL;
+  if (!url) {
+    if (isDev) {
+      console.warn('VITE_API_URL not set. Defaulting to http://localhost:8000 for development.');
+      return 'http://localhost:8000';
+    }
+    throw new Error('VITE_API_URL environment variable is required in production. Set it in your deployment configuration.');
+  }
+  return url.replace(/\/$/, '');
+})();
 
 export const buildApiUrl = (path) => {
   if (!path) return API_BASE_URL;
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
   return `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 

@@ -23,7 +23,7 @@ import DashboardPage from '@/components/DashboardPage.jsx';
 function OverviewWrapper() {
   const { analysisResult, sourceInfo, calculateScore, historyItems, navigate, setSelectedHistoryId } = useAppContext();
   if (!analysisResult) {
-    return <EmptyState view="overview" onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
+    return <EmptyState view="overview" navigate={navigate} onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
   }
   return (
     <OverviewPage
@@ -39,7 +39,7 @@ function OverviewWrapper() {
 function ClausesWrapper() {
   const { analysisResult, sourceInfo, explainRiskInChat, setIsChatPopupOpen, navigate, setSelectedHistoryId } = useAppContext();
   if (!analysisResult) {
-    return <EmptyState view="clauses" onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
+    return <EmptyState view="clauses" navigate={navigate} onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
   }
   return (
     <ClausesPage
@@ -54,7 +54,7 @@ function ClausesWrapper() {
 function ReportsWrapper() {
   const { analysisResult, sourceInfo, calculateScore, analysisJobId, token, navigate, setSelectedHistoryId } = useAppContext();
   if (!analysisResult) {
-    return <EmptyState view="reports" onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
+    return <EmptyState view="reports" navigate={navigate} onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
   }
   return (
     <ReportsPage
@@ -76,7 +76,7 @@ function CompareWrapper() {
     navigate, setSelectedHistoryId,
   } = useAppContext();
   if (!analysisResult) {
-    return <EmptyState view="compare" onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
+    return <EmptyState view="compare" navigate={navigate} onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
   }
   return (
     <ComparePage
