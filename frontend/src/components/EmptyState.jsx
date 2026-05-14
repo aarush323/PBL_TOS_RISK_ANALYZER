@@ -65,7 +65,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
             }}>{title}</h2>
 
             <p style={{
-                fontFamily: 'Inter, system-ui, sans-serif',
+                fontFamily: 'var(--font-family-sans)',
                 fontWeight: '300',
                 fontSize: '14px',
                 color: 'var(--text-secondary)',
@@ -88,7 +88,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
                         background: isDark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)',
                         border: 'none',
                         color: isDark ? '#000' : '#fff',
-                        fontFamily: 'Inter, system-ui, sans-serif',
+                        fontFamily: 'var(--font-family-sans)',
                         fontSize: '13px',
                         fontWeight: '500',
                         cursor: 'pointer',
@@ -110,7 +110,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
                         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
                         color: 'var(--text-secondary)',
-                        fontFamily: 'Inter, system-ui, sans-serif',
+                        fontFamily: 'var(--font-family-sans)',
                         fontSize: '13px',
                         fontWeight: '400',
                         cursor: 'pointer',
@@ -149,7 +149,7 @@ export default function EmptyState({ view, onNewAnalysis }) {
                             textTransform: 'uppercase',
                         }}>{step.label}</span>
                         <p style={{
-                            fontFamily: 'Inter, system-ui, sans-serif',
+                            fontFamily: 'var(--font-family-sans)',
                             fontWeight: '300',
                             fontSize: '12px',
                             color: 'var(--text-secondary)',

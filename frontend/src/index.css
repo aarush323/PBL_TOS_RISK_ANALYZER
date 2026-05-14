@@ -1,4 +1,4 @@
-@import url("https://cdn.jsdelivr.net/gh/devchauhann/fonts@v1.1.0/cdn/v1/css/all.css");
+@import "anthropic-fonts";
 
 @import "tailwindcss";
 
@@ -338,7 +338,7 @@ body {
     color: black !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-family: 'Inter', system-ui, sans-serif !important;
+    font-family: var(--font-family-sans) !important;
   }
 
   #root {
