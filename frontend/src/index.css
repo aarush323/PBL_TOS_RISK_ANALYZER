@@ -264,14 +264,14 @@ body {
 }
 
 .analysis-history-menu-trigger {
-  opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  opacity: 0 !important;
+  transition: opacity 0.15s ease, background 0.15s ease !important;
 }
 
 .analysis-history-row:hover .analysis-history-menu-trigger,
 .analysis-history-menu-trigger[aria-expanded="true"],
 .analysis-history-menu-trigger:focus-visible {
-  opacity: 1;
+  opacity: 1 !important;
 }
 
 .analysis-history-menu-item {
