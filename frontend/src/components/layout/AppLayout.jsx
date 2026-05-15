@@ -171,7 +171,7 @@ export default function AppLayout() {
         showSourcePopup, setShowSourcePopup, sourceInfo,
         analysisResult, user, logout,
         historyItems, isHistoryLoading, selectedHistoryId,
-        openHistoryAnalysis, setSelectedHistoryId,
+        openHistoryAnalysis, renameHistoryAnalysis, deleteHistoryAnalysis, setSelectedHistoryId,
         toasts, isChatPopupOpen, setIsChatPopupOpen,
         chatMessages, chatInput, setChatInput, sendChat, isChatTyping, sessionId,
         navigate, addToast,
@@ -251,6 +251,8 @@ export default function AppLayout() {
                     isHistoryLoading={isHistoryLoading}
                     selectedHistoryId={selectedHistoryId}
                     onNewAnalysis={handleNewAnalysis}
+                    onRenameHistory={renameHistoryAnalysis}
+                    onDeleteHistory={deleteHistoryAnalysis}
                 />
             )}
 

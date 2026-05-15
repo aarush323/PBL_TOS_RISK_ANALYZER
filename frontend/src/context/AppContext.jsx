@@ -94,7 +94,7 @@ export function AppProvider({ children }) {
         navigate,
     });
 
-    const { loadHistory, fetchHistoryItem } = useHistoryActions({
+    const { loadHistory, fetchHistoryItem, renameHistoryItem, deleteHistoryItem } = useHistoryActions({
         token,
         setHistoryItems,
         setIsHistoryLoading,
@@ -284,6 +284,53 @@ export function AppProvider({ children }) {
             addToast('Could not open selected history item', true);
         } finally {
             setIsHistoryItemLoading(false);
+        }
+    };
+
+    const renameHistoryAnalysis = async (jobId, title) => {
+        const nextTitle = title.trim();
+        if (!nextTitle) return addToast('Analysis name cannot be empty', true);
+
+        try {
+            const { res, data } = await renameHistoryItem(jobId, nextTitle);
+            if (!res.ok) return addToast(data?.detail || 'Failed to rename analysis', true);
+
+            setHistoryItems(prev => prev.map(item => (
+                item.job_id === jobId
+                    ? { ...item, source: data.source, source_label: data.source_label || data.source }
+                    : item
+            )));
+            if (selectedHistoryId === jobId) {
+                setSourceInfo(prev => ({ ...prev, value: data.source || nextTitle }));
+            }
+            addToast('Analysis renamed.');
+        } catch (error) {
+            console.error('Rename analysis error:', error);
+            addToast('Could not rename analysis', true);
+        }
+    };
+
+    const deleteHistoryAnalysis = async (jobId) => {
+        try {
+            const { res, data } = await deleteHistoryItem(jobId);
+            if (!res.ok) return addToast(data?.detail || 'Failed to delete analysis', true);
+
+            setHistoryItems(prev => prev.filter(item => item.job_id !== jobId));
+            if (selectedHistoryId === jobId) {
+                setSelectedHistoryId(null);
+                setAnalysisJobId(null);
+                setAnalysisResult(null);
+                setSessionId(null);
+                setSourceInfo({ type: null, value: null });
+                setChatMessages([
+                    { role: 'bot', content: 'Hello. I am the Digital Jurist Assistant. Extract a document first, and I can help you navigate the findings!', html: '<p>Hello. I am the Digital Jurist Assistant. Extract a document first, and I can help you navigate the findings!</p>' }
+                ]);
+                navigate('/app');
+            }
+            addToast('Analysis deleted.');
+        } catch (error) {
+            console.error('Delete analysis error:', error);
+            addToast('Could not delete analysis', true);
         }
     };
 
@@ -571,7 +618,7 @@ export function AppProvider({ children }) {
         sendChat, explainRiskInChat, initChatSession,
         // History
         historyItems, isHistoryLoading, selectedHistoryId, setSelectedHistoryId,
-        isHistoryItemLoading, openHistoryAnalysis, loadHistory,
+        isHistoryItemLoading, openHistoryAnalysis, renameHistoryAnalysis, deleteHistoryAnalysis, loadHistory,
         // Compare
         showCompareSelector, setShowCompareSelector,
         compareDocA, setCompareDocA, compareDocB, setCompareDocB,

@@ -1,18 +1,33 @@
-import React from 'react';
-import { Scale, LogOut, Plus, Sun, Moon } from 'lucide-react';
+import React, { useState } from 'react';
+import { MoreHorizontal, Pencil, Scale, LogOut, Plus, Sun, Moon, Trash2 } from 'lucide-react';
 import { useTheme } from './theme-context.js';
 import { getRiskClass } from '../utils/colorUtils';
 
 export default function Sidebar({
   user, onLogout,
-  historyItems, onOpenHistory, isHistoryLoading, selectedHistoryId, onNewAnalysis
+  historyItems, onOpenHistory, isHistoryLoading, selectedHistoryId, onNewAnalysis,
+  onRenameHistory, onDeleteHistory,
 }) {
   const { theme, toggle } = useTheme();
   const isDark = theme !== 'light';
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   const truncateLabel = (label, maxLen = 22) => {
     if (!label) return 'Untitled';
     return label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
+  };
+
+  const handleRename = (item, displayLabel) => {
+    setOpenMenuId(null);
+    const nextTitle = window.prompt('Rename analysis', displayLabel);
+    if (nextTitle === null) return;
+    onRenameHistory?.(item.job_id, nextTitle);
+  };
+
+  const handleDelete = (item, displayLabel) => {
+    setOpenMenuId(null);
+    if (!window.confirm(`Delete "${displayLabel}"? This removes the analysis and its chat history.`)) return;
+    onDeleteHistory?.(item.job_id);
   };
 
   return (
@@ -139,43 +154,115 @@ export default function Sidebar({
                 }
                 const isSelected = selectedHistoryId === item.job_id;
                 return (
-                  <button
+                  <div
                     key={item.job_id}
-                    onClick={() => onOpenHistory(item.job_id)}
+                    className="analysis-history-row"
                     style={{
+                      position: 'relative',
                       width: '100%',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px 12px',
+                      gap: '6px',
+                      padding: '0 6px 0 12px',
                       borderRadius: '8px',
-                      border: 'none',
                       background: isSelected
                         ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')
                         : 'transparent',
-                      color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      fontFamily: 'var(--font-family-sans)',
-                      fontSize: '13px',
-                      fontWeight: isSelected ? '500' : '400',
-                      cursor: 'pointer',
                       transition: 'all 0.15s ease',
-                      textAlign: 'left',
-                      textOverflow: 'ellipsis',
-                      overflow: 'hidden',
-                      whiteSpace: 'nowrap',
                     }}
                   >
-                    <div className={`${getRiskClass(item.overall_risk)}`} style={{
-                      width: '5px',
-                      height: '5px',
-                      borderRadius: '50%',
-                      opacity: 0.6,
-                      flexShrink: 0,
-                    }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {truncateLabel(displayLabel)}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenHistory(item.job_id)}
+                      style={{
+                        minWidth: 0,
+                        flex: 1,
+                        height: '36px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        border: 'none',
+                        background: 'transparent',
+                        color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        fontFamily: 'var(--font-family-sans)',
+                        fontSize: '13px',
+                        fontWeight: isSelected ? '500' : '400',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div className={`${getRiskClass(item.overall_risk)}`} style={{
+                        width: '5px',
+                        height: '5px',
+                        borderRadius: '50%',
+                        opacity: 0.6,
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {truncateLabel(displayLabel)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="analysis-history-menu-trigger"
+                      aria-label={`Open actions for ${displayLabel}`}
+                      aria-expanded={openMenuId === item.job_id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === item.job_id ? null : item.job_id);
+                      }}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        flexShrink: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '7px',
+                        border: 'none',
+                        background: openMenuId === item.job_id ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)') : 'transparent',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <MoreHorizontal size={15} />
+                    </button>
+                    {openMenuId === item.job_id && (
+                      <div
+                        className="analysis-history-menu"
+                        style={{
+                          position: 'absolute',
+                          top: '34px',
+                          right: '4px',
+                          zIndex: 30,
+                          width: '156px',
+                          padding: '6px',
+                          borderRadius: '10px',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                          background: isDark ? '#141416' : '#FFFFFF',
+                          boxShadow: isDark ? '0 14px 34px rgba(0,0,0,0.35)' : '0 14px 34px rgba(0,0,0,0.14)',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleRename(item, displayLabel)}
+                          className="analysis-history-menu-item"
+                        >
+                          <Pencil size={14} />
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item, displayLabel)}
+                          className="analysis-history-menu-item danger"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

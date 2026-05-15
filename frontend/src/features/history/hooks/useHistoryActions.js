@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { fetchHistory, fetchAnalysis } from '../api/historyApi';
+import { deleteAnalysis, fetchHistory, fetchAnalysis, renameAnalysis } from '../api/historyApi';
 
 export const useHistoryActions = ({
   token,
@@ -29,8 +29,20 @@ export const useHistoryActions = ({
     [token]
   );
 
+  const renameHistoryItem = useCallback(
+    (jobId, title) => renameAnalysis({ token, jobId, title }),
+    [token]
+  );
+
+  const deleteHistoryItem = useCallback(
+    (jobId) => deleteAnalysis({ token, jobId }),
+    [token]
+  );
+
   return {
     loadHistory,
     fetchHistoryItem,
+    renameHistoryItem,
+    deleteHistoryItem,
   };
 };

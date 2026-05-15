@@ -117,6 +117,10 @@ class AnalyzeInput(BaseModel):
     source_label: str | None = None
 
 
+class RenameAnalysisInput(BaseModel):
+    title: str
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -538,6 +542,7 @@ async def list_analyses(
         {
             "job_id": j.job_id,
             "source": j.source,
+            "source_label": j.source,
             "source_type": j.source_type,
             "status": j.status.value,
             "overall_risk": (j.result or {}).get("overall_risk"),
@@ -562,10 +567,51 @@ async def get_analysis(
         "job_id": job.job_id,
         "status": job.status.value,
         "source": job.source,
+        "source_label": job.source,
         "source_type": job.source_type,
         "created_at": job.created_at.isoformat(),
         "result": job.result,
     }
+
+
+@app.patch("/analyses/{job_id}")
+async def rename_analysis(
+    job_id: str,
+    body: RenameAnalysisInput,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    title = body.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Analysis name cannot be empty")
+    if len(title) > 160:
+        raise HTTPException(status_code=400, detail="Analysis name is too long")
+
+    job = await crud.get_analysis_job(db, job_id)
+    if not job or job.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+
+    updated = await crud.rename_analysis(db, job_id, title)
+    return {
+        "job_id": updated.job_id,
+        "source": updated.source,
+        "source_label": updated.source,
+        "updated_at": updated.updated_at.isoformat(),
+    }
+
+
+@app.delete("/analyses/{job_id}")
+async def delete_analysis(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    job = await crud.get_analysis_job(db, job_id)
+    if not job or job.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+
+    await crud.delete_analysis_bundle(db, job_id)
+    return {"status": "deleted", "job_id": job_id}
 
 
 @app.post("/chat/store")

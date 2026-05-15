@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, delete
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,6 +77,37 @@ async def update_analysis_failed(db: AsyncSession, job_id: str, error: str) -> N
 
 async def get_analysis_job(db: AsyncSession, job_id: str) -> Analysis | None:
     return await db.get(Analysis, job_id)
+
+
+async def rename_analysis(db: AsyncSession, job_id: str, title: str) -> Analysis | None:
+    job = await db.get(Analysis, job_id)
+    if not job:
+        return None
+    job.source = title
+    job.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(job)
+    return job
+
+
+async def delete_analysis_bundle(db: AsyncSession, job_id: str) -> None:
+    await db.execute(delete(ChatSession).where(ChatSession.session_id == job_id))
+    try:
+        job_uuid = uuid.UUID(job_id)
+        await db.execute(
+            delete(CompareSession).where(
+                or_(
+                    CompareSession.session_id_a == job_uuid,
+                    CompareSession.session_id_b == job_uuid,
+                    CompareSession.job_id_a == job_uuid,
+                    CompareSession.job_id_b == job_uuid,
+                )
+            )
+        )
+    except ValueError:
+        pass
+    await db.execute(delete(Analysis).where(Analysis.job_id == job_id))
+    await db.commit()
 
 
 async def list_analyses(
