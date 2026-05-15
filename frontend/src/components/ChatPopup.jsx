@@ -1,26 +1,23 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { MessageSquare, Minimize2, Maximize2, X } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 import TypingDots from './TypingDots.jsx';
 import { ChatInput, ChatInputTextArea, ChatInputSubmit } from '@/components/ui/chat-input';
 import { apiFetchJson } from '@/shared/api/client';
 import { useTheme } from './theme-context.js';
-import { useIsMobile } from '@/hooks/use-is-mobile.js';
 
 export default function ChatPopup({
   isOpen, onToggle, chatMessages, chatInput, onChatInputChange,
   onSendChat, isChatTyping, sessionId, user,
 }) {
   const { theme } = useTheme();
-  const isMobile = useIsMobile();
   const isDark = theme !== 'light';
   const messagesEndRef = useRef(null);
   const [indexStatus, setIndexStatus] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(false);
 
   const s = {
     font: 'Anthropic Sans, sans-serif', mono: 'Anthropic Mono, monospace', serif: 'Anthropic Serif, serif',
     border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
-    surface: isDark ? 'rgba(20,20,22,0.95)' : 'rgba(255,255,255,0.95)',
+    surface: isDark ? 'rgba(12,12,14,0.98)' : 'rgba(255,255,255,0.98)',
     msgBot: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
     msgUser: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
     textPrimary: 'var(--text-primary)',
@@ -30,7 +27,7 @@ export default function ChatPopup({
 
   useEffect(() => {
     if (isOpen && messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, isOpen, isExpanded]);
+  }, [chatMessages, isOpen]);
 
   useEffect(() => {
     let interval;
@@ -49,37 +46,19 @@ export default function ChatPopup({
 
   const suggestions = ["summarize the risks", "what is the overall risk level", "explain clause 1", "what are my rights"];
 
-  if (!isOpen) {
-    return (
-      <button className="chat-fab" onClick={onToggle} style={{
-        position: 'fixed', bottom: '24px', right: '24px', width: '56px', height: '56px', borderRadius: '50%',
-        background: isDark ? '#fff' : '#000', color: isDark ? '#000' : '#fff', border: 'none',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-        boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.15)', zIndex: 50,
-        transition: 'transform 0.2s ease',
-      }} onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-        <MessageSquare size={24} />
-      </button>
-    );
-  }
+  if (!isOpen) return null;
 
   return (
-    <div className="chat-popup" style={{
-      position: 'fixed', zIndex: 50, display: 'flex', flexDirection: 'column',
+    <aside className="chat-sidebar" aria-label="Document chat" style={{
+      position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 60,
+      display: 'flex', flexDirection: 'column',
       background: s.surface, backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-      border: `1px solid ${s.border}`, borderRadius: '16px', overflow: 'hidden',
-      transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
-      bottom: isMobile ? '0' : '24px',
-      right: isMobile ? '0' : '24px',
-      ...(isMobile
-        ? { left: '0', width: '100vw', height: 'calc(100dvh - 76px)', maxHeight: 'calc(100dvh - 76px)', borderRadius: '16px 16px 0 0' }
-        : isExpanded
-        ? { width: 'calc(50vw - 48px)', height: 'calc(100vh - 48px)' }
-        : { width: '380px', height: '600px', maxHeight: 'calc(100vh - 48px)' }
-      )
+      borderLeft: `1px solid ${s.border}`, overflow: 'hidden',
+      width: 'min(420px, 100vw)',
+      boxShadow: isDark ? '-18px 0 44px rgba(0,0,0,0.32)' : '-18px 0 44px rgba(0,0,0,0.12)',
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px',
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px',
         borderBottom: `1px solid ${s.border}`, background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: s.msgUser,
@@ -100,10 +79,7 @@ export default function ChatPopup({
               {indexStatus.is_indexed ? 'Context Ready' : 'Building Context'}
             </span>
           )}
-          <button onClick={() => setIsExpanded(!isExpanded)} style={{ background: 'none', border: 'none', color: s.textTertiary, cursor: 'pointer', padding: '4px' }}>
-            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-          </button>
-          <button onClick={onToggle} style={{ background: 'none', border: 'none', color: s.textTertiary, cursor: 'pointer', padding: '4px' }}>
+          <button type="button" aria-label="Close chat" onClick={onToggle} style={{ background: 'none', border: 'none', color: s.textTertiary, cursor: 'pointer', padding: '4px' }}>
             <X size={18} />
           </button>
         </div>
@@ -174,6 +150,6 @@ export default function ChatPopup({
           </div>
         </div>
       )}
-    </div>
+    </aside>
   );
 }

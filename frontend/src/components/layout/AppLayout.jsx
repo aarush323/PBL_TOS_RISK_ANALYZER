@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
-import { BarChart3, FileText, Home, LogOut, Menu, Moon, Plus, Scale, Settings, ShieldAlert, Sun, X } from 'lucide-react';
+import { BarChart3, FileText, Home, LogOut, Menu, MessageSquare, Moon, Plus, Scale, Settings, ShieldAlert, Sun, X } from 'lucide-react';
 import { useAppContext } from '@/context/app-context.js';
 import Sidebar from '@/components/Sidebar.jsx';
 import Header from '@/components/Header.jsx';
@@ -276,9 +276,19 @@ export default function AppLayout() {
                             <p>Jurist AI</p>
                             <h1>{viewLabels[path] || 'Dashboard'}</h1>
                         </div>
-                        <button type="button" onClick={handleNewAnalysis} aria-label="New analysis">
-                            <Plus size={19} />
-                        </button>
+                        <div className="mobile-header-actions">
+                            <button
+                                type="button"
+                                onClick={() => setIsChatPopupOpen(!isChatPopupOpen)}
+                                aria-label={isChatPopupOpen ? 'Close document chat' : 'Open document chat'}
+                                aria-pressed={isChatPopupOpen}
+                            >
+                                <MessageSquare size={19} />
+                            </button>
+                            <button type="button" onClick={handleNewAnalysis} aria-label="New analysis">
+                                <Plus size={19} />
+                            </button>
+                        </div>
                     </header>
                 )}
                 <Header
@@ -287,6 +297,8 @@ export default function AppLayout() {
                     hasActiveChat={hasActiveChat}
                     onNavigate={handleNavigate}
                     onNewAnalysis={handleNewAnalysis}
+                    isChatOpen={isChatPopupOpen}
+                    onToggleChat={() => setIsChatPopupOpen(!isChatPopupOpen)}
                 />
 
                 <main className="app-content flex-1 overflow-y-auto">
@@ -425,7 +437,10 @@ export default function AppLayout() {
                 />
             )}
 
-            <div className={`app-toasts fixed ${isChatPopupOpen ? 'bottom-28' : 'bottom-6'} right-6 flex flex-col gap-3 z-[9999]`}>
+            <div
+                className="app-toasts fixed bottom-6 flex flex-col gap-3 z-[9999]"
+                style={{ right: isChatPopupOpen ? '444px' : '24px' }}
+            >
                 {toasts.map(t => (
                     <div
                         key={t.id}

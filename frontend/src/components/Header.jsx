@@ -1,7 +1,8 @@
 import React from 'react';
+import { MessageSquare } from 'lucide-react';
 import { useTheme } from './theme-context.js';
 
-export default function Header({ activeView, analysisResult, hasActiveChat, onNavigate }) {
+export default function Header({ activeView, analysisResult, hasActiveChat, onNavigate, isChatOpen, onToggleChat }) {
   const { theme } = useTheme();
   const isDark = theme !== 'light';
 
@@ -93,6 +94,27 @@ export default function Header({ activeView, analysisResult, hasActiveChat, onNa
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button
+          type="button"
+          onClick={onToggleChat}
+          aria-label={isChatOpen ? 'Close document chat' : 'Open document chat'}
+          aria-pressed={isChatOpen}
+          style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            border: `1px solid ${isChatOpen ? 'var(--text-primary)' : 'var(--border-default)'}`,
+            background: isChatOpen ? 'var(--text-primary)' : 'transparent',
+            color: isChatOpen ? 'var(--bg-base)' : 'var(--text-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'background 0.18s ease, border-color 0.18s ease, color 0.18s ease',
+          }}
+        >
+          <MessageSquare size={17} />
+        </button>
       </div>
     </header>
   );
