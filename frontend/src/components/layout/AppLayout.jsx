@@ -142,7 +142,7 @@ function MobileHistoryDrawer({
                         </div>
 
                         <div className="mobile-history-footer">
-                            <button type="button" onClick={toggle}>
+                            <button type="button" onClick={(e) => toggle(e)}>
                                 {isDark ? <Sun size={16} /> : <Moon size={16} />}
                                 {isDark ? 'Light Mode' : 'Dark Mode'}
                             </button>

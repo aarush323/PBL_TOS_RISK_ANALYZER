@@ -283,7 +283,7 @@ export default function Sidebar({
         borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)'}`,
       }}>
         <button
-          onClick={toggle}
+          onClick={(e) => toggle(e)}
           aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           style={{
             width: '100%',
