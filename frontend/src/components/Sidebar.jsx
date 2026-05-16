@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MoreHorizontal, Pencil, Scale, LogOut, Plus, Sun, Moon, Trash2 } from 'lucide-react';
 import { useTheme } from './theme-context.js';
 import { getRiskClass } from '../utils/colorUtils';
@@ -11,6 +11,13 @@ export default function Sidebar({
   const { theme, toggle } = useTheme();
   const isDark = theme !== 'light';
   const [openMenuId, setOpenMenuId] = useState(null);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handleClick = () => setOpenMenuId(null);
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [openMenuId]);
 
   const truncateLabel = (label, maxLen = 22) => {
     if (!label) return 'Untitled';
