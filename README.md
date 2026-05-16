@@ -1,27 +1,18 @@
 <div align="center">
 
-```
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║      ██╗██╗   ██╗██████╗ ██╗███████╗████████╗     █████╗ ██╗ ║
-║      ██║██║   ██║██╔══██╗██║██╔════╝╚══██╔══╝    ██╔══██╗██║ ║
-║      ██║██║   ██║██████╔╝██║███████╗   ██║       ███████║██║ ║
-║ ██   ██║██║   ██║██╔══██╗██║╚════██║   ██║       ██╔══██║██║ ║
-║ ╚█████╔╝╚██████╔╝██║  ██║██║███████║   ██║       ██║  ██║██║ ║
-║  ╚════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝   ╚═╝       ╚═╝  ╚═╝╚═╝ ║
-║                                                              ║
-║              AI  ·  R I S K  ·  A N A L Y Z E R            ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-```
+# ⚖️ Jurist AI
 
-### *You agreed to what, exactly?*
+### *AI-Powered Terms of Service Risk Analyzer*
 
-**AI-powered legal intelligence** that dissects Terms of Service and Privacy Policies — extracting, classifying, and explaining risks in plain English so you actually know what you're signing.
+**You agreed to what, exactly?**
+
+AI-powered legal intelligence that dissects Terms of Service and Privacy Policies — extracting, classifying, and explaining risks in plain English so you actually know what you're signing.
 
 <br/>
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![spaCy](https://img.shields.io/badge/spaCy_NLP-09A3FF?style=for-the-badge&logo=spacy&logoColor=white)](https://spacy.io)
 [![RAG](https://img.shields.io/badge/RAG-FF6B35?style=for-the-badge&logo=ai&logoColor=white)]()
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL_+_pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
@@ -31,15 +22,29 @@
 
 <br/>
 
-**[🚀 Live Demo](https://tos-frontend-production-8e0d.up.railway.app)** · **[📖 Technical Docs](DOCUMENTATION.md)** · **[🐛 Issues](../../issues)**
+**[🚀 Live Demo](https://frontend-production-43d9.up.railway.app)** · **[📖 Technical Docs](docs/DOCUMENTATION.md)** · **[🐛 Issues](../../issues)**
+
+> ⚠️ *The live demo is hosted on Railway's free tier and may be inactive. See [Quick Start](#-quick-start) to run locally.*
 
 </div>
 
 ---
 
-## ⚡ What This Does
+## 📸 Preview
 
-Most people click *"I Agree"* without reading. This tool reads for you — and tells you exactly what you're signing away.
+<!-- Replace these with actual screenshots once captured -->
+![Dashboard](docs/screenshots/dashboard.png)
+![Analysis Results](docs/screenshots/analysis.png)
+![RAG Chat](docs/screenshots/chat.png)
+![Document Comparison](docs/screenshots/compare.png)
+
+> 💡 *To add screenshots: capture them, save to `docs/screenshots/`, and commit.*
+
+---
+
+## ⚡ What Jurist AI Does
+
+Most people click *"I Agree"* without reading. Jurist AI reads for you — and tells you exactly what you're signing away.
 
 ```
 Input:  https://discord.com/terms                    (or paste text / upload PDF)
@@ -56,21 +61,49 @@ Chat:   "Can Discord terminate my account without warning?"
 
 ---
 
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🔍 **Multi-format Input** | Analyze from URL, raw text paste, or PDF upload |
+| 🧠 **Hybrid NLP + LLM Pipeline** | spaCy pre-filters 75% of clauses → only risky ones hit the LLM |
+| 🔄 **3-Tier LLM Failover** | Cerebras → Groq (round-robin) → Ollama local fallback |
+| 💬 **RAG-Powered Chat** | Ask questions about any analyzed document with cited clause references |
+| ⚖️ **Document Comparison** | Side-by-side risk comparison of two ToS documents |
+| 📊 **Risk Overview Dashboard** | Visual breakdown by category with severity scoring |
+| 📋 **Clause-Level Review** | Browse every clause with risk tags, explanations, and filtering |
+| 📄 **PDF Report Export** | Generate downloadable PDF reports of analysis results |
+| 🔐 **JWT Authentication** | Secure auth with SHA256+bcrypt password hashing |
+| 📜 **Analysis History** | Save, rename, delete, and revisit past analyses |
+| 🎨 **Light & Dark Theme** | Full theme support across all pages |
+| ⚙️ **Settings** | Configurable behavior (auto-open results, compact risk cards) |
+| 🐳 **Docker Compose** | One-command local setup with PostgreSQL health checks |
+| 🚀 **Railway Deployment** | Production-ready multi-service Docker deployment |
+
+---
+
 ## 🏗️ Architecture
 
 ```mermaid
 graph TD
-    React[React Frontend] -->|HTTP / REST| FastAPI[FastAPI Backend]
+    React["React 19 Frontend<br/>(Vite + Tailwind v4)"] -->|HTTP / REST| FastAPI["FastAPI Backend"]
 
-    FastAPI --> Ext[Extraction Pipeline]
-    FastAPI --> NLP[Analysis Pipeline with NLP+LLM]
-    FastAPI --> RAG[RAG Chat Pipeline]
+    FastAPI --> Ext["Extraction Pipeline<br/>URL · PDF · Text"]
+    FastAPI --> NLP["Analysis Pipeline<br/>spaCy NLP + LLM"]
+    FastAPI --> RAG["RAG Chat Pipeline"]
+    FastAPI --> Compare["Compare Service"]
+    FastAPI --> Reports["Report Generator<br/>+ Executive Summary"]
     
-    Gemini[Gemini Embeddings] --> RAG
+    NLP --> Cerebras["Cerebras API"]
+    NLP --> Groq["Groq API"]
+    NLP --> Ollama["Ollama (Local)"]
     
-    Ext --> DB[(PostgreSQL + pgvector)]
+    Gemini["Gemini Embeddings"] --> RAG
+    
+    Ext --> DB[("PostgreSQL + pgvector<br/>(NeonDB)")]
     NLP --> DB
     RAG --> DB
+    Compare --> DB
 ```
 
 ---
@@ -86,7 +119,7 @@ Request → Cerebras (Wafer-Scale Engine, primary)
                ↓ fails?
           Groq API (secondary, round-robin)
                ↓ fails?
-          Ollama local (phi3.5 / qwen3.5, offline fallback)
+           Ollama local (phi3.5 / qwen3.5:9b, offline fallback)
                ↓ all fail?
           Per-clause individual calls (last resort)
 ```
@@ -186,6 +219,65 @@ Spoiler: they're all high risk.
 
 ---
 
+## 📁 Project Structure
+
+```
+PBL_TOS_RISK_ANALYZER/
+├── backend/
+│   ├── main.py                 # FastAPI app — all routes (1300+ lines)
+│   ├── analysis/
+│   │   ├── analyzer.py         # Core analysis orchestrator
+│   │   ├── classifier.py       # LLM classification (Cerebras/Groq/Ollama)
+│   │   ├── nlp_features.py     # spaCy NLP feature extraction
+│   │   ├── segmenter.py        # Clause segmentation
+│   │   ├── scoring.py          # Risk scoring logic
+│   │   ├── summary_generator.py # Executive summary generation
+│   │   ├── report_generator.py  # Report generation
+│   │   └── cancellation.py     # Job cancellation support
+│   ├── chat/
+│   │   ├── chatbot.py          # RAG chatbot logic
+│   │   ├── retriever.py        # Vector similarity search
+│   │   ├── indexer.py          # Document indexing pipeline
+│   │   ├── embeddings.py       # Gemini embedding client
+│   │   └── context_builder.py  # Context expansion logic
+│   ├── extraction/
+│   │   ├── url_extractor.py    # URL scraping (BeautifulSoup)
+│   │   ├── pdf_extractor.py    # PDF parsing (pdfplumber)
+│   │   ├── text_cleaner.py     # Text normalization
+│   │   └── input_handler.py    # Input routing
+│   ├── auth/                   # JWT + bcrypt authentication
+│   ├── db/                     # SQLAlchemy models + CRUD
+│   ├── compare_service.py      # Document comparison logic
+│   ├── Dockerfile
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/         # All page components
+│   │   │   ├── DashboardPage.jsx
+│   │   │   ├── OverviewPage.jsx
+│   │   │   ├── ClausesPage.jsx
+│   │   │   ├── ComparePage.jsx
+│   │   │   ├── ReportsPage.jsx
+│   │   │   ├── ChatPopup.jsx
+│   │   │   ├── Sidebar.jsx
+│   │   │   └── ...
+│   │   ├── app/router/         # React Router v7 config
+│   │   ├── context/            # App-wide state (React Context)
+│   │   ├── features/           # Feature modules (auth, analysis, etc.)
+│   │   ├── hooks/              # Custom React hooks
+│   │   └── index.css           # Global styles + design tokens
+│   ├── package.json
+│   ├── vite.config.js
+│   └── Dockerfile
+├── docs/
+│   └── DOCUMENTATION.md        # Full technical documentation (800 lines)
+├── docker-compose.yml          # 3-service local setup
+├── railway.toml                # Railway deployment config
+└── README.md                   # ← This file
+```
+
+---
+
 ## 🚀 Quick Start
 
 ```bash
@@ -206,20 +298,25 @@ cd frontend && npm install
 ### Environment Variables
 
 ```env
-# Required
-DATABASE_URL=postgresql+asyncpg://...
-SECRET_KEY=your-secret-key-here
-CEREBRAS_API_KEY=...
-GEMINI_API_KEY=...               # For RAG embeddings
+# ─── Required ───
+DATABASE_URL=postgresql+asyncpg://user:password@host:5432/tos_analyzer?sslmode=require
+SECRET_KEY=your-secret-key-here        # openssl rand -hex 32
+CEREBRAS_API_KEY=...                    # https://cloud.cerebras.ai/
+GEMINI_API_KEY=...                      # For RAG embeddings (gemini-embedding-001)
 
-# Optional (for Groq fallback)
-GROQ_API_KEY=...
+# ─── Optional (Recommended) ───
+GROQ_API_KEY=...                        # Groq LLM fallback (round-robin with Cerebras)
+ACCESS_TOKEN_EXPIRE_MINUTES=60          # JWT expiry (default: 60)
 
-# Production
+# ─── Production Only ───
 ENVIRONMENT=production
 CORS_ORIGINS=https://your-frontend.up.railway.app
 FRONTEND_URL=https://your-frontend.up.railway.app
-ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+# ─── Docker Compose Only ───
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_password_here
+POSTGRES_DB=tos_analyzer
 ```
 
 ```bash
@@ -239,21 +336,34 @@ Frontend: `http://localhost:5173` · Backend + Swagger docs: `http://localhost:8
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/health` | Health check |
+| `GET` | `/stats/cerebras` | Cerebras API usage stats |
+| | | |
 | `POST` | `/auth/register` | Create account |
 | `POST` | `/auth/login` | Get JWT token |
-| `GET` | `/auth/me` | Current user |
-| `POST` | `/extract` | Extract text from URL |
-| `POST` | `/extract/pdf` | Extract from PDF |
-| `POST` | `/analyze/async` | Start analysis job |
+| `GET` | `/auth/me` | Current user info |
+| | | |
+| `POST` | `/extract` | Extract text from URL or raw text |
+| `POST` | `/extract/pdf` | Extract text from PDF upload |
+| | | |
+| `POST` | `/analyze/async` | Start analysis job (returns job_id) |
 | `GET` | `/analyze/status/{id}` | Poll job status |
-| `POST` | `/analyze/stop/{id}` | Cancel job |
-| `GET` | `/analyses` | List saved analyses |
-| `POST` | `/chat/store` | Store doc + trigger indexing |
-| `POST` | `/chat` | RAG-powered Q&A |
-| `GET` | `/chat/{id}/history` | Chat history |
-| `GET` | `/chat/{id}/clauses` | Browse clauses |
-| `GET` | `/chat/{id}/risks` | Risk summary |
-| `POST` | `/chat/compare` | Compare two documents |
+| `GET` | `/analyze/summary/{id}` | Get executive summary |
+| `POST` | `/analyze/stop/{id}` | Cancel running job |
+| | | |
+| `GET` | `/analyses` | List saved analyses (auth required) |
+| `GET` | `/analyses/{id}` | Get specific analysis |
+| `PATCH` | `/analyses/{id}` | Rename analysis |
+| `DELETE` | `/analyses/{id}` | Delete analysis + related data |
+| | | |
+| `POST` | `/chat/store` | Store document + trigger RAG indexing |
+| `POST` | `/chat/restore/{id}` | Restore chat from completed analysis |
+| `POST` | `/chat` | RAG-powered Q&A (auto-detects comparisons) |
+| `GET` | `/chat/{id}/history` | Chat message history |
+| `GET` | `/chat/{id}/clauses` | Browse clauses (filter by risk/category) |
+| `GET` | `/chat/{id}/clauses/{cid}` | Get specific clause |
+| `GET` | `/chat/{id}/risks` | Risk summary by category |
+| `GET` | `/chat/{id}/index/status` | Check indexing progress |
+| `POST` | `/chat/compare` | Compare two documents side-by-side |
 
 Full interactive docs at `/docs` (Swagger UI).
 
@@ -284,9 +394,16 @@ healthcheckPath = "/health"
 
 ### Docker Compose (Local)
 
+Three services: backend (FastAPI), frontend (Nginx), and PostgreSQL 16 with health checks.
+
 ```bash
 cp .env.example .env  # fill in your keys
 docker compose up --build
+
+# Services:
+# Backend:  http://localhost:8000   (Swagger docs: /docs)
+# Frontend: http://localhost:5173
+# Database: localhost:5432
 ```
 
 ---
@@ -315,7 +432,9 @@ erDiagram
         string source_type
         string status "processing/complete/failed"
         jsonb result
+        string error
         timestamp created_at
+        timestamp updated_at
     }
     
     chat_sessions {
@@ -351,8 +470,8 @@ erDiagram
 
 ## 🏆 What Makes This Different
 
-| Feature | Typical RAG app | This project |
-|---------|----------------|--------------|
+| Feature | Typical RAG app | Jurist AI |
+|---------|----------------|-----------|
 | Embedding | Load model into RAM | Gemini API (zero RAM) |
 | Vector DB | Separate service (Pinecone) | pgvector in PostgreSQL |
 | LLM calls | 100% of clauses | ~25% (NLP pre-filter) |
@@ -360,6 +479,9 @@ erDiagram
 | Context | Top-k retrieval | Smart expansion (negation/severity aware) |
 | Auth | Session-based | JWT + SHA256+bcrypt |
 | Jobs | Blocking request | Async + cancellation |
+| Comparison | N/A | Side-by-side document comparison |
+| Reports | N/A | PDF export + executive summary |
+| Theme | Dark only | Light + Dark theme support |
 | Deployment | Single service | Multi-service Docker on Railway |
 
 ---
@@ -392,9 +514,9 @@ MIT — do whatever you want with it.
 <div align="center">
 
 ```
-Built with FastAPI · spaCy · Cerebras · Groq · Gemini · pgvector · React · Railway
+Built with FastAPI · React 19 · Tailwind CSS v4 · spaCy · Cerebras · Groq · Gemini · pgvector · Railway
 ```
 
-*Read the terms. Or let us.*
+*Read the terms. Or let Jurist AI do it.*
 
 </div>
