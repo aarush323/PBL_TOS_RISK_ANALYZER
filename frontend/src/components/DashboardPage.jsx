@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, Zap, BookOpen } from 'lucide-react';
+import { Lock, Zap, Sparkles } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useAppContext } from '@/context/app-context.js';
 import { useTheme } from './theme-context.js';
@@ -485,7 +485,7 @@ export default function DashboardPage() {
             {[
               { icon: <Lock size={12} />, text: 'Not stored' },
               { icon: <Zap size={12} />, text: 'Analysis in ~8s' },
-              { icon: <BookOpen size={12} />, text: 'Trained on legal corpus' },
+              { icon: <Sparkles size={12} />, text: 'AI-powered' },
             ].map(item => (
               <span
                 key={item.text}
