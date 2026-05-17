@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MoreHorizontal, Pencil, Scale, LogOut, Plus, Sun, Moon, Trash2 } from 'lucide-react';
 import { useTheme } from './theme-context.js';
 import { getRiskClass } from '../utils/colorUtils';
@@ -11,6 +11,9 @@ export default function Sidebar({
   const { theme, toggle } = useTheme();
   const isDark = theme !== 'light';
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const inputRef = useRef(null);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -19,6 +22,20 @@ export default function Sidebar({
     return () => document.removeEventListener('click', handleClick);
   }, [openMenuId]);
 
+  useEffect(() => {
+    if (renamingId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [renamingId]);
+
+  const commitRename = useCallback((jobId) => {
+    const trimmed = renameValue.trim();
+    if (!trimmed) { setRenamingId(null); return; }
+    setRenamingId(null);
+    onRenameHistory?.(jobId, trimmed);
+  }, [renameValue, onRenameHistory]);
+
   const truncateLabel = (label, maxLen = 22) => {
     if (!label) return 'Untitled';
     return label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
@@ -26,9 +43,8 @@ export default function Sidebar({
 
   const handleRename = (item, displayLabel) => {
     setOpenMenuId(null);
-    const nextTitle = window.prompt('Rename analysis', displayLabel);
-    if (nextTitle === null) return;
-    onRenameHistory?.(item.job_id, nextTitle);
+    setRenamingId(item.job_id);
+    setRenameValue(displayLabel);
   };
 
   const handleDelete = (item, displayLabel) => {
@@ -209,9 +225,37 @@ export default function Sidebar({
                         opacity: 0.6,
                         flexShrink: 0,
                       }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {truncateLabel(displayLabel)}
-                      </span>
+                      {renamingId === item.job_id ? (
+                        <input
+                          ref={inputRef}
+                          value={renameValue}
+                          onChange={e => setRenameValue(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') commitRename(item.job_id);
+                            if (e.key === 'Escape') setRenamingId(null);
+                            e.stopPropagation();
+                          }}
+                          onBlur={() => commitRename(item.job_id)}
+                          onClick={e => e.stopPropagation()}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            height: '24px',
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            padding: 0,
+                            fontFamily: 'var(--font-family-sans)',
+                            fontSize: '13px',
+                            fontWeight: isSelected ? '500' : '400',
+                            color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                          }}
+                        />
+                      ) : (
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {truncateLabel(displayLabel)}
+                        </span>
+                      )}
                     </a>
                     <button
                       type="button"
