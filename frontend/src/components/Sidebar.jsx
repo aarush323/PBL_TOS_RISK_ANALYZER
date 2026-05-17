@@ -15,8 +15,8 @@ export default function Sidebar({
   useEffect(() => {
     if (!openMenuId) return;
     const handleClick = () => setOpenMenuId(null);
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
   }, [openMenuId]);
 
   const truncateLabel = (label, maxLen = 22) => {
