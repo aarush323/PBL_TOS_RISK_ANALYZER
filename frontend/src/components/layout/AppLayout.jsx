@@ -124,18 +124,19 @@ function MobileHistoryDrawer({
                                 historyItems.slice(0, 20).map((item) => {
                                     const isSelected = selectedHistoryId === item.job_id;
                                     return (
-                                        <button
+                                        <a
                                             key={item.job_id}
-                                            type="button"
+                                            href={`/app/c/${item.job_id}/overview`}
                                             className={`mobile-history-item ${isSelected ? 'is-selected' : ''}`}
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.preventDefault();
                                                 onOpenHistory(item.job_id);
                                                 onClose();
                                             }}
                                         >
                                             <span className={getRiskClass(item.overall_risk)} />
                                             <span>{normalizeHistoryLabel(item)}</span>
-                                        </button>
+                                        </a>
                                     );
                                 })
                             )}

@@ -178,17 +178,20 @@ export default function Sidebar({
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => onOpenHistory(item.job_id)}
+                    <a
+                      href={`/app/c/${item.job_id}/overview`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onOpenHistory(item.job_id);
+                      }}
                       style={{
+                        textDecoration: 'none',
                         minWidth: 0,
                         flex: 1,
                         height: '36px',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '10px',
-                        border: 'none',
                         background: 'transparent',
                         color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
                         fontFamily: 'var(--font-family-sans)',
@@ -209,7 +212,7 @@ export default function Sidebar({
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {truncateLabel(displayLabel)}
                       </span>
-                    </button>
+                    </a>
                     <button
                       type="button"
                       className="analysis-history-menu-trigger"
