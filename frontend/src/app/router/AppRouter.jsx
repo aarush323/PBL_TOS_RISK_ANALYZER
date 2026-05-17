@@ -1,8 +1,9 @@
-import React from 'react';
-import { Navigate, Routes, Route } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { Navigate, Routes, Route, useParams, Outlet } from 'react-router-dom';
 import { Scale } from 'lucide-react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { useAppContext } from '@/context/app-context.js';
+import LoadingOverlay from '@/components/LoadingOverlay.jsx';
 
 // Layout
 import ProtectedLayout from '@/components/layout/ProtectedLayout';
@@ -20,7 +21,7 @@ import DashboardPage from '@/components/DashboardPage.jsx';
 // ─── Page wrappers that pull from context ───
 
 function OverviewWrapper() {
-  const { analysisResult, sourceInfo, calculateScore, historyItems, navigate, setSelectedHistoryId } = useAppContext();
+  const { analysisResult, sourceInfo, calculateScore, historyItems, navigate, setSelectedHistoryId, selectedHistoryId } = useAppContext();
   if (!analysisResult) {
     return <EmptyState view="overview" onNewAnalysis={() => { navigate('/app'); setSelectedHistoryId(null); }} />;
   }
@@ -28,7 +29,7 @@ function OverviewWrapper() {
     <OverviewPage
       analysisResult={analysisResult}
       sourceInfo={sourceInfo}
-      onNavigate={(view) => navigate(`/app/${view}`)}
+      onNavigate={(view) => navigate(selectedHistoryId ? `/app/c/${selectedHistoryId}/${view}` : `/app/${view}`)}
       calculateScore={calculateScore}
       historyItems={historyItems}
     />
@@ -200,6 +201,27 @@ function AuthPage() {
   );
 }
 
+// ─── Chat route handler (loads analysis by URL jobId) ───
+
+function ChatRouteHandler() {
+  const { jobId } = useParams();
+  const { selectedHistoryId, loadAnalysisById, isHistoryItemLoading } = useAppContext();
+  const loadingRef = useRef(false);
+
+  useEffect(() => {
+    if (jobId && selectedHistoryId !== jobId && !loadingRef.current) {
+      loadingRef.current = true;
+      loadAnalysisById(jobId).finally(() => { loadingRef.current = false; });
+    }
+  }, [jobId]);
+
+  if (selectedHistoryId !== jobId && isHistoryItemLoading) {
+    return <LoadingOverlay show={true} title="Loading Analysis" detail="Retrieving analysis data from Jurist AI cloud..." />;
+  }
+
+  return selectedHistoryId === jobId ? <Outlet /> : null;
+}
+
 // ─── Root wrapper (Redirects to /app or /auth) ───
 
 function RootWrapper() {
@@ -216,6 +238,12 @@ export default function AppRouter() {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/app" element={<ProtectedLayout />}>
         <Route index element={<DashboardPage />} />
+        <Route path="c/:jobId" element={<ChatRouteHandler />}>
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<OverviewWrapper />} />
+          <Route path="clauses" element={<ClausesWrapper />} />
+          <Route path="reports" element={<ReportsWrapper />} />
+        </Route>
         <Route path="overview" element={<OverviewWrapper />} />
         <Route path="clauses" element={<ClausesWrapper />} />
         <Route path="reports" element={<ReportsWrapper />} />

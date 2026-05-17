@@ -241,12 +241,12 @@ export function AppProvider({ children }) {
         } catch { return false; }
     };
 
-    const openHistoryAnalysis = async (jobId) => {
+    const loadAnalysisById = async (jobId) => {
         setIsHistoryItemLoading(true);
         try {
             const { res, data } = await fetchHistoryItem(jobId);
-            if (!res.ok) return addToast(data?.detail || 'Failed to load analysis', true);
-            if (!data.result) return addToast('Selected analysis is not complete yet.', true);
+            if (!res.ok) { addToast(data?.detail || 'Failed to load analysis', true); return false; }
+            if (!data.result) { addToast('Selected analysis is not complete yet.', true); return false; }
 
             const restored = await loadChatHistory(data.job_id);
             if (!restored) {
@@ -279,12 +279,18 @@ export function AppProvider({ children }) {
             setAnalysisJobId(data.job_id);
             setAnalysisResult(data.result);
             setSelectedHistoryId(data.job_id);
-            navigate('/app/overview');
+            return true;
         } catch {
             addToast('Could not open selected history item', true);
+            return false;
         } finally {
             setIsHistoryItemLoading(false);
         }
+    };
+
+    const openHistoryAnalysis = async (jobId) => {
+        const ok = await loadAnalysisById(jobId);
+        if (ok) navigate(`/app/c/${jobId}/overview`);
     };
 
     const renameHistoryAnalysis = async (jobId, title) => {
@@ -346,7 +352,8 @@ export function AppProvider({ children }) {
                 setAnalysisResult(data.result);
                 setIsProcessing(false);
                 loadHistory();
-                if (settings.autoOpenResults) navigate('/app/overview');
+                setSelectedHistoryId(jobId);
+                if (settings.autoOpenResults) navigate(`/app/c/${jobId}/overview`);
 
                 if (data.result.clauses && data.result.clauses.some(c => c.is_risky)) {
                     const count = data.result.clauses.filter(c => c.is_risky).length;
@@ -618,7 +625,7 @@ export function AppProvider({ children }) {
         sendChat, explainRiskInChat, initChatSession,
         // History
         historyItems, isHistoryLoading, selectedHistoryId, setSelectedHistoryId,
-        isHistoryItemLoading, openHistoryAnalysis, renameHistoryAnalysis, deleteHistoryAnalysis, loadHistory,
+        isHistoryItemLoading, openHistoryAnalysis, loadAnalysisById, renameHistoryAnalysis, deleteHistoryAnalysis, loadHistory,
         // Compare
         showCompareSelector, setShowCompareSelector,
         compareDocA, setCompareDocA, compareDocB, setCompareDocB,

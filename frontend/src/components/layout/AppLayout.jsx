@@ -183,7 +183,11 @@ export default function AppLayout() {
     } = useAppContext();
 
     // Map current path to activeView label
-    const path = location.pathname.replace('/app', '').replace('/', '') || 'dashboard';
+    const fullPath = location.pathname;
+    const chatMatch = fullPath.match(/^\/app\/c\/([^/]+)/);
+    const path = chatMatch
+      ? fullPath.slice(chatMatch[0].length).replace(/^\//, '') || 'dashboard'
+      : fullPath.replace('/app', '').replace(/^\//, '') || 'dashboard';
 
     const hasActiveChat = Boolean(analysisResult);
 
@@ -191,8 +195,12 @@ export default function AppLayout() {
         if (['overview', 'clauses', 'reports'].includes(view) && !analysisResult) {
             navigate('/app');
             addToast('Please select or run an analysis first.', true);
+        } else if (selectedHistoryId && ['overview', 'clauses', 'reports'].includes(view)) {
+            navigate(`/app/c/${selectedHistoryId}/${view}`);
+        } else if (view === 'dashboard') {
+            navigate('/app');
         } else {
-            navigate(view === 'dashboard' ? '/app' : `/app/${view}`);
+            navigate(`/app/${view}`);
         }
     };
 
